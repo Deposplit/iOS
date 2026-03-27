@@ -1,5 +1,5 @@
 import Testing
-@testable import ShamirSecretSharing
+@testable import Deposplit
 
 // -------------------------------------------------------------------------
 // Round-trip tests
