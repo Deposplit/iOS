@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct HeldTab: View {
-    let shares: [ShareMetadata]
+    let shares: [HeldShare]
     let contacts: ContactRepository
 
     var body: some View {
@@ -22,7 +22,7 @@ struct HeldTab: View {
         }
     }
 
-    private func senderName(for share: ShareMetadata) -> String {
+    private func senderName(for share: HeldShare) -> String {
         contacts.getByEdKey(share.senderKey)?.pseudonym ?? share.senderKey.base64URLEncoded.prefix(8) + "…"
     }
 }

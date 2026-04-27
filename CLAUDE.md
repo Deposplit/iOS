@@ -24,9 +24,13 @@ iOS/
 │   ├── api/
 │   │   ├── ShareTransport.swift      Domain port protocol + value types (Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest)
 │   │   └── DeposplitApiAdapter.swift  HTTP adapter: URLSession + Ed25519 request signing + SHA-256 body hash
+│   │                                  pickUpShare (GET /shares/:shareId) + ciphertext-on-approve (PATCH /share-requests/:id)
 │   ├── contacts/
 │   │   ├── Contact.swift             Contact + VerificationLevel + ContactRepository protocol
 │   │   └── LocalContactRepository.swift  JSON file in Documents/ folder
+│   ├── shares/
+│   │   ├── HeldShare.swift           HeldShare value type + ShareRepository protocol (local share storage)
+│   │   └── LocalShareRepository.swift  JSON file in Documents/shares.json; ciphertext standard base64, senderKey base64url
 │   └── ui/
 │       ├── SignInView.swift           Registration flow (pseudonym input)
 │       ├── HomeView.swift            NavigationStack + TabView (Distributed/Held/Requests)

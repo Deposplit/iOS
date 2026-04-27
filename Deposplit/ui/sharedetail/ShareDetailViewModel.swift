@@ -79,6 +79,9 @@ final class ShareDetailViewModel {
             let secretBytes = try combine(shares: decryptedShares)
             let secret = String(bytes: secretBytes, encoding: .utf8) ?? Data(secretBytes).base64EncodedString()
             reconstructState = .reconstructed(secret)
+            for req in approvedRetrieves {
+                try? await transport.deleteShare(shareId: req.share.id)
+            }
             return secret
         } catch {
             reconstructState = .failed(error.localizedDescription)

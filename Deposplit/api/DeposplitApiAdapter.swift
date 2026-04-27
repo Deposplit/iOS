@@ -59,8 +59,17 @@ final class DeposplitApiAdapter: ShareTransport {
         return try JSONDecoder().decode(ShareRequestJSON.self, from: data).toDomain()
     }
 
-    func respondToShareRequest(requestId: UUID, approved: Bool) async throws -> ShareRequest {
-        let body = RespondJSON(state: approved ? "approved" : "denied")
+    func pickUpShare(shareId: UUID) async throws -> Data {
+        let data = try await execute("GET", path: "/shares/\(shareId)")
+        let json = try JSONDecoder().decode(PickUpShareResponseJSON.self, from: data)
+        return Data(base64Encoded: json.ciphertext) ?? Data()
+    }
+
+    func respondToShareRequest(requestId: UUID, approved: Bool, ciphertext: Data?) async throws -> ShareRequest {
+        let body = RespondJSON(
+            state: approved ? "approved" : "denied",
+            ciphertext: ciphertext?.base64EncodedString()
+        )
         let data = try await execute("PATCH", path: "/share-requests/\(requestId)", body: body)
         return try JSONDecoder().decode(ShareRequestJSON.self, from: data).toDomain()
     }
@@ -147,8 +156,13 @@ final class DeposplitApiAdapter: ShareTransport {
         let requestType: String
     }
 
+    private struct PickUpShareResponseJSON: Decodable {
+        let ciphertext: String
+    }
+
     private struct RespondJSON: Encodable {
         let state: String
+        let ciphertext: String?
     }
 
     private struct ShareRequestJSON: Decodable {

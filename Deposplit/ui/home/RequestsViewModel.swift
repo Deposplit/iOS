@@ -10,10 +10,12 @@ final class RequestsViewModel {
 
     private let transport: ShareTransport
     private let contacts: ContactRepository
+    private let shareRepository: ShareRepository
 
-    init(transport: ShareTransport, contacts: ContactRepository) {
+    init(transport: ShareTransport, contacts: ContactRepository, shareRepository: ShareRepository) {
         self.transport = transport
         self.contacts = contacts
+        self.shareRepository = shareRepository
     }
 
     func load() async {
@@ -31,7 +33,15 @@ final class RequestsViewModel {
         respondingTo = request.id
         defer { respondingTo = nil }
         do {
-            _ = try await transport.respondToShareRequest(requestId: request.id, approved: approve)
+            let ciphertext: Data? = if approve && request.requestType == .retrieve {
+                shareRepository.getCiphertext(shareId: request.share.id)
+            } else {
+                nil
+            }
+            _ = try await transport.respondToShareRequest(requestId: request.id, approved: approve, ciphertext: ciphertext)
+            if approve && request.requestType == .delete {
+                shareRepository.delete(shareId: request.share.id)
+            }
             await load()
         } catch {
             self.error = error.localizedDescription

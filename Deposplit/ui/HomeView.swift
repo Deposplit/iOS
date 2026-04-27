@@ -4,6 +4,7 @@ struct HomeView: View {
     private let auth: AuthPort
     private let transport: ShareTransport
     private let contacts: ContactRepository
+    private let shareRepository: ShareRepository
 
     @State private var homeViewModel: HomeViewModel
     @State private var requestsViewModel: RequestsViewModel
@@ -13,12 +14,13 @@ struct HomeView: View {
     @State private var showDeposit = false
     @State private var selectedShare: ShareMetadata?
 
-    init(auth: AuthPort, transport: ShareTransport, contacts: ContactRepository) {
+    init(auth: AuthPort, transport: ShareTransport, contacts: ContactRepository, shareRepository: ShareRepository) {
         self.auth = auth
         self.transport = transport
         self.contacts = contacts
-        _homeViewModel = State(initialValue: HomeViewModel(transport: transport, auth: auth))
-        _requestsViewModel = State(initialValue: RequestsViewModel(transport: transport, contacts: contacts))
+        self.shareRepository = shareRepository
+        _homeViewModel = State(initialValue: HomeViewModel(transport: transport, auth: auth, shareRepository: shareRepository))
+        _requestsViewModel = State(initialValue: RequestsViewModel(transport: transport, contacts: contacts, shareRepository: shareRepository))
     }
 
     var body: some View {
