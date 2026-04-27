@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 enum Role: String {
     case sender, recipient
@@ -6,10 +7,25 @@ enum Role: String {
 
 enum ShareRequestType: String {
     case retrieve, delete
+
+    var localizedLabel: LocalizedStringKey {
+        switch self {
+        case .retrieve: "Retrieve"
+        case .delete: "Delete"
+        }
+    }
 }
 
 enum ShareRequestState: String {
     case pending, approved, denied
+
+    var localizedLabel: LocalizedStringKey {
+        switch self {
+        case .pending: "Pending"
+        case .approved: "Approved"
+        case .denied: "Denied"
+        }
+    }
 }
 
 struct ShareMetadata: Identifiable, Equatable, Hashable {

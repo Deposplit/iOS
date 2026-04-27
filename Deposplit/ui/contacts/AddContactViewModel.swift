@@ -16,11 +16,11 @@ final class AddContactViewModel {
 
     func save() -> Bool {
         let name = pseudonym.trimmingCharacters(in: .whitespaces)
-        guard !name.isEmpty else { error = "Name is required."; return false }
+        guard !name.isEmpty else { error = String(localized: "Name is required."); return false }
         guard let ed = Data(base64URLEncoded: edKeyInput.trimmingCharacters(in: .whitespaces)),
-              ed.count == 32 else { error = "Invalid Ed25519 key (expected 32 bytes, base64url)."; return false }
+              ed.count == 32 else { error = String(localized: "Invalid Ed25519 key (expected 32 bytes, base64url)."); return false }
         guard let x = Data(base64URLEncoded: xKeyInput.trimmingCharacters(in: .whitespaces)),
-              x.count == 32 else { error = "Invalid X25519 key (expected 32 bytes, base64url)."; return false }
+              x.count == 32 else { error = String(localized: "Invalid X25519 key (expected 32 bytes, base64url)."); return false }
         let contact = Contact(
             id: UUID(),
             pseudonym: name,
@@ -37,7 +37,7 @@ final class AddContactViewModel {
     func saveFromQR(payload: QrPayload) -> Bool {
         guard let ed = Data(base64URLEncoded: payload.ed),
               let x = Data(base64URLEncoded: payload.x) else {
-            error = "Invalid keys in QR payload."
+            error = String(localized: "Invalid keys in QR payload.")
             return false
         }
         let contact = Contact(

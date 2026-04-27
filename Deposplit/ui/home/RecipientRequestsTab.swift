@@ -47,7 +47,7 @@ private struct RequestCard: View {
             HStack {
                 Text(request.share.label).font(.headline)
                 Spacer()
-                Text(request.requestType.rawValue.capitalized)
+                Text(request.requestType.localizedLabel)
                     .font(.caption)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)

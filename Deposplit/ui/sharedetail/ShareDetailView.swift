@@ -69,7 +69,7 @@ struct ShareDetailView: View {
 }
 
 private struct RequestRow: View {
-    let label: String
+    let label: LocalizedStringKey
     let state: ShareRequestState?
     let isActing: Bool
     let action: () -> Void
@@ -79,7 +79,7 @@ private struct RequestRow: View {
             Text(label)
             Spacer()
             if let state {
-                Text(state.rawValue.capitalized)
+                Text(state.localizedLabel)
                     .font(.caption)
                     .foregroundStyle(stateColor(state))
                 if state == .denied {

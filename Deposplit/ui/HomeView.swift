@@ -92,7 +92,7 @@ struct HomeView: View {
         }
     }
 
-    private var tabTitle: String {
+    private var tabTitle: LocalizedStringKey {
         switch selectedTab {
         case 0: "Distributed"
         case 1: "Held"

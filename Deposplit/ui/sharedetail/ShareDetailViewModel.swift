@@ -14,7 +14,7 @@ final class ShareDetailViewModel {
     var isLoading = false
     var isActing = false
     var error: String?
-    var reconstructState: ReconstructState = .unavailable("Loading…")
+    var reconstructState: ReconstructState = .unavailable(String(localized: "Loading…"))
 
     private let share: ShareMetadata
     private let auth: AuthPort
@@ -63,7 +63,7 @@ final class ShareDetailViewModel {
             $0.requestType == .retrieve && $0.state == .approved && $0.ciphertext != nil
         }
         guard approvedRetrieves.count >= 2 else {
-            reconstructState = .unavailable("Need at least 2 approved retrieve requests.")
+            reconstructState = .unavailable(String(localized: "Need at least 2 approved retrieve requests."))
             return nil
         }
         do {
@@ -71,7 +71,7 @@ final class ShareDetailViewModel {
                 let ct = req.ciphertext!
                 guard let contact = contacts.getByEdKey(req.share.recipientKey) else {
                     throw NSError(domain: "Deposplit", code: 0,
-                                  userInfo: [NSLocalizedDescriptionKey: "Contact not found for recipient — cannot decrypt share"])
+                                  userInfo: [NSLocalizedDescriptionKey: String(localized: "Contact not found for recipient — cannot decrypt share")])
                 }
                 let plaintext = try auth.decrypt(ct, recipientXPublicKey: contact.xPublicKey)
                 return Array(plaintext)
@@ -103,7 +103,7 @@ final class ShareDetailViewModel {
         if approvedCount >= 2 {
             reconstructState = .ready
         } else {
-            reconstructState = .unavailable("Need \(2 - approvedCount) more approved retrieval(s).")
+            reconstructState = .unavailable(String(localized: "Need \(2 - approvedCount) more approved retrieval(s)."))
         }
     }
 }
