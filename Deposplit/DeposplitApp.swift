@@ -2,13 +2,13 @@ import SwiftUI
 
 @main
 struct DeposplitApp: App {
-    private let auth: DeposplitAuthAdapter
+    private let auth: any AuthPort
     private let contacts: LocalContactRepository
     private let transport: DeposplitApiAdapter
     private let shareRepository: LocalShareRepository
 
     init() {
-        let a = DeposplitAuthAdapter()
+        let a = AuthService(identityStore: KeychainIdentityStore())
         auth = a
         contacts = LocalContactRepository()
         shareRepository = LocalShareRepository()

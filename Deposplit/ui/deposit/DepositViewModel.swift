@@ -42,7 +42,6 @@ final class DepositViewModel {
             let chosen = contacts.getAll().filter { selectedContacts.contains($0.id) }
             let shares = try split(secret: secretBytes, shares: chosen.count, threshold: threshold)
             let secretId = UUID()
-            let now = ISO8601DateFormatter().string(from: Date())
 
             for (contact, share) in zip(chosen, shares) {
                 let plaintext = Data(share)
