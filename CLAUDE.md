@@ -92,3 +92,63 @@ xcodebuild test \
 - **`NavigationStack`** (not the deprecated `NavigationView`).
 - **SSS is not a separate Swift Package** — `ShamirSecretSharing.swift` is compiled directly into the app target. Tests use `@testable import Deposplit`.
 - **No separate hexagon target** — unlike Android (which has a `:hexagon` Gradle module), all Swift code is in the single `Deposplit` app target. Domain protocols (`AuthPort`, `ShareTransport`, `ContactRepository`) enforce the Ports & Adapters boundary by convention, not by the build system. The project uses `PBXFileSystemSynchronizedRootGroup` (Xcode 16+): any `.swift` file placed in `Deposplit/` is automatically compiled — no need to edit `project.pbxproj` when adding source files.
+
+## Pending refactor: separate auth computation from Keychain storage
+
+The Android app completed this refactor in May 2026. The iOS `auth/` directory needs the same change.
+
+**Current problem:** `DeposplitAuthAdapter` conflates two concerns:
+1. **Crypto computation** — keypair generation, Ed25519 signing, X25519+HKDF+ChaCha20-Poly1305 — these are pure CryptoKit operations with no I/O (domain concern).
+2. **Infrastructure I/O** — Keychain (`Security` framework) for private and public keys; `UserDefaults` for pseudonym and `registered` flag (adapter concern).
+
+**Target shape** (mirrors the Android refactor):
+
+| File | Role |
+|---|---|
+| `auth/AuthPort.swift` | Driving port protocol — unchanged |
+| `auth/IdentityStore.swift` | **New** driven port protocol |
+| `auth/AuthService.swift` | **New** service implementing `AuthPort` — CryptoKit computation only, no `Security`/`UserDefaults` |
+| `auth/KeychainIdentityStore.swift` | **New** adapter implementing `IdentityStore` — `Security` + `UserDefaults` |
+| `auth/DeposplitAuthAdapter.swift` | **Delete** |
+
+**`IdentityStore` protocol** (no `Security` or `UserDefaults` imports):
+```swift
+protocol IdentityStore {
+    var isRegistered: Bool { get }
+    func save(pseudonym: String, edPk: Data, edSk: Data, xPk: Data, xSk: Data) throws
+    var pseudonym: String { get }
+    var edPublicKey: Data { get }
+    func edPrivateKey() throws -> Data
+    func xPrivateKey() throws -> Data
+}
+```
+Public keys and pseudonym are non-throwing computed properties (they have safe fallback values or are always present after registration). Private key loads are throwing because Keychain access can fail.
+
+**`AuthService`** — imports `CryptoKit` only, no `Security` or `Foundation` beyond what CryptoKit needs:
+- `register`: generates `Curve25519.Signing.PrivateKey` + `Curve25519.KeyAgreement.PrivateKey`, calls `identityStore.save(...rawRepresentation...)`
+- `sign`, `encrypt`, `decrypt`: load raw bytes from `identityStore.edPrivateKey()` / `identityStore.xPrivateKey()`, reconstruct CryptoKit key objects, do the crypto — identical logic to the current `DeposplitAuthAdapter` methods but calling the store for key material instead of the Keychain directly
+
+**`KeychainIdentityStore`** — imports `Security` and `Foundation`:
+- Moves `saveToKeychain` / `loadFromKeychain` helpers verbatim from `DeposplitAuthAdapter`
+- `save(...)` stores all five values (pseudonym → `UserDefaults`, keys → Keychain)
+- `isRegistered`, `pseudonym` → `UserDefaults`
+- `edPublicKey`, and a symmetric `xPublicKey` property, load from Keychain with a safe fallback `Data()` (matching current behaviour)
+- `edPrivateKey()` / `xPrivateKey()` load and throw on Keychain failure
+- Move the `AuthError` enum here (or to a dedicated `auth/AuthError.swift`)
+
+**`DeposplitApp.swift`** — change:
+```swift
+// before
+private let auth: DeposplitAuthAdapter
+...
+let a = DeposplitAuthAdapter()
+
+// after
+private let auth: any AuthPort
+...
+let a = AuthService(identityStore: KeychainIdentityStore())
+```
+
+**Boundary rule to enforce by convention** (no build-level enforcement unlike Android):
+- Domain files (`AuthPort`, `IdentityStore`, `AuthService`, `ShamirSecretSharing`, `ShareTransport`, `Contact`, `HeldShare`, …): may import `CryptoKit` and `Foundation`; must NOT import `Security`, `UIKit`, `SwiftUI`, `UserDefaults` usage, or `URLSession`.
+- Adapter files (`KeychainIdentityStore`, `DeposplitApiAdapter`, `LocalContactRepository`, `LocalShareRepository`, …): may import anything.
