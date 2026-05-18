@@ -1,6 +1,6 @@
 # Deposplit — iOS
 
-SwiftUI iOS app for [Deposplit](https://github.com/Deposplit/deposplit.com): a secret-sharing app built on Shamir's Secret Sharing (SSS). Secrets are split into *n* shares and distributed to contacts via the deposplit.com backend; reconstruction requires at least *k* holders to cooperate.
+SwiftUI iOS app for [Deposplit](https://github.com/Deposplit/deposplit.com): a secret-sharing app built on Shamir's Secret Sharing (SSS). Secrets are split into *n* shares and distributed to contacts via the deposplit.com Web app/service; reconstruction requires at least *k* holders to cooperate.
 
 This document is written for a developer who knows Swift well but has limited iOS / SwiftUI experience.
 
@@ -13,7 +13,7 @@ This document is written for a developer who knows Swift well but has limited iO
 3. [Architecture](#architecture)
 4. [The registration flow](#the-registration-flow)
 5. [Building and running](#building-and-running)
-6. [Testing against a local backend](#testing-against-a-local-backend)
+6. [Testing against a local Web app/service](#testing-against-a-local-Web app/service)
 7. [What is next](#what-is-next)
 
 ---
@@ -98,7 +98,7 @@ Curve25519 (Ed25519 + X25519) is not supported by the **Secure Enclave**, which 
 
 ### `#if DEBUG`
 
-Swift's conditional compilation flag `DEBUG` is defined in the `Debug` build configuration (see `SWIFT_ACTIVE_COMPILATION_CONDITIONS` in the project settings). Deposplit uses it to switch the backend URL:
+Swift's conditional compilation flag `DEBUG` is defined in the `Debug` build configuration (see `SWIFT_ACTIVE_COMPILATION_CONDITIONS` in the project settings). Deposplit uses it to switch the Web app/service URL:
 
 ```swift
 #if DEBUG
@@ -257,21 +257,21 @@ Or in Xcode: **Product → Test (⌘U)**.
 
 ### First run
 
-On first launch the app shows the sign-in screen. Enter a pseudonym (display name only — stored locally, never sent to the backend). Tapping **Get started** generates Ed25519 and X25519 keypairs via CryptoKit, stores the private keys in the Keychain, and navigates to the home screen.
+On first launch the app shows the sign-in screen. Enter a pseudonym (display name only — stored locally, never sent to the Web app/service). Tapping **Get started** generates Ed25519 and X25519 keypairs via CryptoKit, stores the private keys in the Keychain, and navigates to the home screen.
 
 ---
 
-## Testing against a local backend
+## Testing against a local Web app/service
 
 ### Setup
 
-**Start the backend** (from `deposplit.com/`):
+**Start the Web app/service** (from `deposplit.com/`):
 
 ```bash
 sbt run -Dconfig.file=conf/localhost.conf
 ```
 
-It listens on port 9000. Unlike the Android emulator (which uses the special alias `10.0.2.2`), the **iOS Simulator shares the host machine's network stack** — it reaches the backend simply via `localhost`. The debug build is wired to `http://localhost:9000` automatically via `#if DEBUG` in `DeposplitApp.swift`.
+It listens on port 9000. Unlike the Android emulator (which uses the special alias `10.0.2.2`), the **iOS Simulator shares the host machine's network stack** — it reaches the Web app/service simply via `localhost`. The debug build is wired to `http://localhost:9000` automatically via `#if DEBUG` in `DeposplitApp.swift`.
 
 **Run the app** in Xcode: select a simulator and press **Run ▶**. The scheme is always `Debug` during development.
 
@@ -318,11 +318,11 @@ On Sim-B, swipe to delete Alice's share from the Held tab. The share disappears 
 
 ### Flow 5 — Error states
 
-Kill the backend (`Ctrl-C`) → pull-to-refresh or tap the ↺ button on either device → error banner appears. Restart the backend → tap ↺ → data loads again.
+Kill the Web app/service (`Ctrl-C`) → pull-to-refresh or tap the ↺ button on either device → error banner appears. Restart the Web app/service → tap ↺ → data loads again.
 
 ### Flow 6 — Cross-platform (iOS + Android)
 
-Run Alice on an iOS Simulator and Bob on an Android emulator simultaneously. They connect to the same `sbt run` backend. Alice deposits a share for Bob; Bob (on Android) sees it in the Held tab. Bob opens a Retrieve request; Alice (on iOS) reconstructs. This validates the cross-platform E2EE compatibility: CryptoKit (iOS) and BouncyCastle (Android) produce identical X25519+HKDF+ChaCha20-Poly1305 wire bytes.
+Run Alice on an iOS Simulator and Bob on an Android emulator simultaneously. They connect to the same `sbt run` Web app/service. Alice deposits a share for Bob; Bob (on Android) sees it in the Held tab. Bob opens a Retrieve request; Alice (on iOS) reconstructs. This validates the cross-platform E2EE compatibility: CryptoKit (iOS) and BouncyCastle (Android) produce identical X25519+HKDF+ChaCha20-Poly1305 wire bytes.
 
 ### Key edge cases to verify
 
@@ -339,4 +339,4 @@ The iOS app is feature-complete for v0.1. Planned improvements:
 
 1. **Biometric unlock** — gate `ShareDetailView.reconstruct()` behind `LAContext.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics)`, mirroring the Android `BiometricPrompt` implementation.
 2. **Group Distributed tab by `secretId`** — same as the planned Android improvement: a 2-of-2 deposit produces two entries today; they should collapse into one logical-secret row.
-3. **End-to-end test with production** — once `api.deposplit.com` is deployed, run the full flow against the live backend.
+3. **End-to-end test with production** — once `api.deposplit.com` is deployed, run the full flow against the live Web app/service.
