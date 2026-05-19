@@ -121,10 +121,11 @@ iOS/
 │   ├── DeposplitApp.swift            @main entry + RootView (routes to SignInView or HomeView)
 │   ├── ShamirSecretSharing.swift     SSS library (split / combine over GF(2⁸))
 │   ├── auth/
-│   │   ├── AuthPort.swift            Domain port protocol
-│   │   ├── DeposplitAuthAdapter.swift  CryptoKit keypair generation, Ed25519 signing,
-│   │   │                               X25519+HKDF-SHA-256+ChaCha20-Poly1305 encrypt/decrypt,
-│   │   │                               Keychain storage
+│   │   ├── AuthPort.swift            Domain port protocol (Identity — pending rename)
+│   │   ├── AuthService.swift         CryptoKit keypair generation, Ed25519 signing,
+│   │   │                             X25519+HKDF-SHA-256+ChaCha20-Poly1305 encrypt/decrypt
+│   │   │                             (IdentityService — pending rename)
+│   │   ├── KeychainIdentityStore.swift  IdentityStore adapter — Keychain storage
 │   │   └── SignInViewModel.swift
 │   ├── api/
 │   │   ├── ShareTransport.swift      Domain port protocol + value types
@@ -179,13 +180,15 @@ Deposplit follows **Ports & Adapters (Hexagonal Architecture)** for the domain a
                           │ calls port protocol
 ┌─────────────────────────▼────────────────────────────┐
 │  Domain (Port)                                       │
-│  AuthPort  ◄──── DeposplitAuthAdapter (Adapter)      │
+│  Identity  ◄──── IdentityService (Service)           │
 └──────────────────────────────────────────────────────┘
 ```
 
-**Port (`AuthPort`)** — a Swift protocol defined by the domain. It expresses what the app needs without knowing anything about CryptoKit or Keychain.
+**Port (`Identity`)** — a Swift protocol defined by the domain. It expresses what the app needs without knowing anything about CryptoKit or Keychain.
 
-**Adapter (`DeposplitAuthAdapter`)** — implements the port using CryptoKit and the Security framework. Changing the crypto strategy only requires changing this class.
+**Service (`IdentityService`)** — implements the port using CryptoKit keypair generation, Ed25519 signing, and X25519+HKDF+ChaCha20-Poly1305 encryption. Delegates key persistence to the `IdentityStore` driven port.
+
+**Adapter (`KeychainIdentityStore`)** — implements `IdentityStore` using the Security framework. Changing the storage strategy only requires changing this class.
 
 **ViewModel (`SignInViewModel`)** — sits at the UI/domain boundary. It calls the port and holds the state that the view observes.
 
