@@ -13,32 +13,35 @@ Platform-specific guidance for the `iOS/` repository. Cross-project context live
 
 ```
 iOS/
+├── hexagon/                          ← local Swift Package — domain boundary enforced by the build system
+│   ├── Package.swift                 swift-tools-version: 6.0; platforms: iOS 26.4; path: "Sources"
+│   └── Sources/
+│       ├── shamir/
+│       │   └── ShamirSecretSharing.swift  SSS split/combine over GF(2⁸); ShamirError
+│       ├── driving_ports/
+│       │   ├── Identity.swift             isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign, encrypt, decrypt
+│       │   └── ShareTransport.swift       depositShare, listShares, pickUpShare, deleteShare, share-request CRUD
+│       ├── driven_ports/
+│       │   ├── IdentityStore.swift        isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
+│       │   ├── ContactRepository.swift    getAll, getByEdKey, save, delete
+│       │   └── ShareRepository.swift      getAll, getCiphertext, save, delete
+│       ├── services/
+│       │   └── IdentityService.swift      Identity impl — CryptoKit only, no Security/UserDefaults
+│       └── value_objects/
+│           ├── AuthError.swift            Error enum for auth failures
+│           ├── Contact.swift              Contact struct + VerificationLevel enum
+│           ├── HeldShare.swift            HeldShare struct
+│           └── Share.swift               Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest
 ├── Deposplit.xcodeproj/
-├── Deposplit/                        ← app target sources (PBXFileSystemSynchronizedRootGroup — all .swift files are compiled automatically)
+├── Deposplit/                        ← app target (adapters + UI); PBXFileSystemSynchronizedRootGroup
 │   ├── DeposplitApp.swift            @main entry point + RootView (routes to SignInView or HomeView)
-│   ├── shamir/
-│   │   └── ShamirSecretSharing.swift SSS library (part of app target)
-│   ├── driving_ports/
-│   │   ├── Identity.swift            Driving port: isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign, encrypt, decrypt
-│   │   └── ShareTransport.swift      Driving port + value types (Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest)
-│   ├── driven_ports/
-│   │   ├── IdentityStore.swift       Driven port: isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
-│   │   ├── ContactRepository.swift   Driven port: getAll, getByEdKey, save, delete
-│   │   └── ShareRepository.swift     Driven port: getAll, getCiphertext, save, delete (local share storage)
-│   ├── services/
-│   │   └── IdentityService.swift     Identity implementation — CryptoKit only, no Security/UserDefaults
-│   ├── value_objects/
-│   │   ├── AuthError.swift           Error enum for auth failures
-│   │   ├── Contact.swift             Contact struct + VerificationLevel enum
-│   │   ├── HeldShare.swift           HeldShare struct
-│   │   └── Share.swift               Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest
 │   ├── auth/
 │   │   └── KeychainIdentityStore.swift  IdentityStore adapter — Security framework + UserDefaults
 │   ├── api/
 │   │   └── DeposplitApiAdapter.swift  HTTP adapter: URLSession + Ed25519 request signing + SHA-256 body hash
 │   │                                  pickUpShare (GET /shares/:shareId) + ciphertext-on-approve (PATCH /share-requests/:id)
 │   ├── contacts/
-│   │   └── LocalContactRepository.swift  JSON file in Documents/ folder
+│   │   └── LocalContactRepository.swift  JSON file in Documents/contacts.json
 │   ├── shares/
 │   │   └── LocalShareRepository.swift  JSON file in Documents/shares.json; ciphertext standard base64, senderKey base64url
 │   └── ui/
@@ -67,7 +70,7 @@ iOS/
 │           ├── QrDisplayViewModel.swift  CoreImage QR generation (synchronous, MainActor-safe)
 │           ├── QrDisplayView.swift
 │           └── QrScanView.swift      DataScannerViewController (VisionKit, iOS 16+) + QrScanViewModel
-└── DeposplitTests/                   ← unit test target
+└── DeposplitTests/                   ← unit test target (@testable import hexagon)
     └── ShamirSecretSharingTests.swift
 ```
 
@@ -80,7 +83,7 @@ Tests run via Xcode (Product → Test) or from the command line:
 xcodebuild build \
   -project Deposplit.xcodeproj \
   -scheme Deposplit \
-  -destination 'generic/platform=iOS' \
+  -sdk iphoneos \
   CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
 
 xcodebuild test \
@@ -101,13 +104,12 @@ xcodebuild test \
 - **`SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`** — set in build settings. All types are `@MainActor` by default. Async network calls (`URLSession.data(for:)`) work fine since they suspend without blocking. CPU-bound operations (QR generation, SSS) are fast enough to run on the main actor.
 - **`@Observable`** (not `ObservableObject` / `@Published`) for all ViewModels — iOS 17+, consistent with deployment target.
 - **`NavigationStack`** (not the deprecated `NavigationView`).
-- **SSS is not a separate Swift Package** — `ShamirSecretSharing.swift` is compiled directly into the app target. Tests use `@testable import Deposplit`.
-- **No separate hexagon target** — unlike Android (which has a `:hexagon` Gradle module), all Swift code is in the single `Deposplit` app target. Domain protocols (`Identity`, `ShareTransport`, `ContactRepository`) enforce the Ports & Adapters boundary by convention, not by the build system. The project uses `PBXFileSystemSynchronizedRootGroup` (Xcode 16+): any `.swift` file placed in `Deposplit/` is automatically compiled — no need to edit `project.pbxproj` when adding source files.
+- **`hexagon` is a local Swift Package** — domain code lives in `hexagon/Sources/` and is a separate SPM target linked into both the app and test targets. The compiler enforces the boundary: any attempt to `import SwiftUI`, `import Security`, or `import UIKit` from inside the package is a build error. Tests use `@testable import hexagon`. The app target uses `PBXFileSystemSynchronizedRootGroup` (Xcode 16+): any `.swift` file placed in `Deposplit/` is automatically compiled — no need to edit `project.pbxproj` when adding adapter or UI files.
 
-## Boundary rule (enforced by convention, not build system)
+## Boundary rule (enforced by the build system)
 
-- Domain files (`Identity`, `IdentityStore`, `IdentityService`, `ShamirSecretSharing`, `ShareTransport`, `Contact`, `HeldShare`, …): may import `CryptoKit` and `Foundation`; must NOT import `Security`, `UIKit`, `SwiftUI`, or `URLSession`.
-- Adapter files (`KeychainIdentityStore`, `DeposplitApiAdapter`, `LocalContactRepository`, `LocalShareRepository`, …): may import anything.
+- Hexagon files (`hexagon/Sources/…`): may import `CryptoKit` and `Foundation` only; must NOT import `Security`, `UIKit`, `SwiftUI`, or `URLSession` — the package has no such dependencies so the compiler catches violations.
+- Adapter files (`KeychainIdentityStore`, `DeposplitApiAdapter`, `LocalContactRepository`, `LocalShareRepository`, …): may import anything; add `import hexagon` to use domain types.
 
 ## TODO: Biometric unlock for secret reconstruction
 

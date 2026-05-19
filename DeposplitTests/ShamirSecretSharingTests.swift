@@ -1,5 +1,5 @@
 import Testing
-@testable import Deposplit
+@testable import hexagon
 
 // -------------------------------------------------------------------------
 // Round-trip tests

@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		FDBD442BD766CB523203B141 /* hexagon in Frameworks */ = {isa = PBXBuildFile; productRef = D54F0930AEF2E0F7ADC348C9 /* hexagon */; };
+		A5CAB04AD14E4AC1B7D0D684 /* hexagon in Frameworks */ = {isa = PBXBuildFile; productRef = 87D0BFE71CEADEC75EF49CD8 /* hexagon */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		9EF51DFE2F7706DE00E1F75F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -39,6 +44,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FDBD442BD766CB523203B141 /* hexagon in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -46,6 +52,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A5CAB04AD14E4AC1B7D0D684 /* hexagon in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -90,6 +97,7 @@
 			);
 			name = Deposplit;
 			packageProductDependencies = (
+				D54F0930AEF2E0F7ADC348C9 /* hexagon */,
 			);
 			productName = Deposplit;
 			productReference = 9EE9B6552F76E97B009AC186 /* Deposplit.app */;
@@ -113,6 +121,7 @@
 			);
 			name = DeposplitTests;
 			packageProductDependencies = (
+				87D0BFE71CEADEC75EF49CD8 /* hexagon */,
 			);
 			productName = DeposplitTests;
 			productReference = 9EF51DFA2F7706DE00E1F75F /* DeposplitTests.xctest */;
@@ -146,6 +155,9 @@
 			);
 			mainGroup = 9EE9B64C2F76E97B009AC186;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				44F436D99F8EF4C317040DA8 /* XCLocalSwiftPackageReference "hexagon" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9EE9B6562F76E97B009AC186 /* Products */;
 			projectDirPath = "";
@@ -454,6 +466,26 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		44F436D99F8EF4C317040DA8 /* XCLocalSwiftPackageReference "hexagon" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = hexagon;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D54F0930AEF2E0F7ADC348C9 /* hexagon */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 44F436D99F8EF4C317040DA8 /* XCLocalSwiftPackageReference "hexagon" */;
+			productName = hexagon;
+		};
+		87D0BFE71CEADEC75EF49CD8 /* hexagon */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 44F436D99F8EF4C317040DA8 /* XCLocalSwiftPackageReference "hexagon" */;
+			productName = hexagon;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 9EE9B64D2F76E97B009AC186 /* Project object */;
 }

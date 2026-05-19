@@ -1,3 +1,4 @@
+import hexagon
 import Foundation
 
 final class LocalContactRepository: ContactRepository {

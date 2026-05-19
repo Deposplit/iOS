@@ -1,3 +1,4 @@
+import hexagon
 import SwiftUI
 
 struct AddContactView: View {
