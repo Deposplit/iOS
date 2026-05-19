@@ -19,7 +19,7 @@ struct ShareMetadata: Identifiable, Equatable, Hashable {
     let label: String
     let senderKey: Data
     let recipientKey: Data
-    let createdAt: String
+    let createdAt: Date
 }
 
 struct ShareRequest: Identifiable, Equatable {
@@ -27,7 +27,7 @@ struct ShareRequest: Identifiable, Equatable {
     let share: ShareMetadata
     let requestType: ShareRequestType
     let state: ShareRequestState
-    let requestedAt: String
-    let respondedAt: String?
+    let requestedAt: Date
+    let respondedAt: Date?
     let ciphertext: Data?
 }

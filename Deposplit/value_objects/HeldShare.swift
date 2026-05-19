@@ -5,6 +5,6 @@ struct HeldShare: Identifiable, Equatable {
     let secretId: UUID
     let label: String
     let senderKey: Data
-    let createdAt: String
+    let createdAt: Date
     let ciphertext: Data
 }

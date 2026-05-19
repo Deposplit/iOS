@@ -54,13 +54,14 @@ final class LocalShareRepository: ShareRepository {
             guard let id = UUID(uuidString: json.id),
                   let secretId = UUID(uuidString: json.secretId),
                   let senderKey = Data(base64URLEncoded: json.senderKey),
-                  let ciphertext = Data(base64Encoded: json.ciphertext) else { return nil }
+                  let ciphertext = Data(base64Encoded: json.ciphertext),
+                  let createdAt = _localISO8601.date(from: json.createdAt) else { return nil }
             return HeldShare(
                 id: id,
                 secretId: secretId,
                 label: json.label,
                 senderKey: senderKey,
-                createdAt: json.createdAt,
+                createdAt: createdAt,
                 ciphertext: ciphertext
             )
         }
@@ -73,7 +74,7 @@ final class LocalShareRepository: ShareRepository {
                 secretId: s.secretId.uuidString,
                 label: s.label,
                 senderKey: s.senderKey.base64URLEncoded,
-                createdAt: s.createdAt,
+                createdAt: _localISO8601.string(from: s.createdAt),
                 ciphertext: s.ciphertext.base64EncodedString()
             )
         }
@@ -81,3 +82,5 @@ final class LocalShareRepository: ShareRepository {
         try data.write(to: fileURL, options: .atomic)
     }
 }
+
+private let _localISO8601 = ISO8601DateFormatter()

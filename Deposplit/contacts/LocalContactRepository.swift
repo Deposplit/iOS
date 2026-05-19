@@ -54,15 +54,16 @@ final class LocalContactRepository: ContactRepository {
         return items.compactMap { json in
             guard let id = UUID(uuidString: json.id),
                   let ed = Data(base64URLEncoded: json.edPublicKey),
-                  let x = Data(base64URLEncoded: json.xPublicKey) else { return nil }
+                  let x = Data(base64URLEncoded: json.xPublicKey),
+                  let addedAt = json.addedAt.parseISO8601() else { return nil }
             return Contact(
                 id: id,
                 pseudonym: json.pseudonym,
                 edPublicKey: ed,
                 xPublicKey: x,
                 verificationLevel: json.verificationLevel,
-                verifiedAt: json.verifiedAt,
-                addedAt: json.addedAt
+                verifiedAt: json.verifiedAt?.parseISO8601(),
+                addedAt: addedAt
             )
         }
     }
@@ -75,11 +76,17 @@ final class LocalContactRepository: ContactRepository {
                 edPublicKey: c.edPublicKey.base64URLEncoded,
                 xPublicKey: c.xPublicKey.base64URLEncoded,
                 verificationLevel: c.verificationLevel,
-                verifiedAt: c.verifiedAt,
-                addedAt: c.addedAt
+                verifiedAt: c.verifiedAt.map { _localISO8601.string(from: $0) },
+                addedAt: _localISO8601.string(from: c.addedAt)
             )
         }
         let data = try JSONEncoder().encode(items)
         try data.write(to: fileURL, options: .atomic)
     }
+}
+
+private let _localISO8601 = ISO8601DateFormatter()
+
+private extension String {
+    func parseISO8601() -> Date? { _localISO8601.date(from: self) }
 }

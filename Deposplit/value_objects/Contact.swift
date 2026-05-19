@@ -10,6 +10,6 @@ struct Contact: Identifiable, Equatable {
     let edPublicKey: Data
     let xPublicKey: Data
     let verificationLevel: VerificationLevel
-    let verifiedAt: String?
-    let addedAt: String
+    let verifiedAt: Date?
+    let addedAt: Date
 }

@@ -146,7 +146,7 @@ final class DeposplitApiAdapter: ShareTransport {
                 label: label,
                 senderKey: Data(base64URLEncoded: senderKey) ?? Data(),
                 recipientKey: Data(base64URLEncoded: recipientKey) ?? Data(),
-                createdAt: createdAt
+                createdAt: parseISO8601(createdAt)
             )
         }
     }
@@ -180,8 +180,8 @@ final class DeposplitApiAdapter: ShareTransport {
                 share: share.toDomain(),
                 requestType: ShareRequestType(rawValue: requestType) ?? .retrieve,
                 state: ShareRequestState(rawValue: state) ?? .pending,
-                requestedAt: requestedAt,
-                respondedAt: respondedAt,
+                requestedAt: parseISO8601(requestedAt),
+                respondedAt: respondedAt.map { parseISO8601($0) },
                 ciphertext: ciphertext.flatMap { Data(base64Encoded: $0) }
             )
         }
@@ -206,4 +206,18 @@ extension Data {
         if rem > 0 { s += String(repeating: "=", count: 4 - rem) }
         self.init(base64Encoded: s)
     }
+}
+
+// MARK: - ISO 8601 date parsing
+
+// Two formatters: the server may or may not include fractional seconds.
+private let _iso8601Fractional: ISO8601DateFormatter = {
+    let f = ISO8601DateFormatter()
+    f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    return f
+}()
+private let _iso8601: ISO8601DateFormatter = ISO8601DateFormatter()
+
+private func parseISO8601(_ string: String) -> Date {
+    _iso8601Fractional.date(from: string) ?? _iso8601.date(from: string) ?? Date()
 }

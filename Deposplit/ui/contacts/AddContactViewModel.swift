@@ -28,7 +28,7 @@ final class AddContactViewModel {
             xPublicKey: x,
             verificationLevel: .unverified,
             verifiedAt: nil,
-            addedAt: ISO8601DateFormatter().string(from: Date())
+            addedAt: Date()
         )
         repository.save(contact)
         return true
@@ -46,8 +46,8 @@ final class AddContactViewModel {
             edPublicKey: ed,
             xPublicKey: x,
             verificationLevel: .verified,
-            verifiedAt: ISO8601DateFormatter().string(from: Date()),
-            addedAt: ISO8601DateFormatter().string(from: Date())
+            verifiedAt: Date(),
+            addedAt: Date()
         )
         repository.save(contact)
         return true
