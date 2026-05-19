@@ -11,11 +11,11 @@ final class DepositViewModel {
     var error: String?
     var depositedSuccessfully = false
 
-    private let auth: AuthPort
+    private let auth: Identity
     private let transport: ShareTransport
     private let contacts: ContactRepository
 
-    init(auth: AuthPort, transport: ShareTransport, contacts: ContactRepository) {
+    init(auth: Identity, transport: ShareTransport, contacts: ContactRepository) {
         self.auth = auth
         self.transport = transport
         self.contacts = contacts

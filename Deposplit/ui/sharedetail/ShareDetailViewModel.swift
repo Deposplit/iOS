@@ -17,11 +17,11 @@ final class ShareDetailViewModel {
     var reconstructState: ReconstructState = .unavailable(String(localized: "Loading…"))
 
     private let share: ShareMetadata
-    private let auth: AuthPort
+    private let auth: Identity
     private let transport: ShareTransport
     private let contacts: ContactRepository
 
-    init(share: ShareMetadata, auth: AuthPort, transport: ShareTransport, contacts: ContactRepository) {
+    init(share: ShareMetadata, auth: Identity, transport: ShareTransport, contacts: ContactRepository) {
         self.share = share
         self.auth = auth
         self.transport = transport

@@ -9,10 +9,10 @@ final class HomeViewModel {
     var error: String?
 
     private let transport: ShareTransport
-    private let auth: AuthPort
+    private let auth: Identity
     private let shareRepository: ShareRepository
 
-    init(transport: ShareTransport, auth: AuthPort, shareRepository: ShareRepository) {
+    init(transport: ShareTransport, auth: Identity, shareRepository: ShareRepository) {
         self.transport = transport
         self.auth = auth
         self.shareRepository = shareRepository

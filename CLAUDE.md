@@ -11,8 +11,6 @@ Platform-specific guidance for the `iOS/` repository. Cross-project context live
 
 ## Project structure
 
-**NOTE: the domain files are currently in topic-based folders (`auth/`, `api/`, `contacts/`, `shares/`). A refactoring TODO is listed at the end of this file. The structure below shows the desired target layout.**
-
 ```
 iOS/
 ├── Deposplit.xcodeproj/
@@ -110,59 +108,6 @@ xcodebuild test \
 
 - Domain files (`Identity`, `IdentityStore`, `IdentityService`, `ShamirSecretSharing`, `ShareTransport`, `Contact`, `HeldShare`, …): may import `CryptoKit` and `Foundation`; must NOT import `Security`, `UIKit`, `SwiftUI`, or `URLSession`.
 - Adapter files (`KeychainIdentityStore`, `DeposplitApiAdapter`, `LocalContactRepository`, `LocalShareRepository`, …): may import anything.
-
-## TODO: Hexagon directory refactoring
-
-The domain files currently live in topic-based folders (`auth/`, `api/`, `contacts/`, `shares/`) that do not reflect the Ports & Adapters roles. They should be reorganised into role-based folders to match the Android hexagon and the relay hexagon. **This has not been done yet** — do it on macOS.
-
-### File moves (create new file, delete old file)
-
-Because the project uses `PBXFileSystemSynchronizedRootGroup`, no `project.pbxproj` edits are needed — just place `.swift` files in `Deposplit/` subdirectories and Xcode picks them up automatically.
-
-| Old path (topic-based) | New path (role-based) | Notes |
-|---|---|---|
-| `ShamirSecretSharing.swift` | `shamir/ShamirSecretSharing.swift` | No content changes |
-| `auth/AuthPort.swift` | `driving_ports/Identity.swift` | Rename protocol `AuthPort` → `Identity` |
-| `auth/AuthError.swift` | `value_objects/AuthError.swift` | No content changes |
-| `auth/IdentityStore.swift` | `driven_ports/IdentityStore.swift` | No content changes |
-| `auth/AuthService.swift` | `services/IdentityService.swift` | Rename class `AuthService` → `IdentityService`; update conformance to `Identity` |
-| `auth/SignInViewModel.swift` | `ui/SignInViewModel.swift` | No content changes; no import updates needed (same module) |
-| `contacts/Contact.swift` | Split into two files: | See below |
-| | `value_objects/Contact.swift` | Contains `VerificationLevel` enum + `Contact` struct only |
-| | `driven_ports/ContactRepository.swift` | Contains `ContactRepository` protocol only |
-| `shares/HeldShare.swift` | Split into two files: | See below |
-| | `value_objects/HeldShare.swift` | Contains `HeldShare` struct only |
-| | `driven_ports/ShareRepository.swift` | Contains `ShareRepository` protocol only |
-| `api/ShareTransport.swift` | Split into two files: | See below — **read the SwiftUI note** |
-| | `value_objects/Share.swift` | Contains `Role`, `ShareRequestType`, `ShareRequestState`, `ShareMetadata`, `ShareRequest` |
-| | `driving_ports/ShareTransport.swift` | Contains `ShareTransport` protocol only |
-
-**Adapter files that stay in place** (no moves needed):
-- `auth/KeychainIdentityStore.swift`
-- `api/DeposplitApiAdapter.swift`
-- `contacts/LocalContactRepository.swift`
-- `shares/LocalShareRepository.swift`
-
-### SwiftUI boundary violation to fix
-
-`api/ShareTransport.swift` currently imports `SwiftUI` to use `LocalizedStringKey` in two computed properties:
-
-```swift
-// ShareRequestType
-var localizedLabel: LocalizedStringKey { ... }
-
-// ShareRequestState  
-var localizedLabel: LocalizedStringKey { ... }
-```
-
-This violates the boundary rule — domain value objects must not import SwiftUI. When creating `value_objects/Share.swift`, **remove these `localizedLabel` properties entirely**. The UI layer already uses `stringResource(R.string.share_request_retrieve)` style lookups on Android; do the equivalent in SwiftUI (pass the enum directly to a helper or use a `switch` in the view).
-
-### After the file moves
-
-Verify that:
-1. `DeposplitApiAdapter.swift` imports are updated (it references `ShareTransport`, `Role`, `ShareMetadata`, `ShareRequest`, `ShareRequestType`, `ShareRequestState` — all will now live in `value_objects/` and `driving_ports/`)
-2. All ViewModels import from the new locations
-3. The build succeeds (`xcodebuild build` or Product → Build in Xcode)
 
 ## TODO: Biometric unlock for secret reconstruction
 

@@ -5,7 +5,7 @@ struct ShareDetailView: View {
     @State private var reconstructedSecret: String?
     @State private var showLocalAuth = false
 
-    init(share: ShareMetadata, auth: AuthPort, transport: ShareTransport, contacts: ContactRepository) {
+    init(share: ShareMetadata, auth: Identity, transport: ShareTransport, contacts: ContactRepository) {
         _viewModel = State(initialValue: ShareDetailViewModel(
             share: share, auth: auth, transport: transport, contacts: contacts))
     }
@@ -79,7 +79,7 @@ private struct RequestRow: View {
             Text(label)
             Spacer()
             if let state {
-                Text(state.localizedLabel)
+                Text(state.label)
                     .font(.caption)
                     .foregroundStyle(stateColor(state))
                 if state == .denied {
@@ -102,6 +102,16 @@ private struct RequestRow: View {
         case .pending: .orange
         case .approved: .green
         case .denied: .red
+        }
+    }
+}
+
+private extension ShareRequestState {
+    var label: LocalizedStringKey {
+        switch self {
+        case .pending: "Pending"
+        case .approved: "Approved"
+        case .denied: "Denied"
         }
     }
 }

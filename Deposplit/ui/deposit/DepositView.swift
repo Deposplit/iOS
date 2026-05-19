@@ -4,7 +4,7 @@ struct DepositView: View {
     @State private var viewModel: DepositViewModel
     @Environment(\.dismiss) private var dismiss
 
-    init(auth: AuthPort, transport: ShareTransport, contacts: ContactRepository) {
+    init(auth: Identity, transport: ShareTransport, contacts: ContactRepository) {
         _viewModel = State(initialValue: DepositViewModel(auth: auth, transport: transport, contacts: contacts))
     }
 

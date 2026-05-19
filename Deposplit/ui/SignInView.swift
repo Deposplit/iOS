@@ -4,7 +4,7 @@ struct SignInView: View {
     @State private var viewModel: SignInViewModel
     var onRegistered: () -> Void
 
-    init(auth: AuthPort, onRegistered: @escaping () -> Void) {
+    init(auth: Identity, onRegistered: @escaping () -> Void) {
         _viewModel = State(initialValue: SignInViewModel(auth: auth))
         self.onRegistered = onRegistered
     }

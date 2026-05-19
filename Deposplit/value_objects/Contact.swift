@@ -13,10 +13,3 @@ struct Contact: Identifiable, Equatable {
     let verifiedAt: String?
     let addedAt: String
 }
-
-protocol ContactRepository {
-    func getAll() -> [Contact]
-    func getByEdKey(_ edPublicKey: Data) -> Contact?
-    func save(_ contact: Contact)
-    func delete(contactId: UUID)
-}

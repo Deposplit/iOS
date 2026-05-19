@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct HomeView: View {
-    private let auth: AuthPort
+    private let auth: Identity
     private let transport: ShareTransport
     private let contacts: ContactRepository
     private let shareRepository: ShareRepository
@@ -14,7 +14,7 @@ struct HomeView: View {
     @State private var showDeposit = false
     @State private var selectedShare: ShareMetadata?
 
-    init(auth: AuthPort, transport: ShareTransport, contacts: ContactRepository, shareRepository: ShareRepository) {
+    init(auth: Identity, transport: ShareTransport, contacts: ContactRepository, shareRepository: ShareRepository) {
         self.auth = auth
         self.transport = transport
         self.contacts = contacts

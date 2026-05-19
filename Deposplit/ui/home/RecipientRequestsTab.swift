@@ -47,7 +47,7 @@ private struct RequestCard: View {
             HStack {
                 Text(request.share.label).font(.headline)
                 Spacer()
-                Text(request.requestType.localizedLabel)
+                Text(request.requestType.label)
                     .font(.caption)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
@@ -74,5 +74,14 @@ private struct RequestCard: View {
 
     private var badgeColor: Color {
         request.requestType == .retrieve ? .blue : .orange
+    }
+}
+
+private extension ShareRequestType {
+    var label: LocalizedStringKey {
+        switch self {
+        case .retrieve: "Retrieve"
+        case .delete: "Delete"
+        }
     }
 }

@@ -9,9 +9,9 @@ final class QrDisplayViewModel {
     var qrImage: UIImage?
     var pseudonym: String = ""
 
-    private let auth: AuthPort
+    private let auth: Identity
 
-    init(auth: AuthPort) {
+    init(auth: Identity) {
         self.auth = auth
     }
 

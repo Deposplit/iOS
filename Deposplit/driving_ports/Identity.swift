@@ -1,6 +1,6 @@
 import Foundation
 
-protocol AuthPort {
+protocol Identity {
     var isRegistered: Bool { get }
     func register(pseudonym: String) throws
     var pseudonym: String { get }

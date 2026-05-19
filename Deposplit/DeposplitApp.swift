@@ -2,13 +2,13 @@ import SwiftUI
 
 @main
 struct DeposplitApp: App {
-    private let auth: any AuthPort
+    private let auth: any Identity
     private let contacts: LocalContactRepository
     private let transport: DeposplitApiAdapter
     private let shareRepository: LocalShareRepository
 
     init() {
-        let a = AuthService(identityStore: KeychainIdentityStore())
+        let a = IdentityService(identityStore: KeychainIdentityStore())
         auth = a
         contacts = LocalContactRepository()
         shareRepository = LocalShareRepository()
@@ -27,13 +27,13 @@ struct DeposplitApp: App {
 }
 
 struct RootView: View {
-    let auth: AuthPort
+    let auth: Identity
     let transport: ShareTransport
     let contacts: ContactRepository
     let shareRepository: ShareRepository
     @State private var isRegistered: Bool
 
-    init(auth: AuthPort, transport: ShareTransport, contacts: ContactRepository, shareRepository: ShareRepository) {
+    init(auth: Identity, transport: ShareTransport, contacts: ContactRepository, shareRepository: ShareRepository) {
         self.auth = auth
         self.transport = transport
         self.contacts = contacts

@@ -1,7 +1,7 @@
 import CryptoKit
 import Foundation
 
-final class AuthService: AuthPort {
+final class IdentityService: Identity {
     private let identityStore: IdentityStore
 
     init(identityStore: IdentityStore) {

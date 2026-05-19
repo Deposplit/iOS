@@ -7,9 +7,9 @@ final class SignInViewModel {
     var isLoading = false
     var error: String?
 
-    private let auth: AuthPort
+    private let auth: any Identity
 
-    init(auth: AuthPort) {
+    init(auth: any Identity) {
         self.auth = auth
     }
 

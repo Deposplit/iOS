@@ -4,7 +4,7 @@ struct QrDisplayView: View {
     @State private var viewModel: QrDisplayViewModel
     @Environment(\.dismiss) private var dismiss
 
-    init(auth: AuthPort) {
+    init(auth: Identity) {
         _viewModel = State(initialValue: QrDisplayViewModel(auth: auth))
     }
 

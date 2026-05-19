@@ -9,10 +9,10 @@ struct ApiError: Error, LocalizedError {
 
 final class DeposplitApiAdapter: ShareTransport {
 
-    private let auth: AuthPort
+    private let auth: any Identity
     private let baseURL: String
 
-    init(auth: AuthPort, baseURL: String = "https://api.deposplit.com") {
+    init(auth: any Identity, baseURL: String = "https://api.deposplit.com") {
         self.auth = auth
         self.baseURL = baseURL
     }
