@@ -90,6 +90,9 @@ xcodebuild test \
   -project Deposplit.xcodeproj \
   -scheme Deposplit \
   -destination 'platform=iOS Simulator,name=iPhone 16'
+
+# hexagon package tests only — no simulator required
+swift test --package-path hexagon
 ```
 
 ## Key decisions to preserve
