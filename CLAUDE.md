@@ -35,8 +35,7 @@ iOS/
 │   │   ├── HeldShare.swift           HeldShare struct
 │   │   └── Share.swift               Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest
 │   ├── auth/
-│   │   ├── KeychainIdentityStore.swift  IdentityStore adapter — Security framework + UserDefaults
-│   │   └── SignInViewModel.swift
+│   │   └── KeychainIdentityStore.swift  IdentityStore adapter — Security framework + UserDefaults
 │   ├── api/
 │   │   └── DeposplitApiAdapter.swift  HTTP adapter: URLSession + Ed25519 request signing + SHA-256 body hash
 │   │                                  pickUpShare (GET /shares/:shareId) + ciphertext-on-approve (PATCH /share-requests/:id)
@@ -45,6 +44,7 @@ iOS/
 │   ├── shares/
 │   │   └── LocalShareRepository.swift  JSON file in Documents/shares.json; ciphertext standard base64, senderKey base64url
 │   └── ui/
+│       ├── SignInViewModel.swift      Registration flow (pseudonym input)
 │       ├── SignInView.swift           Registration flow (pseudonym input)
 │       ├── HomeView.swift            NavigationStack + TabView (Distributed/Held/Requests)
 │       ├── home/
@@ -126,6 +126,7 @@ Because the project uses `PBXFileSystemSynchronizedRootGroup`, no `project.pbxpr
 | `auth/AuthError.swift` | `value_objects/AuthError.swift` | No content changes |
 | `auth/IdentityStore.swift` | `driven_ports/IdentityStore.swift` | No content changes |
 | `auth/AuthService.swift` | `services/IdentityService.swift` | Rename class `AuthService` → `IdentityService`; update conformance to `Identity` |
+| `auth/SignInViewModel.swift` | `ui/SignInViewModel.swift` | No content changes; no import updates needed (same module) |
 | `contacts/Contact.swift` | Split into two files: | See below |
 | | `value_objects/Contact.swift` | Contains `VerificationLevel` enum + `Contact` struct only |
 | | `driven_ports/ContactRepository.swift` | Contains `ContactRepository` protocol only |
@@ -138,7 +139,6 @@ Because the project uses `PBXFileSystemSynchronizedRootGroup`, no `project.pbxpr
 
 **Adapter files that stay in place** (no moves needed):
 - `auth/KeychainIdentityStore.swift`
-- `auth/SignInViewModel.swift`
 - `api/DeposplitApiAdapter.swift`
 - `contacts/LocalContactRepository.swift`
 - `shares/LocalShareRepository.swift`
