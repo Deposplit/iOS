@@ -21,14 +21,14 @@ iOS/
 │   ├── shamir/
 │   │   └── ShamirSecretSharing.swift SSS library (part of app target)
 │   ├── driving_ports/
-│   │   ├── AuthPort.swift            Driving port: isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign, encrypt, decrypt
+│   │   ├── Identity.swift            Driving port: isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign, encrypt, decrypt
 │   │   └── ShareTransport.swift      Driving port + value types (Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest)
 │   ├── driven_ports/
 │   │   ├── IdentityStore.swift       Driven port: isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
 │   │   ├── ContactRepository.swift   Driven port: getAll, getByEdKey, save, delete
 │   │   └── ShareRepository.swift     Driven port: getAll, getCiphertext, save, delete (local share storage)
 │   ├── services/
-│   │   └── AuthService.swift         AuthPort implementation — CryptoKit only, no Security/UserDefaults
+│   │   └── IdentityService.swift     Identity implementation — CryptoKit only, no Security/UserDefaults
 │   ├── value_objects/
 │   │   ├── AuthError.swift           Error enum for auth failures
 │   │   ├── Contact.swift             Contact struct + VerificationLevel enum
@@ -104,11 +104,11 @@ xcodebuild test \
 - **`@Observable`** (not `ObservableObject` / `@Published`) for all ViewModels — iOS 17+, consistent with deployment target.
 - **`NavigationStack`** (not the deprecated `NavigationView`).
 - **SSS is not a separate Swift Package** — `ShamirSecretSharing.swift` is compiled directly into the app target. Tests use `@testable import Deposplit`.
-- **No separate hexagon target** — unlike Android (which has a `:hexagon` Gradle module), all Swift code is in the single `Deposplit` app target. Domain protocols (`AuthPort`, `ShareTransport`, `ContactRepository`) enforce the Ports & Adapters boundary by convention, not by the build system. The project uses `PBXFileSystemSynchronizedRootGroup` (Xcode 16+): any `.swift` file placed in `Deposplit/` is automatically compiled — no need to edit `project.pbxproj` when adding source files.
+- **No separate hexagon target** — unlike Android (which has a `:hexagon` Gradle module), all Swift code is in the single `Deposplit` app target. Domain protocols (`Identity`, `ShareTransport`, `ContactRepository`) enforce the Ports & Adapters boundary by convention, not by the build system. The project uses `PBXFileSystemSynchronizedRootGroup` (Xcode 16+): any `.swift` file placed in `Deposplit/` is automatically compiled — no need to edit `project.pbxproj` when adding source files.
 
 ## Boundary rule (enforced by convention, not build system)
 
-- Domain files (`AuthPort`, `IdentityStore`, `AuthService`, `ShamirSecretSharing`, `ShareTransport`, `Contact`, `HeldShare`, …): may import `CryptoKit` and `Foundation`; must NOT import `Security`, `UIKit`, `SwiftUI`, or `URLSession`.
+- Domain files (`Identity`, `IdentityStore`, `IdentityService`, `ShamirSecretSharing`, `ShareTransport`, `Contact`, `HeldShare`, …): may import `CryptoKit` and `Foundation`; must NOT import `Security`, `UIKit`, `SwiftUI`, or `URLSession`.
 - Adapter files (`KeychainIdentityStore`, `DeposplitApiAdapter`, `LocalContactRepository`, `LocalShareRepository`, …): may import anything.
 
 ## TODO: Hexagon directory refactoring
@@ -122,10 +122,10 @@ Because the project uses `PBXFileSystemSynchronizedRootGroup`, no `project.pbxpr
 | Old path (topic-based) | New path (role-based) | Notes |
 |---|---|---|
 | `ShamirSecretSharing.swift` | `shamir/ShamirSecretSharing.swift` | No content changes |
-| `auth/AuthPort.swift` | `driving_ports/AuthPort.swift` | No content changes |
+| `auth/AuthPort.swift` | `driving_ports/Identity.swift` | Rename protocol `AuthPort` → `Identity` |
 | `auth/AuthError.swift` | `value_objects/AuthError.swift` | No content changes |
 | `auth/IdentityStore.swift` | `driven_ports/IdentityStore.swift` | No content changes |
-| `auth/AuthService.swift` | `services/AuthService.swift` | No content changes |
+| `auth/AuthService.swift` | `services/IdentityService.swift` | Rename class `AuthService` → `IdentityService`; update conformance to `Identity` |
 | `contacts/Contact.swift` | Split into two files: | See below |
 | | `value_objects/Contact.swift` | Contains `VerificationLevel` enum + `Contact` struct only |
 | | `driven_ports/ContactRepository.swift` | Contains `ContactRepository` protocol only |
