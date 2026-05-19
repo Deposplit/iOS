@@ -11,28 +11,38 @@ Platform-specific guidance for the `iOS/` repository. Cross-project context live
 
 ## Project structure
 
+**NOTE: the domain files are currently in topic-based folders (`auth/`, `api/`, `contacts/`, `shares/`). A refactoring TODO is listed at the end of this file. The structure below shows the desired target layout.**
+
 ```
 iOS/
 ├── Deposplit.xcodeproj/
 ├── Deposplit/                        ← app target sources (PBXFileSystemSynchronizedRootGroup — all .swift files are compiled automatically)
 │   ├── DeposplitApp.swift            @main entry point + RootView (routes to SignInView or HomeView)
-│   ├── ShamirSecretSharing.swift     SSS library (part of app target)
+│   ├── shamir/
+│   │   └── ShamirSecretSharing.swift SSS library (part of app target)
+│   ├── driving_ports/
+│   │   ├── AuthPort.swift            Driving port: isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign, encrypt, decrypt
+│   │   └── ShareTransport.swift      Driving port + value types (Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest)
+│   ├── driven_ports/
+│   │   ├── IdentityStore.swift       Driven port: isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
+│   │   ├── ContactRepository.swift   Driven port: getAll, getByEdKey, save, delete
+│   │   └── ShareRepository.swift     Driven port: getAll, getCiphertext, save, delete (local share storage)
+│   ├── services/
+│   │   └── AuthService.swift         AuthPort implementation — CryptoKit only, no Security/UserDefaults
+│   ├── value_objects/
+│   │   ├── AuthError.swift           Error enum for auth failures
+│   │   ├── Contact.swift             Contact struct + VerificationLevel enum
+│   │   ├── HeldShare.swift           HeldShare struct
+│   │   └── Share.swift               Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest
 │   ├── auth/
-│   │   ├── AuthPort.swift            Driving port protocol
-│   │   ├── AuthError.swift           Shared error enum
-│   │   ├── IdentityStore.swift       Driven port protocol (key/pseudonym storage)
-│   │   ├── AuthService.swift         AuthPort implementation — CryptoKit only, no Security/UserDefaults
 │   │   ├── KeychainIdentityStore.swift  IdentityStore adapter — Security framework + UserDefaults
 │   │   └── SignInViewModel.swift
 │   ├── api/
-│   │   ├── ShareTransport.swift      Domain port protocol + value types (Role, ShareRequestType, ShareRequestState, ShareMetadata, ShareRequest)
 │   │   └── DeposplitApiAdapter.swift  HTTP adapter: URLSession + Ed25519 request signing + SHA-256 body hash
 │   │                                  pickUpShare (GET /shares/:shareId) + ciphertext-on-approve (PATCH /share-requests/:id)
 │   ├── contacts/
-│   │   ├── Contact.swift             Contact + VerificationLevel + ContactRepository protocol
 │   │   └── LocalContactRepository.swift  JSON file in Documents/ folder
 │   ├── shares/
-│   │   ├── HeldShare.swift           HeldShare value type + ShareRepository protocol (local share storage)
 │   │   └── LocalShareRepository.swift  JSON file in Documents/shares.json; ciphertext standard base64, senderKey base64url
 │   └── ui/
 │       ├── SignInView.swift           Registration flow (pseudonym input)
@@ -100,3 +110,82 @@ xcodebuild test \
 
 - Domain files (`AuthPort`, `IdentityStore`, `AuthService`, `ShamirSecretSharing`, `ShareTransport`, `Contact`, `HeldShare`, …): may import `CryptoKit` and `Foundation`; must NOT import `Security`, `UIKit`, `SwiftUI`, or `URLSession`.
 - Adapter files (`KeychainIdentityStore`, `DeposplitApiAdapter`, `LocalContactRepository`, `LocalShareRepository`, …): may import anything.
+
+## TODO: Hexagon directory refactoring
+
+The domain files currently live in topic-based folders (`auth/`, `api/`, `contacts/`, `shares/`) that do not reflect the Ports & Adapters roles. They should be reorganised into role-based folders to match the Android hexagon and the relay hexagon. **This has not been done yet** — do it on macOS.
+
+### File moves (create new file, delete old file)
+
+Because the project uses `PBXFileSystemSynchronizedRootGroup`, no `project.pbxproj` edits are needed — just place `.swift` files in `Deposplit/` subdirectories and Xcode picks them up automatically.
+
+| Old path (topic-based) | New path (role-based) | Notes |
+|---|---|---|
+| `ShamirSecretSharing.swift` | `shamir/ShamirSecretSharing.swift` | No content changes |
+| `auth/AuthPort.swift` | `driving_ports/AuthPort.swift` | No content changes |
+| `auth/AuthError.swift` | `value_objects/AuthError.swift` | No content changes |
+| `auth/IdentityStore.swift` | `driven_ports/IdentityStore.swift` | No content changes |
+| `auth/AuthService.swift` | `services/AuthService.swift` | No content changes |
+| `contacts/Contact.swift` | Split into two files: | See below |
+| | `value_objects/Contact.swift` | Contains `VerificationLevel` enum + `Contact` struct only |
+| | `driven_ports/ContactRepository.swift` | Contains `ContactRepository` protocol only |
+| `shares/HeldShare.swift` | Split into two files: | See below |
+| | `value_objects/HeldShare.swift` | Contains `HeldShare` struct only |
+| | `driven_ports/ShareRepository.swift` | Contains `ShareRepository` protocol only |
+| `api/ShareTransport.swift` | Split into two files: | See below — **read the SwiftUI note** |
+| | `value_objects/Share.swift` | Contains `Role`, `ShareRequestType`, `ShareRequestState`, `ShareMetadata`, `ShareRequest` |
+| | `driving_ports/ShareTransport.swift` | Contains `ShareTransport` protocol only |
+
+**Adapter files that stay in place** (no moves needed):
+- `auth/KeychainIdentityStore.swift`
+- `auth/SignInViewModel.swift`
+- `api/DeposplitApiAdapter.swift`
+- `contacts/LocalContactRepository.swift`
+- `shares/LocalShareRepository.swift`
+
+### SwiftUI boundary violation to fix
+
+`api/ShareTransport.swift` currently imports `SwiftUI` to use `LocalizedStringKey` in two computed properties:
+
+```swift
+// ShareRequestType
+var localizedLabel: LocalizedStringKey { ... }
+
+// ShareRequestState  
+var localizedLabel: LocalizedStringKey { ... }
+```
+
+This violates the boundary rule — domain value objects must not import SwiftUI. When creating `value_objects/Share.swift`, **remove these `localizedLabel` properties entirely**. The UI layer already uses `stringResource(R.string.share_request_retrieve)` style lookups on Android; do the equivalent in SwiftUI (pass the enum directly to a helper or use a `switch` in the view).
+
+### After the file moves
+
+Verify that:
+1. `DeposplitApiAdapter.swift` imports are updated (it references `ShareTransport`, `Role`, `ShareMetadata`, `ShareRequest`, `ShareRequestType`, `ShareRequestState` — all will now live in `value_objects/` and `driving_ports/`)
+2. All ViewModels import from the new locations
+3. The build succeeds (`xcodebuild build` or Product → Build in Xcode)
+
+## TODO: Biometric unlock for secret reconstruction
+
+The Android app gates `viewModel.reconstruct()` behind `BiometricPrompt`. The iOS `ShareDetailView` currently calls `viewModel.reconstruct()` directly without any authentication gate.
+
+Add biometric authentication using `LocalAuthentication`:
+
+```swift
+import LocalAuthentication
+
+let context = LAContext()
+var error: NSError?
+guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
+    // show explanatory message (no hardware / not enrolled)
+    return
+}
+context.evaluatePolicy(
+    .deviceOwnerAuthenticationWithBiometrics,
+    localizedReason: String(localized: "Authenticate to reconstruct your secret")
+) { success, authError in
+    guard success else { return }
+    Task { @MainActor in await viewModel.reconstruct() }
+}
+```
+
+Gate it behind a `SKIP_BIOMETRIC` build flag (like Android does via `BuildConfig`) so it can be bypassed on simulators during development.
