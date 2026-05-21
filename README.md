@@ -194,7 +194,7 @@ Deposplit follows **Ports & Adapters (Hexagonal Architecture)** for the domain a
 
 **`DeposplitApp`** — creates the adapters and passes them into the view hierarchy.
 
-Unlike Android (which has a separate `:hexagon` Gradle module), all Swift code lives in the single `Deposplit` app target. The Ports & Adapters boundary is enforced by convention (protocol-based programming) rather than by the build system.
+Like Android's `:hexagon` Gradle module, the iOS domain code lives in its own **local Swift Package** (`iOS/hexagon/`), which is a separate SPM target linked into both the app and the test target. The compiler enforces the boundary: the package has no `Security`, `UIKit`, `SwiftUI`, or `URLSession` dependencies, so any accidental import is a build error.
 
 ---
 
@@ -340,6 +340,10 @@ Run Alice on an iOS Simulator and Bob on an Android emulator simultaneously. The
 
 The iOS app is feature-complete for v0.1. Planned improvements:
 
-1. **Biometric unlock** — gate `ShareDetailView.reconstruct()` behind `LAContext.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics)`, mirroring the Android `BiometricPrompt` implementation.
-2. **Group Distributed tab by `secretId`** — same as the planned Android improvement: a 2-of-2 deposit produces two entries today; they should collapse into one logical-secret row.
-3. **End-to-end test with production** — once `api.deposplit.com` is deployed, run the full flow against the live Web app/service.
+1. **Biometric unlock** — gate `ShareDetailView.reconstruct()` behind `LAContext.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics)`, mirroring the Android `BiometricPrompt` implementation. See `iOS/CLAUDE.md` for the full implementation guide.
+2. **Ports & Adapters fixes** — two architectural clean-ups carried out on Android are pending for iOS:
+   - `ShareTransport` → `ShareRelay` (driven port) + `ShareManagement` (driving port, implemented by `ShareService` in the hexagon): SSS split/combine + encrypt/decrypt + relay coordination moves out of ViewModels into the domain layer.
+   - `ContactManagement` driving port + `ContactService`: contact-addition logic (key validation, `VerificationLevel` assignment) moves out of `AddContactViewModel` / `QrScanViewModel` into the domain layer.
+   See `iOS/CLAUDE.md` for step-by-step instructions for both refactors.
+3. **Group Distributed tab by `secretId`** — same as the planned Android improvement: a 2-of-2 deposit produces two entries today; they should collapse into one logical-secret row.
+4. **End-to-end test with production** — once `api.deposplit.com` is deployed, run the full flow against the live Web app/service.

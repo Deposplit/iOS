@@ -114,6 +114,232 @@ swift test --package-path hexagon
 - Hexagon files (`hexagon/Sources/…`): may import `CryptoKit` and `Foundation` only; must NOT import `Security`, `UIKit`, `SwiftUI`, or `URLSession` — the package has no such dependencies so the compiler catches violations.
 - Adapter files (`KeychainIdentityStore`, `DeposplitApiAdapter`, `LocalContactRepository`, `LocalShareRepository`, …): may import anything; add `import hexagon` to use domain types.
 
+## TODO: ShareTransport → ShareRelay + ShareManagement + ShareService refactor
+
+`ShareTransport.swift` in `hexagon/Sources/driving_ports/` is misclassified. It has no hexagon implementation (the app-layer `DeposplitApiAdapter` implements it directly), which means it is acting as a **driven port**, not a driving port. The correct Ports & Adapters structure, already applied in Android and the Scala `phon` hexagon, is:
+
+```
+driving_ports/ShareManagement.swift   ← use-case interface, implemented by ShareService inside the hexagon
+driven_ports/ShareRelay.swift         ← raw relay API, called out by ShareService, implemented by DeposplitApiAdapter
+services/ShareService.swift           ← hexagon service: implements ShareManagement
+                                         calls ShareRelay + Identity + ShareRepository + ContactRepository
+```
+
+### Step 1 — Create `hexagon/Sources/driven_ports/ShareRelay.swift`
+
+Move the full API from `ShareTransport.swift` here, renamed to `ShareRelay`:
+
+```swift
+public protocol ShareRelay {
+    func depositShare(secretId: UUID, label: String, recipientKey: Data, ciphertext: Data) throws -> ShareMetadata
+    func listShares(role: Role, counterpartyKey: Data?) throws -> [ShareMetadata]
+    func pickUpShare(shareId: UUID) throws -> Data
+    func deleteShare(shareId: UUID) throws
+    func openShareRequest(shareId: UUID, type: ShareRequestType) throws -> ShareRequest
+    func listShareRequests(role: Role, state: ShareRequestState?) throws -> [ShareRequest]
+    func getShareRequest(requestId: UUID) throws -> ShareRequest
+    func respondToShareRequest(requestId: UUID, approved: Bool, ciphertext: Data?) throws -> ShareRequest
+}
+```
+
+### Step 2 — Create `hexagon/Sources/driving_ports/ShareManagement.swift`
+
+Use-case interface (the hexagon implements this):
+
+```swift
+public protocol ShareManagement {
+    // Sender
+    func deposit(secret: Data, label: String, contacts: [Contact], threshold: Int) throws
+    func listDistributed() throws -> [ShareMetadata]
+    func listSentRequests() throws -> [ShareRequest]
+    func requestAll(secretId: UUID) throws
+    func openRequest(shareId: UUID, type: ShareRequestType) throws -> ShareRequest
+    func reconstruct(secretId: UUID) throws -> Data
+
+    // Recipient
+    func syncInbox() throws
+    func listHeld() throws -> [HeldShare]
+    func listPendingRequests() throws -> [ShareRequest]
+    func respond(requestId: UUID, approved: Bool) throws
+    func deleteHeldShare(shareId: UUID) throws
+    func deleteAllHeldFromSender(senderKey: Data) throws
+}
+```
+
+### Step 3 — Create `hexagon/Sources/services/ShareService.swift`
+
+Implements `ShareManagement`. Mirrors `ShareService.kt` / `ShareService.scala` exactly:
+
+- `deposit`: `SecretSharing.split` → encrypt each share via `identity.encrypt` → `relay.depositShare`
+- `listDistributed`: `relay.listShares(.sender)`
+- `listSentRequests`: `relay.listShareRequests(.sender)`
+- `requestAll`: fetch distributed + existing requests, open retrieve request for any holder without a pending/approved one
+- `openRequest`: `relay.openShareRequest`
+- `reconstruct`: fetch approved retrieve requests for `secretId`, decrypt each via `identity.decrypt` + look up contact's `xPublicKey`, `SecretSharing.combine`, delete relay rows
+- `syncInbox`: `relay.listShares(.recipient)`, pick up and store any not yet in `shareRepository`
+- `listHeld`: `shareRepository.getAll()`
+- `listPendingRequests`: `relay.listShareRequests(.recipient, state: .pending)`
+- `respond`: `relay.getShareRequest` → provide ciphertext from local store if approved retrieve → `relay.respondToShareRequest` → delete local if approved delete
+- `deleteHeldShare` / `deleteAllHeldFromSender`: delegate to `shareRepository`
+
+Use `try?` for best-effort cleanup calls (same as `runCatching` in Kotlin / `Try(...)` in Scala).
+
+### Step 4 — Delete `hexagon/Sources/driving_ports/ShareTransport.swift`
+
+### Step 5 — Update `Deposplit/api/DeposplitApiAdapter.swift`
+
+Change conformance from `ShareTransport` to `ShareRelay`.
+
+### Step 6 — Update `Deposplit/DeposplitApp.swift`
+
+Wire `ShareService` in the app entry point:
+
+```swift
+let shareRepository = LocalShareRepository()
+let shareManagement: any ShareManagement = ShareService(
+    relay: DeposplitApiAdapter(identity: identityService),
+    identity: identityService,
+    shareRepository: shareRepository,
+    contactRepository: contactRepository
+)
+```
+
+Expose `shareManagement: any ShareManagement` (not the concrete adapter) as the property ViewModels receive.
+
+### Step 7 — Update ViewModels
+
+| ViewModel | Old dependencies | New dependencies |
+|---|---|---|
+| `HomeViewModel` | `transport: ShareTransport`, `shareRepository: ShareRepository` | `shareManagement: any ShareManagement` |
+| `DepositViewModel` | `auth: Identity`, `transport: ShareTransport` | `shareManagement: any ShareManagement` |
+| `ShareDetailViewModel` | `auth: Identity`, `transport: ShareTransport` | `shareManagement: any ShareManagement` |
+| `RequestsViewModel` | `transport: ShareTransport`, `shareRepository: ShareRepository` | `shareManagement: any ShareManagement` |
+
+Key call-site changes:
+- `DepositViewModel`: remove `SecretSharing.split` + `identity.encrypt` calls; replace with `shareManagement.deposit(secret:label:contacts:threshold:)`
+- `ShareDetailViewModel.reconstruct()`: remove decrypt + combine + cleanup; replace with `shareManagement.reconstruct(secretId:)` — convert returned `Data` to `String` in the ViewModel (UI concern)
+- `HomeViewModel.load()`: replace inbox pickup loop and `shareRepository` calls with `shareManagement.syncInbox()` + `shareManagement.listHeld()`
+- `HomeViewModel.requestAll()`: replace inline loop with `shareManagement.requestAll(secretId:)`
+- `RequestsViewModel.respond()`: remove ciphertext lookup + delete local logic; replace with `shareManagement.respond(requestId:approved:)`
+
+`contactRepository.getAll()` stays in ViewModels that need to resolve display names (contact pseudonyms from public keys).
+
+### Step 8 — Update `iOS/CLAUDE.md` project structure table
+
+Update `driving_ports/ShareTransport.swift` → `driving_ports/ShareManagement.swift` and add `driven_ports/ShareRelay.swift` and `services/ShareService.swift` to the package layout.
+
+---
+
+## TODO: ContactManagement driving port + ContactService refactor
+
+`ContactsViewModel`, `AddContactViewModel`, and `QrScanViewModel` in the app target call `ContactRepository` (a driven port) directly, bypassing the hexagon. Business logic — key-size validation, `VerificationLevel` assignment, UUID and timestamp generation — leaks into the ViewModels. The correct structure, already applied in Android and the Scala `phon` hexagon, is:
+
+```
+driving_ports/ContactManagement.swift   ← use-case interface, implemented by ContactService inside the hexagon
+services/ContactService.swift           ← hexagon service: implements ContactManagement
+                                           enforces domain rules; delegates persistence to ContactRepository
+```
+
+### Step 1 — Create `hexagon/Sources/driving_ports/ContactManagement.swift`
+
+```swift
+public protocol ContactManagement {
+    func listContacts() throws -> [Contact]
+    func addManually(pseudonym: String, edPublicKey: Data, xPublicKey: Data) throws
+    func addFromQr(pseudonym: String, edPublicKey: Data, xPublicKey: Data) throws
+    func deleteContact(contactId: UUID) throws
+}
+```
+
+### Step 2 — Create `hexagon/Sources/services/ContactService.swift`
+
+Implements `ContactManagement`. Mirrors `ContactService.kt` / `ContactService.scala` exactly:
+
+```swift
+class ContactService: ContactManagement {
+    private let contactRepository: any ContactRepository
+
+    init(contactRepository: any ContactRepository) {
+        self.contactRepository = contactRepository
+    }
+
+    func listContacts() throws -> [Contact] { try contactRepository.getAll() }
+
+    func addManually(pseudonym: String, edPublicKey: Data, xPublicKey: Data) throws {
+        guard !pseudonym.trimmingCharacters(in: .whitespaces).isEmpty else { throw ContactError.blankPseudonym }
+        guard edPublicKey.count == 32 else { throw ContactError.invalidKeySize }
+        guard xPublicKey.count == 32 else { throw ContactError.invalidKeySize }
+        let now = Date()
+        try contactRepository.save(Contact(
+            id: UUID(),
+            pseudonym: pseudonym.trimmingCharacters(in: .whitespaces),
+            edPublicKey: edPublicKey,
+            xPublicKey: xPublicKey,
+            verificationLevel: .unverified,
+            verifiedAt: nil,
+            addedAt: now
+        ))
+    }
+
+    func addFromQr(pseudonym: String, edPublicKey: Data, xPublicKey: Data) throws {
+        guard !pseudonym.trimmingCharacters(in: .whitespaces).isEmpty else { throw ContactError.blankPseudonym }
+        guard edPublicKey.count == 32 else { throw ContactError.invalidKeySize }
+        guard xPublicKey.count == 32 else { throw ContactError.invalidKeySize }
+        let now = Date()
+        try contactRepository.save(Contact(
+            id: UUID(),
+            pseudonym: pseudonym.trimmingCharacters(in: .whitespaces),
+            edPublicKey: edPublicKey,
+            xPublicKey: xPublicKey,
+            verificationLevel: .verified,
+            verifiedAt: now,
+            addedAt: now
+        ))
+    }
+
+    func deleteContact(contactId: UUID) throws { try contactRepository.delete(contactId: contactId) }
+}
+
+enum ContactError: Error {
+    case blankPseudonym
+    case invalidKeySize
+}
+```
+
+### Step 3 — Update `Deposplit/DeposplitApp.swift`
+
+Wire `ContactService` and expose `contactManagement: any ContactManagement` (not the concrete repository):
+
+```swift
+let contactRepository = LocalContactRepository()
+let contactManagement: any ContactManagement = ContactService(contactRepository: contactRepository)
+```
+
+### Step 4 — Update ViewModels
+
+| ViewModel | Old dependencies | New dependencies |
+|---|---|---|
+| `ContactsViewModel` | `contactRepository: any ContactRepository` | `contactManagement: any ContactManagement` |
+| `AddContactViewModel` | `contactRepository: any ContactRepository` | `contactManagement: any ContactManagement` |
+| `QrScanViewModel` | `contactRepository: any ContactRepository` | `contactManagement: any ContactManagement` |
+| `DepositViewModel` | `contactRepository: any ContactRepository` | `contactManagement: any ContactManagement` |
+
+Key call-site changes:
+- `ContactsViewModel.load()`: replace `contactRepository.getAll()` with `contactManagement.listContacts()`
+- `ContactsViewModel.delete()`: replace `contactRepository.delete(id:)` with `contactManagement.deleteContact(contactId:)`
+- `AddContactViewModel.save()`: remove `Contact` construction, `VerificationLevel`, `UUID()`, `Date()`; replace with `contactManagement.addManually(pseudonym:edPublicKey:xPublicKey:)`. Keep base64url decoding and field-level error mapping in the ViewModel as UI concerns.
+- `QrScanViewModel.onQrDecoded()`: remove `Contact` construction, `VerificationLevel.verified`, `UUID()`, `Date()`; replace with `contactManagement.addFromQr(pseudonym:edPublicKey:xPublicKey:)`
+- `DepositViewModel.loadContacts()`: replace `contactRepository.getAll()` with `contactManagement.listContacts()`
+
+`HomeViewModel` and `ShareDetailViewModel` also call `contactRepository.getAll()` to resolve display names. These are read-only lookups that belong in the UI layer (resolving a key to a pseudonym for display), not domain operations — route them through `contactManagement.listContacts()` instead.
+
+### Step 5 — Update `iOS/CLAUDE.md` project structure table
+
+- `driving_ports/ContactManagement.swift` (add)
+- `services/ContactService.swift` (add)
+
+---
+
 ## TODO: Biometric unlock for secret reconstruction
 
 The Android app gates `viewModel.reconstruct()` behind `BiometricPrompt`. The iOS `ShareDetailView` currently calls `viewModel.reconstruct()` directly without any authentication gate.
