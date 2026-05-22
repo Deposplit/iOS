@@ -1,6 +1,6 @@
 import Foundation
 
-public protocol ShareTransport {
+public protocol ShareRelay {
     func depositShare(secretId: UUID, label: String, recipientKey: Data, ciphertext: Data) async throws -> ShareMetadata
     func listShares(role: Role, counterpartyKey: Data?) async throws -> [ShareMetadata]
     func pickUpShare(shareId: UUID) async throws -> Data

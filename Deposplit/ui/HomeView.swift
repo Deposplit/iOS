@@ -2,26 +2,28 @@ import hexagon
 import SwiftUI
 
 struct HomeView: View {
-    private let auth: Identity
-    private let transport: ShareTransport
-    private let contacts: ContactRepository
-    private let shareRepository: ShareRepository
+    private let auth: any Identity
+    private let shareManagement: any ShareManagement
+    private let contactManagement: any ContactManagement
 
     @State private var homeViewModel: HomeViewModel
     @State private var requestsViewModel: RequestsViewModel
+    @State private var allContacts: [Contact] = []
     @State private var selectedTab = 0
     @State private var showContacts = false
     @State private var showQrDisplay = false
     @State private var showDeposit = false
     @State private var selectedShare: ShareMetadata?
 
-    init(auth: Identity, transport: ShareTransport, contacts: ContactRepository, shareRepository: ShareRepository) {
+    init(auth: any Identity, shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
         self.auth = auth
-        self.transport = transport
-        self.contacts = contacts
-        self.shareRepository = shareRepository
-        _homeViewModel = State(initialValue: HomeViewModel(transport: transport, auth: auth, shareRepository: shareRepository))
-        _requestsViewModel = State(initialValue: RequestsViewModel(transport: transport, contacts: contacts, shareRepository: shareRepository))
+        self.shareManagement = shareManagement
+        self.contactManagement = contactManagement
+        _homeViewModel = State(initialValue: HomeViewModel(shareManagement: shareManagement))
+        _requestsViewModel = State(initialValue: RequestsViewModel(
+            shareManagement: shareManagement,
+            contactManagement: contactManagement
+        ))
     }
 
     var body: some View {
@@ -63,8 +65,7 @@ struct HomeView: View {
                         }
                         Button {
                             Task {
-                                await homeViewModel.load()
-                                await requestsViewModel.load()
+                                await reload()
                             }
                         } label: {
                             Image(systemName: "arrow.clockwise")
@@ -73,11 +74,11 @@ struct HomeView: View {
                 }
             }
             .navigationDestination(item: $selectedShare) { share in
-                ShareDetailView(share: share, auth: auth, transport: transport, contacts: contacts)
+                ShareDetailView(share: share, shareManagement: shareManagement, contactManagement: contactManagement)
             }
         }
-        .sheet(isPresented: $showContacts) {
-            ContactsView(repository: contacts)
+        .sheet(isPresented: $showContacts, onDismiss: { loadContacts() }) {
+            ContactsView(contactManagement: contactManagement)
         }
         .sheet(isPresented: $showQrDisplay) {
             QrDisplayView(auth: auth)
@@ -85,12 +86,21 @@ struct HomeView: View {
         .sheet(isPresented: $showDeposit, onDismiss: {
             Task { await homeViewModel.load() }
         }) {
-            DepositView(auth: auth, transport: transport, contacts: contacts)
+            DepositView(shareManagement: shareManagement, contactManagement: contactManagement)
         }
         .task {
-            await homeViewModel.load()
-            await requestsViewModel.load()
+            await reload()
         }
+    }
+
+    private func reload() async {
+        loadContacts()
+        await homeViewModel.load()
+        await requestsViewModel.load()
+    }
+
+    private func loadContacts() {
+        allContacts = (try? contactManagement.listContacts()) ?? []
     }
 
     private var tabTitle: LocalizedStringKey {
@@ -111,7 +121,7 @@ struct HomeView: View {
             } else {
                 DistributedTab(
                     shares: homeViewModel.distributedShares,
-                    contacts: contacts,
+                    contacts: allContacts,
                     onTap: { selectedShare = $0 }
                 )
             }
@@ -126,7 +136,7 @@ struct HomeView: View {
                 ContentUnavailableView("Error", systemImage: "exclamationmark.triangle",
                                        description: Text(error))
             } else {
-                HeldTab(shares: homeViewModel.heldShares, contacts: contacts)
+                HeldTab(shares: homeViewModel.heldShares, contacts: allContacts)
             }
         }
     }

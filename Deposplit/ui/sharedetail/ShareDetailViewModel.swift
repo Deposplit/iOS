@@ -18,20 +18,19 @@ final class ShareDetailViewModel {
     var reconstructState: ReconstructState = .unavailable(String(localized: "Loading…"))
 
     private let share: ShareMetadata
-    private let auth: Identity
-    private let transport: ShareTransport
-    private let contacts: ContactRepository
+    private let shareManagement: any ShareManagement
+    private let contactManagement: any ContactManagement
+    private var allContacts: [Contact] = []
 
-    init(share: ShareMetadata, auth: Identity, transport: ShareTransport, contacts: ContactRepository) {
+    init(share: ShareMetadata, shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
         self.share = share
-        self.auth = auth
-        self.transport = transport
-        self.contacts = contacts
+        self.shareManagement = shareManagement
+        self.contactManagement = contactManagement
     }
 
     var shareLabel: String { share.label }
     var recipientName: String {
-        contacts.getByEdKey(share.recipientKey)?.pseudonym
+        allContacts.first(where: { $0.edPublicKey == share.recipientKey })?.pseudonym
             ?? share.recipientKey.base64URLEncoded.prefix(8) + "…"
     }
 
@@ -40,8 +39,9 @@ final class ShareDetailViewModel {
         error = nil
         defer { isLoading = false }
         do {
-            let all = try await transport.listShareRequests(role: .sender, state: nil)
+            let all = try await shareManagement.listSentRequests()
             shareRequests = all.filter { $0.share.secretId == share.secretId }
+            allContacts = (try? contactManagement.listContacts()) ?? []
             updateReconstructState()
         } catch {
             self.error = error.localizedDescription
@@ -52,7 +52,7 @@ final class ShareDetailViewModel {
         isActing = true
         defer { isActing = false }
         do {
-            _ = try await transport.openShareRequest(shareId: share.id, type: type)
+            _ = try await shareManagement.openRequest(shareId: share.id, type: type)
             await load()
         } catch {
             self.error = error.localizedDescription
@@ -60,29 +60,11 @@ final class ShareDetailViewModel {
     }
 
     func reconstruct() async -> String? {
-        let approvedRetrieves = shareRequests.filter {
-            $0.requestType == .retrieve && $0.state == .approved && $0.ciphertext != nil
-        }
-        guard approvedRetrieves.count >= 2 else {
-            reconstructState = .unavailable(String(localized: "Need at least 2 approved retrieve requests."))
-            return nil
-        }
         do {
-            let decryptedShares: [[UInt8]] = try approvedRetrieves.map { req in
-                let ct = req.ciphertext!
-                guard let contact = contacts.getByEdKey(req.share.recipientKey) else {
-                    throw NSError(domain: "Deposplit", code: 0,
-                                  userInfo: [NSLocalizedDescriptionKey: String(localized: "Contact not found for recipient — cannot decrypt share")])
-                }
-                let plaintext = try auth.decrypt(ct, recipientXPublicKey: contact.xPublicKey)
-                return Array(plaintext)
-            }
-            let secretBytes = try combine(shares: decryptedShares)
-            let secret = String(bytes: secretBytes, encoding: .utf8) ?? Data(secretBytes).base64EncodedString()
+            let secretData = try await shareManagement.reconstruct(secretId: share.secretId)
+            let secret = String(bytes: Array(secretData), encoding: .utf8)
+                ?? secretData.base64EncodedString()
             reconstructState = .reconstructed(secret)
-            for req in approvedRetrieves {
-                try? await transport.deleteShare(shareId: req.share.id)
-            }
             return secret
         } catch {
             reconstructState = .failed(error.localizedDescription)

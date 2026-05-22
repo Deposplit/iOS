@@ -3,12 +3,10 @@ import SwiftUI
 
 struct ShareDetailView: View {
     @State private var viewModel: ShareDetailViewModel
-    @State private var reconstructedSecret: String?
-    @State private var showLocalAuth = false
 
-    init(share: ShareMetadata, auth: Identity, transport: ShareTransport, contacts: ContactRepository) {
+    init(share: ShareMetadata, shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
         _viewModel = State(initialValue: ShareDetailViewModel(
-            share: share, auth: auth, transport: transport, contacts: contacts))
+            share: share, shareManagement: shareManagement, contactManagement: contactManagement))
     }
 
     var body: some View {
@@ -38,7 +36,7 @@ struct ShareDetailView: View {
                 case .ready:
                     Button("Reconstruct secret…") {
                         Task {
-                            reconstructedSecret = await viewModel.reconstruct()
+                            _ = await viewModel.reconstruct()
                         }
                     }
                 case .reconstructed(let secret):

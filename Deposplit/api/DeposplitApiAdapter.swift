@@ -8,7 +8,7 @@ struct ApiError: Error, LocalizedError {
     var errorDescription: String? { "HTTP \(statusCode): \(body)" }
 }
 
-final class DeposplitApiAdapter: ShareTransport {
+final class DeposplitApiAdapter: ShareRelay {
 
     private let auth: any Identity
     private let baseURL: String
@@ -18,7 +18,7 @@ final class DeposplitApiAdapter: ShareTransport {
         self.baseURL = baseURL
     }
 
-    // MARK: - ShareTransport
+    // MARK: - ShareRelay
 
     func depositShare(secretId: UUID, label: String, recipientKey: Data, ciphertext: Data) async throws -> ShareMetadata {
         let body = ShareDepositJSON(

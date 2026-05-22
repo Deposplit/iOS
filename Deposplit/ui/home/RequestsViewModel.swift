@@ -9,14 +9,13 @@ final class RequestsViewModel {
     var error: String?
     var respondingTo: UUID?
 
-    private let transport: ShareTransport
-    private let contacts: ContactRepository
-    private let shareRepository: ShareRepository
+    private let shareManagement: any ShareManagement
+    private let contactManagement: any ContactManagement
+    private var allContacts: [Contact] = []
 
-    init(transport: ShareTransport, contacts: ContactRepository, shareRepository: ShareRepository) {
-        self.transport = transport
-        self.contacts = contacts
-        self.shareRepository = shareRepository
+    init(shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
+        self.shareManagement = shareManagement
+        self.contactManagement = contactManagement
     }
 
     func load() async {
@@ -24,7 +23,8 @@ final class RequestsViewModel {
         error = nil
         defer { isLoading = false }
         do {
-            pendingRequests = try await transport.listShareRequests(role: .recipient, state: .pending)
+            pendingRequests = try await shareManagement.listPendingRequests()
+            allContacts = (try? contactManagement.listContacts()) ?? []
         } catch {
             self.error = error.localizedDescription
         }
@@ -34,15 +34,7 @@ final class RequestsViewModel {
         respondingTo = request.id
         defer { respondingTo = nil }
         do {
-            let ciphertext: Data? = if approve && request.requestType == .retrieve {
-                shareRepository.getCiphertext(shareId: request.share.id)
-            } else {
-                nil
-            }
-            _ = try await transport.respondToShareRequest(requestId: request.id, approved: approve, ciphertext: ciphertext)
-            if approve && request.requestType == .delete {
-                shareRepository.delete(shareId: request.share.id)
-            }
+            try await shareManagement.respond(requestId: request.id, approved: approve)
             await load()
         } catch {
             self.error = error.localizedDescription
@@ -50,6 +42,7 @@ final class RequestsViewModel {
     }
 
     func senderName(for request: ShareRequest) -> String {
-        contacts.getByEdKey(request.share.senderKey)?.pseudonym ?? request.share.senderKey.base64URLEncoded.prefix(8) + "…"
+        allContacts.first(where: { $0.edPublicKey == request.share.senderKey })?.pseudonym
+            ?? request.share.senderKey.base64URLEncoded.prefix(8) + "…"
     }
 }

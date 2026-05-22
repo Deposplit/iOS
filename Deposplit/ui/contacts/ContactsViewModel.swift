@@ -6,19 +6,19 @@ final class ContactsViewModel {
 
     var contacts: [Contact] = []
 
-    private let repository: ContactRepository
+    private let contactManagement: any ContactManagement
 
-    init(repository: ContactRepository) {
-        self.repository = repository
+    init(contactManagement: any ContactManagement) {
+        self.contactManagement = contactManagement
     }
 
     func load() {
-        contacts = repository.getAll()
+        contacts = (try? contactManagement.listContacts()) ?? []
     }
 
     func delete(at offsets: IndexSet) {
         let toDelete = offsets.map { contacts[$0] }
-        toDelete.forEach { repository.delete(contactId: $0.id) }
-        contacts = repository.getAll()
+        toDelete.forEach { try? contactManagement.deleteContact(contactId: $0.id) }
+        contacts = (try? contactManagement.listContacts()) ?? []
     }
 }

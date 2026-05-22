@@ -7,8 +7,8 @@ struct QrScanView: View {
     @State private var viewModel: QrScanViewModel
     @Environment(\.dismiss) private var dismiss
 
-    init(repository: ContactRepository) {
-        _viewModel = State(initialValue: QrScanViewModel(repository: repository))
+    init(contactManagement: any ContactManagement) {
+        _viewModel = State(initialValue: QrScanViewModel(contactManagement: contactManagement))
     }
 
     var body: some View {
@@ -46,8 +46,8 @@ struct QrScanView: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-            .onChange(of: viewModel.savedContact) { _, contact in
-                if contact != nil { dismiss() }
+            .onChange(of: viewModel.didSave) { _, saved in
+                if saved { dismiss() }
             }
         }
     }
@@ -57,12 +57,12 @@ struct QrScanView: View {
 final class QrScanViewModel {
     var hasScanned = false
     var error: String?
-    var savedContact: Contact?
+    var didSave = false
 
-    private let repository: ContactRepository
+    private let contactManagement: any ContactManagement
 
-    init(repository: ContactRepository) {
-        self.repository = repository
+    init(contactManagement: any ContactManagement) {
+        self.contactManagement = contactManagement
     }
 
     func handleScan(_ string: String) {
@@ -71,12 +71,16 @@ final class QrScanViewModel {
             error = String(localized: "Not a valid Deposplit QR code.")
             return
         }
-        let vm = AddContactViewModel(repository: repository)
-        if vm.saveFromQR(payload: payload) {
+        guard let ed = Data(base64URLEncoded: payload.ed), let x = Data(base64URLEncoded: payload.x) else {
+            error = String(localized: "Invalid keys in QR payload.")
+            return
+        }
+        do {
+            try contactManagement.addFromQr(pseudonym: payload.pseudonym, edPublicKey: ed, xPublicKey: x)
             hasScanned = true
-            savedContact = repository.getByEdKey(Data(base64URLEncoded: payload.ed) ?? Data())
-        } else {
-            error = vm.error
+            didSave = true
+        } catch {
+            self.error = error.localizedDescription
         }
     }
 }

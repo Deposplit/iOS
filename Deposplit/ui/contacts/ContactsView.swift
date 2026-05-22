@@ -7,11 +7,11 @@ struct ContactsView: View {
     @State private var showQrScanner = false
     @Environment(\.dismiss) private var dismiss
 
-    private let repository: ContactRepository
+    private let contactManagement: any ContactManagement
 
-    init(repository: ContactRepository) {
-        self.repository = repository
-        _viewModel = State(initialValue: ContactsViewModel(repository: repository))
+    init(contactManagement: any ContactManagement) {
+        self.contactManagement = contactManagement
+        _viewModel = State(initialValue: ContactsViewModel(contactManagement: contactManagement))
     }
 
     var body: some View {
@@ -66,10 +66,10 @@ struct ContactsView: View {
             }
             .onAppear { viewModel.load() }
             .sheet(isPresented: $showAddContact, onDismiss: { viewModel.load() }) {
-                AddContactView(repository: repository)
+                AddContactView(contactManagement: contactManagement)
             }
             .sheet(isPresented: $showQrScanner, onDismiss: { viewModel.load() }) {
-                QrScanView(repository: repository)
+                QrScanView(contactManagement: contactManagement)
             }
         }
     }

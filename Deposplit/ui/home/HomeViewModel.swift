@@ -9,14 +9,10 @@ final class HomeViewModel {
     var isLoading = false
     var error: String?
 
-    private let transport: ShareTransport
-    private let auth: Identity
-    private let shareRepository: ShareRepository
+    private let shareManagement: any ShareManagement
 
-    init(transport: ShareTransport, auth: Identity, shareRepository: ShareRepository) {
-        self.transport = transport
-        self.auth = auth
-        self.shareRepository = shareRepository
+    init(shareManagement: any ShareManagement) {
+        self.shareManagement = shareManagement
     }
 
     func load() async {
@@ -24,24 +20,9 @@ final class HomeViewModel {
         error = nil
         defer { isLoading = false }
         do {
-            let distributed = try await transport.listShares(role: .sender, counterpartyKey: nil)
-            let inbox = try await transport.listShares(role: .recipient, counterpartyKey: nil)
-            for meta in inbox {
-                if shareRepository.getCiphertext(shareId: meta.id) == nil {
-                    if let ct = try? await transport.pickUpShare(shareId: meta.id) {
-                        shareRepository.save(HeldShare(
-                            id: meta.id,
-                            secretId: meta.secretId,
-                            label: meta.label,
-                            senderKey: meta.senderKey,
-                            createdAt: meta.createdAt,
-                            ciphertext: ct
-                        ))
-                    }
-                }
-            }
-            distributedShares = distributed
-            heldShares = shareRepository.getAll()
+            try await shareManagement.syncInbox()
+            distributedShares = try await shareManagement.listDistributed()
+            heldShares = try await shareManagement.listHeld()
         } catch {
             self.error = error.localizedDescription
         }

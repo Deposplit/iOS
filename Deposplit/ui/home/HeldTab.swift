@@ -3,7 +3,7 @@ import SwiftUI
 
 struct HeldTab: View {
     let shares: [HeldShare]
-    let contacts: ContactRepository
+    let contacts: [Contact]
 
     var body: some View {
         if shares.isEmpty {
@@ -24,6 +24,7 @@ struct HeldTab: View {
     }
 
     private func senderName(for share: HeldShare) -> String {
-        contacts.getByEdKey(share.senderKey)?.pseudonym ?? share.senderKey.base64URLEncoded.prefix(8) + "…"
+        contacts.first(where: { $0.edPublicKey == share.senderKey })?.pseudonym
+            ?? share.senderKey.base64URLEncoded.prefix(8) + "…"
     }
 }

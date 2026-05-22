@@ -9,48 +9,27 @@ final class AddContactViewModel {
     var xKeyInput = ""
     var error: String?
 
-    private let repository: ContactRepository
+    private let contactManagement: any ContactManagement
 
-    init(repository: ContactRepository) {
-        self.repository = repository
+    init(contactManagement: any ContactManagement) {
+        self.contactManagement = contactManagement
     }
 
     func save() -> Bool {
-        let name = pseudonym.trimmingCharacters(in: .whitespaces)
-        guard !name.isEmpty else { error = String(localized: "Name is required."); return false }
+        guard !pseudonym.trimmingCharacters(in: .whitespaces).isEmpty
+            else { error = String(localized: "Name is required."); return false }
         guard let ed = Data(base64URLEncoded: edKeyInput.trimmingCharacters(in: .whitespaces)),
-              ed.count == 32 else { error = String(localized: "Invalid Ed25519 key (expected 32 bytes, base64url)."); return false }
+              ed.count == 32
+            else { error = String(localized: "Invalid Ed25519 key (expected 32 bytes, base64url)."); return false }
         guard let x = Data(base64URLEncoded: xKeyInput.trimmingCharacters(in: .whitespaces)),
-              x.count == 32 else { error = String(localized: "Invalid X25519 key (expected 32 bytes, base64url)."); return false }
-        let contact = Contact(
-            id: UUID(),
-            pseudonym: name,
-            edPublicKey: ed,
-            xPublicKey: x,
-            verificationLevel: .unverified,
-            verifiedAt: nil,
-            addedAt: Date()
-        )
-        repository.save(contact)
-        return true
-    }
-
-    func saveFromQR(payload: QrPayload) -> Bool {
-        guard let ed = Data(base64URLEncoded: payload.ed),
-              let x = Data(base64URLEncoded: payload.x) else {
-            error = String(localized: "Invalid keys in QR payload.")
+              x.count == 32
+            else { error = String(localized: "Invalid X25519 key (expected 32 bytes, base64url)."); return false }
+        do {
+            try contactManagement.addManually(pseudonym: pseudonym, edPublicKey: ed, xPublicKey: x)
+            return true
+        } catch {
+            self.error = error.localizedDescription
             return false
         }
-        let contact = Contact(
-            id: UUID(),
-            pseudonym: payload.pseudonym,
-            edPublicKey: ed,
-            xPublicKey: x,
-            verificationLevel: .verified,
-            verifiedAt: Date(),
-            addedAt: Date()
-        )
-        repository.save(contact)
-        return true
     }
 }

@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		FDBD442BD766CB523203B141 /* hexagon in Frameworks */ = {isa = PBXBuildFile; productRef = D54F0930AEF2E0F7ADC348C9 /* hexagon */; };
 		A5CAB04AD14E4AC1B7D0D684 /* hexagon in Frameworks */ = {isa = PBXBuildFile; productRef = 87D0BFE71CEADEC75EF49CD8 /* hexagon */; };
+		FDBD442BD766CB523203B141 /* hexagon in Frameworks */ = {isa = PBXBuildFile; productRef = D54F0930AEF2E0F7ADC348C9 /* hexagon */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -475,12 +475,12 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		D54F0930AEF2E0F7ADC348C9 /* hexagon */ = {
+		87D0BFE71CEADEC75EF49CD8 /* hexagon */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 44F436D99F8EF4C317040DA8 /* XCLocalSwiftPackageReference "hexagon" */;
 			productName = hexagon;
 		};
-		87D0BFE71CEADEC75EF49CD8 /* hexagon */ = {
+		D54F0930AEF2E0F7ADC348C9 /* hexagon */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 44F436D99F8EF4C317040DA8 /* XCLocalSwiftPackageReference "hexagon" */;
 			productName = hexagon;

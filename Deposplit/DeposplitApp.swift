@@ -4,47 +4,51 @@ import SwiftUI
 @main
 struct DeposplitApp: App {
     private let auth: any Identity
-    private let contacts: LocalContactRepository
-    private let transport: DeposplitApiAdapter
-    private let shareRepository: LocalShareRepository
+    private let shareManagement: any ShareManagement
+    private let contactManagement: any ContactManagement
 
     init() {
-        let a = IdentityService(identityStore: KeychainIdentityStore())
-        auth = a
-        contacts = LocalContactRepository()
-        shareRepository = LocalShareRepository()
+        let identityService = IdentityService(identityStore: KeychainIdentityStore())
+        auth = identityService
+        let contactRepository = LocalContactRepository()
+        let shareRepository = LocalShareRepository()
         #if DEBUG
-        transport = DeposplitApiAdapter(auth: a, baseURL: "http://localhost:9000")
+        let relay = DeposplitApiAdapter(auth: identityService, baseURL: "http://localhost:9000")
         #else
-        transport = DeposplitApiAdapter(auth: a)
+        let relay = DeposplitApiAdapter(auth: identityService)
         #endif
+        shareManagement = ShareService(
+            relay: relay,
+            identity: identityService,
+            shareRepository: shareRepository,
+            contactRepository: contactRepository
+        )
+        contactManagement = ContactService(contactRepository: contactRepository)
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView(auth: auth, transport: transport, contacts: contacts, shareRepository: shareRepository)
+            RootView(auth: auth, shareManagement: shareManagement, contactManagement: contactManagement)
         }
     }
 }
 
 struct RootView: View {
-    let auth: Identity
-    let transport: ShareTransport
-    let contacts: ContactRepository
-    let shareRepository: ShareRepository
+    let auth: any Identity
+    let shareManagement: any ShareManagement
+    let contactManagement: any ContactManagement
     @State private var isRegistered: Bool
 
-    init(auth: Identity, transport: ShareTransport, contacts: ContactRepository, shareRepository: ShareRepository) {
+    init(auth: any Identity, shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
         self.auth = auth
-        self.transport = transport
-        self.contacts = contacts
-        self.shareRepository = shareRepository
+        self.shareManagement = shareManagement
+        self.contactManagement = contactManagement
         _isRegistered = State(initialValue: auth.isRegistered)
     }
 
     var body: some View {
         if isRegistered {
-            HomeView(auth: auth, transport: transport, contacts: contacts, shareRepository: shareRepository)
+            HomeView(auth: auth, shareManagement: shareManagement, contactManagement: contactManagement)
         } else {
             SignInView(auth: auth) {
                 isRegistered = true

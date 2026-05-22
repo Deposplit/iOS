@@ -3,7 +3,7 @@ import SwiftUI
 
 struct DistributedTab: View {
     let shares: [ShareMetadata]
-    let contacts: ContactRepository
+    let contacts: [Contact]
     let onTap: (ShareMetadata) -> Void
 
     var body: some View {
@@ -30,6 +30,7 @@ struct DistributedTab: View {
     }
 
     private func recipientName(for share: ShareMetadata) -> String {
-        contacts.getByEdKey(share.recipientKey)?.pseudonym ?? share.recipientKey.base64URLEncoded.prefix(8) + "…"
+        contacts.first(where: { $0.edPublicKey == share.recipientKey })?.pseudonym
+            ?? share.recipientKey.base64URLEncoded.prefix(8) + "…"
     }
 }

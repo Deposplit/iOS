@@ -5,8 +5,8 @@ struct AddContactView: View {
     @State private var viewModel: AddContactViewModel
     @Environment(\.dismiss) private var dismiss
 
-    init(repository: ContactRepository) {
-        _viewModel = State(initialValue: AddContactViewModel(repository: repository))
+    init(contactManagement: any ContactManagement) {
+        _viewModel = State(initialValue: AddContactViewModel(contactManagement: contactManagement))
     }
 
     var body: some View {

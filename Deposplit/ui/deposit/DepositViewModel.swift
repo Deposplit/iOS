@@ -12,17 +12,15 @@ final class DepositViewModel {
     var error: String?
     var depositedSuccessfully = false
 
-    private let auth: Identity
-    private let transport: ShareTransport
-    private let contacts: ContactRepository
+    private let shareManagement: any ShareManagement
+    private let contactManagement: any ContactManagement
 
-    init(auth: Identity, transport: ShareTransport, contacts: ContactRepository) {
-        self.auth = auth
-        self.transport = transport
-        self.contacts = contacts
+    init(shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
+        self.shareManagement = shareManagement
+        self.contactManagement = contactManagement
     }
 
-    var allContacts: [Contact] { contacts.getAll() }
+    var allContacts: [Contact] { (try? contactManagement.listContacts()) ?? [] }
 
     var canDeposit: Bool {
         !label.trimmingCharacters(in: .whitespaces).isEmpty &&
@@ -37,23 +35,14 @@ final class DepositViewModel {
         isDepositing = true
         error = nil
         defer { isDepositing = false }
-
         do {
-            let secretBytes = Array(secretText.utf8)
-            let chosen = contacts.getAll().filter { selectedContacts.contains($0.id) }
-            let shares = try split(secret: secretBytes, shares: chosen.count, threshold: threshold)
-            let secretId = UUID()
-
-            for (contact, share) in zip(chosen, shares) {
-                let plaintext = Data(share)
-                let ciphertext = try auth.encrypt(plaintext, recipientXPublicKey: contact.xPublicKey)
-                _ = try await transport.depositShare(
-                    secretId: secretId,
-                    label: label.trimmingCharacters(in: .whitespaces),
-                    recipientKey: contact.edPublicKey,
-                    ciphertext: ciphertext
-                )
-            }
+            let chosen = allContacts.filter { selectedContacts.contains($0.id) }
+            try await shareManagement.deposit(
+                secret: Data(secretText.utf8),
+                label: label.trimmingCharacters(in: .whitespaces),
+                contacts: chosen,
+                threshold: threshold
+            )
             depositedSuccessfully = true
         } catch {
             self.error = error.localizedDescription

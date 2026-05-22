@@ -20,13 +20,17 @@ iOS/
 │       │   └── ShamirSecretSharing.swift  SSS split/combine over GF(2⁸); ShamirError
 │       ├── driving_ports/
 │       │   ├── Identity.swift             isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign, encrypt, decrypt
-│       │   └── ShareTransport.swift       depositShare, listShares, pickUpShare, deleteShare, share-request CRUD
+│       │   ├── ShareManagement.swift      use-case interface: deposit, listDistributed, reconstruct, syncInbox, respond, …
+│       │   └── ContactManagement.swift    listContacts, addManually, addFromQr, deleteContact
 │       ├── driven_ports/
 │       │   ├── IdentityStore.swift        isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
 │       │   ├── ContactRepository.swift    getAll, getByEdKey, save, delete
-│       │   └── ShareRepository.swift      getAll, getCiphertext, save, delete
+│       │   ├── ShareRepository.swift      getAll, getCiphertext, save, delete
+│       │   └── ShareRelay.swift           depositShare, listShares, pickUpShare, deleteShare, share-request CRUD
 │       ├── services/
-│       │   └── IdentityService.swift      Identity impl — CryptoKit only, no Security/UserDefaults
+│       │   ├── IdentityService.swift      Identity impl — CryptoKit only, no Security/UserDefaults
+│       │   ├── ShareService.swift         ShareManagement impl — calls ShareRelay + Identity + ShareRepository + ContactRepository
+│       │   └── ContactService.swift       ContactManagement impl — validates + delegates to ContactRepository; defines ContactError
 │       └── value_objects/
 │           ├── AuthError.swift            Error enum for auth failures
 │           ├── Contact.swift              Contact struct + VerificationLevel enum
@@ -38,7 +42,7 @@ iOS/
 │   ├── auth/
 │   │   └── KeychainIdentityStore.swift  IdentityStore adapter — Security framework + UserDefaults
 │   ├── api/
-│   │   └── DeposplitApiAdapter.swift  HTTP adapter: URLSession + Ed25519 request signing + SHA-256 body hash
+│   │   └── DeposplitApiAdapter.swift  HTTP adapter — implements ShareRelay; URLSession + Ed25519 request signing + SHA-256 body hash
 │   │                                  pickUpShare (GET /shares/:shareId) + ciphertext-on-approve (PATCH /share-requests/:id)
 │   ├── contacts/
 │   │   └── LocalContactRepository.swift  JSON file in Documents/contacts.json
@@ -49,21 +53,21 @@ iOS/
 │       ├── SignInView.swift           Registration flow (pseudonym input)
 │       ├── HomeView.swift            NavigationStack + TabView (Distributed/Held/Requests)
 │       ├── home/
-│       │   ├── HomeViewModel.swift   listShares(sender) + listShares(recipient)
-│       │   ├── RequestsViewModel.swift  listShareRequests(recipient, pending) + respondToShareRequest
-│       │   ├── DistributedTab.swift  Tappable share rows → ShareDetailView
-│       │   ├── HeldTab.swift         Read-only list of held shares
+│       │   ├── HomeViewModel.swift   syncInbox + listDistributed + listHeld via ShareManagement
+│       │   ├── RequestsViewModel.swift  listPendingRequests + respond via ShareManagement; contact lookup via ContactManagement
+│       │   ├── DistributedTab.swift  Tappable share rows → ShareDetailView; takes [Contact] for name resolution
+│       │   ├── HeldTab.swift         Read-only list of held shares; takes [Contact] for name resolution
 │       │   └── RecipientRequestsTab.swift  Approve/deny incoming requests
 │       ├── contacts/
-│       │   ├── ContactsViewModel.swift
+│       │   ├── ContactsViewModel.swift  listContacts + deleteContact via ContactManagement
 │       │   ├── ContactsView.swift    List + delete + add via QR or manual entry
-│       │   ├── AddContactViewModel.swift
+│       │   ├── AddContactViewModel.swift  addManually via ContactManagement
 │       │   └── AddContactView.swift
 │       ├── deposit/
-│       │   ├── DepositViewModel.swift  Shamir.split → auth.encrypt → transport.depositShare
+│       │   ├── DepositViewModel.swift  deposit via ShareManagement; listContacts via ContactManagement
 │       │   └── DepositView.swift
 │       ├── sharedetail/
-│       │   ├── ShareDetailViewModel.swift  Open RETRIEVE/DELETE requests; reconstruct via auth.decrypt + Shamir.combine
+│       │   ├── ShareDetailViewModel.swift  Open RETRIEVE/DELETE requests; reconstruct via ShareManagement; contact lookup via ContactManagement
 │       │   └── ShareDetailView.swift
 │       └── qr/
 │           ├── QrPayload.swift       {"v":1,"pseudonym":"…","ed":"…","x":"…"} encode/decode
@@ -114,7 +118,7 @@ swift test --package-path hexagon
 - Hexagon files (`hexagon/Sources/…`): may import `CryptoKit` and `Foundation` only; must NOT import `Security`, `UIKit`, `SwiftUI`, or `URLSession` — the package has no such dependencies so the compiler catches violations.
 - Adapter files (`KeychainIdentityStore`, `DeposplitApiAdapter`, `LocalContactRepository`, `LocalShareRepository`, …): may import anything; add `import hexagon` to use domain types.
 
-## TODO: ShareTransport → ShareRelay + ShareManagement + ShareService refactor
+## DONE: ShareTransport → ShareRelay + ShareManagement + ShareService refactor
 
 `ShareTransport.swift` in `hexagon/Sources/driving_ports/` is misclassified. It has no hexagon implementation (the app-layer `DeposplitApiAdapter` implements it directly), which means it is acting as a **driven port**, not a driving port. The correct Ports & Adapters structure, already applied in Android and the Scala `phon` hexagon, is:
 
@@ -230,7 +234,7 @@ Update `driving_ports/ShareTransport.swift` → `driving_ports/ShareManagement.s
 
 ---
 
-## TODO: ContactManagement driving port + ContactService refactor
+## DONE: ContactManagement driving port + ContactService refactor
 
 `ContactsViewModel`, `AddContactViewModel`, and `QrScanViewModel` in the app target call `ContactRepository` (a driven port) directly, bypassing the hexagon. Business logic — key-size validation, `VerificationLevel` assignment, UUID and timestamp generation — leaks into the ViewModels. The correct structure, already applied in Android and the Scala `phon` hexagon, is:
 

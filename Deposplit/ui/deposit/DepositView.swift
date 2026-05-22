@@ -5,8 +5,11 @@ struct DepositView: View {
     @State private var viewModel: DepositViewModel
     @Environment(\.dismiss) private var dismiss
 
-    init(auth: Identity, transport: ShareTransport, contacts: ContactRepository) {
-        _viewModel = State(initialValue: DepositViewModel(auth: auth, transport: transport, contacts: contacts))
+    init(shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
+        _viewModel = State(initialValue: DepositViewModel(
+            shareManagement: shareManagement,
+            contactManagement: contactManagement
+        ))
     }
 
     var body: some View {
