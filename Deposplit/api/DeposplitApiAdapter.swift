@@ -10,11 +10,11 @@ struct ApiError: Error, LocalizedError {
 
 final class DeposplitApiAdapter: ShareRelay {
 
-    private let auth: any Identity
+    private let signer: any RequestSigner
     private let baseURL: String
 
-    init(auth: any Identity, baseURL: String = "https://api.deposplit.com") {
-        self.auth = auth
+    init(signer: any RequestSigner, baseURL: String = "https://api.deposplit.com") {
+        self.signer = signer
         self.baseURL = baseURL
     }
 
@@ -89,13 +89,13 @@ final class DeposplitApiAdapter: ShareRelay {
     private func executeRaw(_ method: String, path: String, bodyData: Data?) async throws -> Data {
         let nonce = generateNonce()
         let canonical = buildCanonical(nonce: nonce, method: method, path: path, body: bodyData ?? Data())
-        let sig = try auth.sign(Data(canonical.utf8))
+        let sig = try signer.sign(Data(canonical.utf8))
 
         var request = URLRequest(url: URL(string: "\(baseURL)\(path)")!)
         request.httpMethod = method
         request.timeoutInterval = 30
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue(auth.edPublicKey.base64URLEncoded, forHTTPHeaderField: "X-Deposplit-Public-Key")
+        request.setValue(signer.edPublicKey.base64URLEncoded, forHTTPHeaderField: "X-Deposplit-Public-Key")
         request.setValue(nonce, forHTTPHeaderField: "X-Deposplit-Nonce")
         request.setValue(sig.base64URLEncoded, forHTTPHeaderField: "X-Deposplit-Signature")
         if let bodyData {

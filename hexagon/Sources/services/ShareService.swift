@@ -11,18 +11,18 @@ public enum ShareServiceError: Error, LocalizedError {
 
 public final class ShareService: ShareManagement {
     private let relay: any ShareRelay
-    private let identity: any Identity
+    private let encryption: any ShareEncryption
     private let shareRepository: any ShareRepository
     private let contactRepository: any ContactRepository
 
     public init(
         relay: any ShareRelay,
-        identity: any Identity,
+        encryption: any ShareEncryption,
         shareRepository: any ShareRepository,
         contactRepository: any ContactRepository
     ) {
         self.relay = relay
-        self.identity = identity
+        self.encryption = encryption
         self.shareRepository = shareRepository
         self.contactRepository = contactRepository
     }
@@ -31,7 +31,7 @@ public final class ShareService: ShareManagement {
         let shares = try split(secret: Array(secret), shares: contacts.count, threshold: threshold)
         let secretId = UUID()
         for (contact, share) in zip(contacts, shares) {
-            let ciphertext = try identity.encrypt(Data(share), recipientXPublicKey: contact.xPublicKey)
+            let ciphertext = try encryption.encrypt(Data(share), recipientXPublicKey: contact.xPublicKey)
             _ = try await relay.depositShare(
                 secretId: secretId,
                 label: label,
@@ -79,7 +79,7 @@ public final class ShareService: ShareManagement {
             guard let contact = contactRepository.getByEdKey(req.share.recipientKey) else {
                 throw ShareServiceError.contactNotFound
             }
-            let plaintext = try identity.decrypt(ct, recipientXPublicKey: contact.xPublicKey)
+            let plaintext = try encryption.decrypt(ct, recipientXPublicKey: contact.xPublicKey)
             return Array(plaintext)
         }
         let secretBytes = try combine(shares: decryptedShares)

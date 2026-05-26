@@ -19,7 +19,8 @@ iOS/
 │       ├── shamir/
 │       │   └── ShamirSecretSharing.swift  SSS split/combine over GF(2⁸); ShamirError
 │       ├── driving_ports/
-│       │   ├── Identity.swift             isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign, encrypt, decrypt
+│       │   ├── Identity.swift             isRegistered, register, pseudonym, edPublicKey, xPublicKey
+│       │   ├── RequestSigner.swift        driving port: edPublicKey, sign — implemented by IdentityService, used by DeposplitApiAdapter
 │       │   ├── ShareManagement.swift      use-case interface: deposit, listDistributed, reconstruct, syncInbox, respond, …
 │       │   └── ContactManagement.swift    listContacts, addManually, addFromQr, deleteContact
 │       ├── driven_ports/
@@ -28,8 +29,9 @@ iOS/
 │       │   ├── ShareRepository.swift      getAll, getCiphertext, save, delete
 │       │   └── ShareRelay.swift           depositShare, listShares, pickUpShare, deleteShare, share-request CRUD
 │       ├── services/
-│       │   ├── IdentityService.swift      Identity impl — CryptoKit only, no Security/UserDefaults
-│       │   ├── ShareService.swift         ShareManagement impl — calls ShareRelay + Identity + ShareRepository + ContactRepository
+│       │   ├── IdentityService.swift      Identity + ShareEncryption + RequestSigner impl — CryptoKit only, no Security/UserDefaults
+│       │   ├── ShareEncryption.swift      intra-hexagon interface: encrypt, decrypt — implemented by IdentityService, used by ShareService
+│       │   ├── ShareService.swift         ShareManagement impl — calls ShareRelay + ShareEncryption + ShareRepository + ContactRepository
 │       │   └── ContactService.swift       ContactManagement impl — validates + delegates to ContactRepository; defines ContactError
 │       └── value_objects/
 │           ├── AuthError.swift            Error enum for auth failures
@@ -42,7 +44,7 @@ iOS/
 │   ├── auth/
 │   │   └── KeychainIdentityStore.swift  IdentityStore adapter — Security framework + UserDefaults
 │   ├── api/
-│   │   └── DeposplitApiAdapter.swift  HTTP adapter — implements ShareRelay; URLSession + Ed25519 request signing + SHA-256 body hash
+│   │   └── DeposplitApiAdapter.swift  HTTP adapter — implements ShareRelay; URLSession + Ed25519 request signing (via RequestSigner) + SHA-256 body hash
 │   │                                  pickUpShare (GET /shares/:shareId) + ciphertext-on-approve (PATCH /share-requests/:id)
 │   ├── contacts/
 │   │   └── LocalContactRepository.swift  JSON file in Documents/contacts.json
@@ -344,7 +346,7 @@ Key call-site changes:
 
 ---
 
-## TODO: Split `Identity` driving port into `Identity` + `ShareEncryption` + `RequestSigner`
+## DONE: Split `Identity` driving port into `Identity` + `ShareEncryption` + `RequestSigner`
 
 `IdentityService` currently implements the `Identity` **driving** port, which exposes `sign`, `encrypt`, and `decrypt` in addition to the UI-facing methods (`isRegistered`, `register`, `pseudonym`, `edPublicKey`, `xPublicKey`). `ShareService` calls `identity.encrypt/decrypt` and `DeposplitApiAdapter` calls `identity.sign/edPublicKey` — both through the driving port, which is structurally wrong: driven-side consumers (a hexagon service and an infrastructure adapter) should not depend on a driving port.
 
@@ -427,14 +429,14 @@ let shareManagement: any ShareManagement = ShareService(
 )
 ```
 
-### Step 8 — Update `iOS/CLAUDE.md` project structure table
+### Step 8 — Update `iOS/CLAUDE.md` project structure table ✅
 
-- `services/ShareEncryption.swift` (add — note: intra-hexagon interface, not a port)
-- `driving_ports/RequestSigner.swift` (add — note: driving port, not driven)
-- Update `driving_ports/Identity.swift` description (remove `sign`, `encrypt`, `decrypt`)
-- Update `services/IdentityService.swift` description (add `ShareEncryption`, `RequestSigner`)
-- Update `services/ShareService.swift` description (`encryption: any ShareEncryption`)
-- Update `Deposplit/api/DeposplitApiAdapter.swift` description (`signer: any RequestSigner`)
+- `services/ShareEncryption.swift` (added — intra-hexagon interface, not a port)
+- `driving_ports/RequestSigner.swift` (added — driving port, not driven)
+- `driving_ports/Identity.swift` description updated (removed `sign`, `encrypt`, `decrypt`)
+- `services/IdentityService.swift` description updated (added `ShareEncryption`, `RequestSigner`)
+- `services/ShareService.swift` description updated (`encryption: any ShareEncryption`)
+- `Deposplit/api/DeposplitApiAdapter.swift` description updated (`signer: any RequestSigner`)
 
 ---
 

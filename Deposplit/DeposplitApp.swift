@@ -13,13 +13,13 @@ struct DeposplitApp: App {
         let contactRepository = LocalContactRepository()
         let shareRepository = LocalShareRepository()
         #if DEBUG
-        let relay = DeposplitApiAdapter(auth: identityService, baseURL: "http://localhost:9000")
+        let relay = DeposplitApiAdapter(signer: identityService, baseURL: "http://localhost:9000")
         #else
-        let relay = DeposplitApiAdapter(auth: identityService)
+        let relay = DeposplitApiAdapter(signer: identityService)
         #endif
         shareManagement = ShareService(
             relay: relay,
-            identity: identityService,
+            encryption: identityService,
             shareRepository: shareRepository,
             contactRepository: contactRepository
         )
