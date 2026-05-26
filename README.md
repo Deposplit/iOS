@@ -116,53 +116,77 @@ The project uses `PBXFileSystemSynchronizedRootGroup` (introduced in Xcode 16): 
 
 ```
 iOS/
+├── hexagon/                          ← local Swift Package — domain boundary enforced by the build system
+│   ├── Package.swift                 swift-tools-version: 6.0; platforms: iOS 26.4; path: "Sources"
+│   └── Sources/
+│       ├── shamir/
+│       │   └── ShamirSecretSharing.swift  SSS split/combine over GF(2⁸); ShamirError
+│       ├── driving_ports/
+│       │   ├── Identity.swift             isRegistered, register, pseudonym, edPublicKey, xPublicKey,
+│       │   │                              sign, encrypt, decrypt (Identity split into Identity + ShareEncryption
+│       │   │                              + RequestSigner is pending — see iOS/CLAUDE.md)
+│       │   ├── ShareManagement.swift      use-case interface: deposit, listDistributed, reconstruct,
+│       │   │                              syncInbox, listPendingRequests, respond, …
+│       │   └── ContactManagement.swift    listContacts, addManually, addFromQr, deleteContact
+│       ├── driven_ports/
+│       │   ├── IdentityStore.swift        isRegistered, save, pseudonym, edPublicKey, edPrivateKey,
+│       │   │                              xPublicKey, xPrivateKey
+│       │   ├── ContactRepository.swift    getAll, getByEdKey, save, delete
+│       │   ├── ShareRepository.swift      getAll, getCiphertext, save, delete
+│       │   └── ShareRelay.swift           depositShare, listShares, pickUpShare, deleteShare,
+│       │                                  share-request CRUD
+│       ├── services/
+│       │   ├── IdentityService.swift      Identity impl — CryptoKit only, no Security/UserDefaults
+│       │   ├── ShareService.swift         ShareManagement impl — calls ShareRelay + Identity +
+│       │   │                              ShareRepository + ContactRepository
+│       │   └── ContactService.swift       ContactManagement impl — validates + delegates to
+│       │                                  ContactRepository; defines ContactError
+│       └── value_objects/
+│           ├── AuthError.swift            Error enum for auth failures
+│           ├── Contact.swift              Contact struct + VerificationLevel enum
+│           ├── HeldShare.swift            HeldShare struct
+│           └── Share.swift               Role, ShareRequestType, ShareRequestState,
+│                                          ShareMetadata, ShareRequest
 ├── Deposplit.xcodeproj/
-├── Deposplit/                        ← app target
-│   ├── DeposplitApp.swift            @main entry + RootView (routes to SignInView or HomeView)
-│   ├── ShamirSecretSharing.swift     SSS library (split / combine over GF(2⁸))
+├── Deposplit/                        ← app target (adapters + UI); PBXFileSystemSynchronizedRootGroup
+│   ├── DeposplitApp.swift            @main entry point + RootView (routes to SignInView or HomeView)
 │   ├── auth/
-│   │   ├── AuthPort.swift            Domain port protocol (Identity — pending rename)
-│   │   ├── AuthService.swift         CryptoKit keypair generation, Ed25519 signing,
-│   │   │                             X25519+HKDF-SHA-256+ChaCha20-Poly1305 encrypt/decrypt
-│   │   │                             (IdentityService — pending rename)
-│   │   ├── KeychainIdentityStore.swift  IdentityStore adapter — Keychain storage
-│   │   └── SignInViewModel.swift
+│   │   └── KeychainIdentityStore.swift  IdentityStore adapter — Security framework + UserDefaults
 │   ├── api/
-│   │   ├── ShareTransport.swift      Domain port protocol + value types
-│   │   │                             (Role, ShareRequestType, ShareRequestState,
-│   │   │                              ShareMetadata, ShareRequest)
-│   │   └── DeposplitApiAdapter.swift  URLSession HTTP adapter — all 7 API operations,
-│   │                                  Ed25519 request signing, SHA-256 body hash
+│   │   └── DeposplitApiAdapter.swift  HTTP adapter — implements ShareRelay; URLSession + Ed25519 request
+│   │                                  signing + SHA-256 body hash; pickUpShare (GET /shares/:shareId) +
+│   │                                  ciphertext-on-approve (PATCH /share-requests/:id)
 │   ├── contacts/
-│   │   ├── Contact.swift             Contact + VerificationLevel + ContactRepository protocol
-│   │   └── LocalContactRepository.swift  JSON file in Documents folder
+│   │   └── LocalContactRepository.swift  JSON file in Documents/contacts.json
+│   ├── shares/
+│   │   └── LocalShareRepository.swift  JSON file in Documents/shares.json
 │   └── ui/
-│       ├── SignInView.swift           Registration screen (pseudonym input)
-│       ├── HomeView.swift            NavigationStack + TabView (3 tabs) + toolbar
+│       ├── SignInViewModel.swift      Registration flow (pseudonym input)
+│       ├── SignInView.swift           Registration screen
+│       ├── HomeView.swift            NavigationStack + TabView (Distributed/Held/Requests)
 │       ├── home/
-│       │   ├── HomeViewModel.swift   listShares for both roles
-│       │   ├── RequestsViewModel.swift  listShareRequests(recipient, pending) + respond
-│       │   ├── DistributedTab.swift  Sender's distributed shares → taps to ShareDetailView
-│       │   ├── HeldTab.swift         Recipient's held shares (read-only list)
+│       │   ├── HomeViewModel.swift   syncInbox + listDistributed + listHeld via ShareManagement
+│       │   ├── RequestsViewModel.swift  listPendingRequests + respond via ShareManagement
+│       │   ├── DistributedTab.swift  Tappable share rows → ShareDetailView
+│       │   ├── HeldTab.swift         Read-only list of held shares
 │       │   └── RecipientRequestsTab.swift  Approve/deny incoming requests
 │       ├── contacts/
-│       │   ├── ContactsViewModel.swift
-│       │   ├── ContactsView.swift    List + delete; add via menu (QR or manual)
-│       │   ├── AddContactViewModel.swift
-│       │   └── AddContactView.swift  Manual key entry (base64url)
+│       │   ├── ContactsViewModel.swift  listContacts + deleteContact via ContactManagement
+│       │   ├── ContactsView.swift    List + delete + add via QR or manual entry
+│       │   ├── AddContactViewModel.swift  addManually via ContactManagement
+│       │   └── AddContactView.swift
 │       ├── deposit/
-│       │   ├── DepositViewModel.swift  Shamir.split → auth.encrypt → transport.depositShare
+│       │   ├── DepositViewModel.swift  deposit via ShareManagement; listContacts via ContactManagement
 │       │   └── DepositView.swift
 │       ├── sharedetail/
-│       │   ├── ShareDetailViewModel.swift  Open RETRIEVE/DELETE requests;
-│       │   │                               reconstruct via auth.decrypt + Shamir.combine
+│       │   ├── ShareDetailViewModel.swift  Open RETRIEVE/DELETE requests; reconstruct via ShareManagement
 │       │   └── ShareDetailView.swift
 │       └── qr/
 │           ├── QrPayload.swift       {"v":1,"pseudonym":"…","ed":"…","x":"…"} encode/decode
-│           ├── QrDisplayViewModel.swift  CoreImage QR code generation
+│           ├── QrDisplayViewModel.swift  CoreImage QR generation
 │           ├── QrDisplayView.swift
 │           └── QrScanView.swift      DataScannerViewController (VisionKit) + QrScanViewModel
-└── DeposplitTests/
+└── DeposplitTests/                   ← unit test target (@testable import hexagon)
     └── ShamirSecretSharingTests.swift  Swift Testing — round-trip and cross-platform vectors
 ```
 
@@ -184,15 +208,17 @@ Deposplit follows **Ports & Adapters (Hexagonal Architecture)** for the domain a
 └──────────────────────────────────────────────────────┘
 ```
 
-**Port (`Identity`)** — a Swift protocol defined by the domain. It expresses what the app needs without knowing anything about CryptoKit or Keychain.
+**Driving ports** (`Identity`, `ShareManagement`, `ContactManagement`) — Swift protocols defined by the domain; implemented by hexagon services. `Identity` currently also includes `sign`, `encrypt`, `decrypt` — these will be split into `RequestSigner` and `ShareEncryption` in a follow-up (see `iOS/CLAUDE.md`).
 
-**Service (`IdentityService`)** — implements the port using CryptoKit keypair generation, Ed25519 signing, and X25519+HKDF+ChaCha20-Poly1305 encryption. Delegates key persistence to the `IdentityStore` driven port.
+**Services** (`IdentityService`, `ShareService`, `ContactService`) — implement the driving ports using CryptoKit (no Security/UserDefaults imports). Delegate infrastructure concerns to driven ports.
 
-**Adapter (`KeychainIdentityStore`)** — implements `IdentityStore` using the Security framework. Changing the storage strategy only requires changing this class.
+**Driven ports** (`IdentityStore`, `ShareRelay`, `ContactRepository`, `ShareRepository`) — implemented by infrastructure adapters in the app target.
 
-**ViewModel (`SignInViewModel`)** — sits at the UI/domain boundary. It calls the port and holds the state that the view observes.
+**Adapters** (`KeychainIdentityStore`, `DeposplitApiAdapter`, `LocalContactRepository`, `LocalShareRepository`) — implement the driven ports using Security, URLSession, and the file system.
 
-**`DeposplitApp`** — creates the adapters and passes them into the view hierarchy.
+**ViewModel / UI layer** — ViewModels call only driving ports; they are unaware of adapters.
+
+**`DeposplitApp`** — wires everything together: constructs adapters, creates services, exposes driving-port references to the view hierarchy.
 
 Like Android's `:hexagon` Gradle module, the iOS domain code lives in its own **local Swift Package** (`iOS/hexagon/`), which is a separate SPM target linked into both the app and the test target. The compiler enforces the boundary: the package has no `Security`, `UIKit`, `SwiftUI`, or `URLSession` dependencies, so any accidental import is a build error.
 
@@ -341,9 +367,5 @@ Run Alice on an iOS Simulator and Bob on an Android emulator simultaneously. The
 The iOS app is feature-complete for v0.1. Planned improvements:
 
 1. **Biometric unlock** — gate `ShareDetailView.reconstruct()` behind `LAContext.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics)`, mirroring the Android `BiometricPrompt` implementation. See `iOS/CLAUDE.md` for the full implementation guide.
-2. **Ports & Adapters fixes** — two architectural clean-ups carried out on Android are pending for iOS:
-   - `ShareTransport` → `ShareRelay` (driven port) + `ShareManagement` (driving port, implemented by `ShareService` in the hexagon): SSS split/combine + encrypt/decrypt + relay coordination moves out of ViewModels into the domain layer.
-   - `ContactManagement` driving port + `ContactService`: contact-addition logic (key validation, `VerificationLevel` assignment) moves out of `AddContactViewModel` / `QrScanViewModel` into the domain layer.
-   See `iOS/CLAUDE.md` for step-by-step instructions for both refactors.
-3. **Group Distributed tab by `secretId`** — same as the planned Android improvement: a 2-of-2 deposit produces two entries today; they should collapse into one logical-secret row.
-4. **End-to-end test with production** — once `api.deposplit.com` is deployed, run the full flow against the live Web app/service.
+2. **Identity driving port split** — split `Identity` into `Identity` (UI-only) + `ShareEncryption` (intra-hexagon interface) + `RequestSigner` (driving port). Already applied to Android and the Scala `phon` hexagon; pending for iOS. See `iOS/CLAUDE.md` for step-by-step instructions.
+3. **End-to-end test with production** — once `api.deposplit.com` is deployed, run the full flow against the live Web app/service.

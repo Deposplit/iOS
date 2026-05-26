@@ -344,6 +344,100 @@ Key call-site changes:
 
 ---
 
+## TODO: Split `Identity` driving port into `Identity` + `ShareEncryption` + `RequestSigner`
+
+`IdentityService` currently implements the `Identity` **driving** port, which exposes `sign`, `encrypt`, and `decrypt` in addition to the UI-facing methods (`isRegistered`, `register`, `pseudonym`, `edPublicKey`, `xPublicKey`). `ShareService` calls `identity.encrypt/decrypt` and `DeposplitApiAdapter` calls `identity.sign/edPublicKey` — both through the driving port, which is structurally wrong: driven-side consumers (a hexagon service and an infrastructure adapter) should not depend on a driving port.
+
+The fix — already applied in Android and the Scala `phon` hexagon — is to split into three narrow interfaces:
+
+| Interface | Side | Used by |
+|---|---|---|
+| `Identity` | driving port | UI layer only (`isRegistered`, `register`, `pseudonym`, `edPublicKey`, `xPublicKey`) |
+| `ShareEncryption` | **driven** port | `ShareService` (`encrypt`, `decrypt`) |
+| `RequestSigner` | **driven** port | `DeposplitApiAdapter` (`edPublicKey`, `sign`) |
+
+`IdentityService` implements all three; wiring in `DeposplitApp.swift` passes the same instance where each interface is required.
+
+### Step 1 — Create `hexagon/Sources/services/ShareEncryption.swift`
+
+`ShareEncryption` is an **intra-hexagon interface** — both its implementer (`IdentityService`) and its consumer (`ShareService`) live in the `services` layer. It belongs there rather than in `driven_ports` (which is for the hexagon reaching out to infrastructure) or `driving_ports` (which is for external actors calling into the hexagon). Alphabetically it will sit between `IdentityService` and `ShareService`, which reflects the dependency chain.
+
+```swift
+protocol ShareEncryption {
+    /// Encrypts plaintext to recipientXPublicKey via X25519+HKDF-SHA-256+ChaCha20-Poly1305.
+    /// Returns nonce(12) || ciphertext+tag.
+    func encrypt(plaintext: Data, recipientXPublicKey: Data) throws -> Data
+    /// Decrypts noncePlusCiphertext (nonce(12) || ciphertext+tag).
+    func decrypt(noncePlusCiphertext: Data, recipientXPublicKey: Data) throws -> Data
+}
+```
+
+### Step 2 — Create `hexagon/Sources/driving_ports/RequestSigner.swift`
+
+`RequestSigner` is a **driving port**: it is defined by the hexagon, implemented by `IdentityService` (a hexagon service), and consumed by the `DeposplitApiAdapter` infrastructure adapter. Placing it in `driving_ports` correctly reflects that the hexagon *provides* this capability; the adapter calls in to use it.
+
+```swift
+public protocol RequestSigner {
+    func edPublicKey() -> Data
+    func sign(message: Data) throws -> Data
+}
+```
+
+### Step 3 — Update `hexagon/Sources/driving_ports/Identity.swift`
+
+Remove `sign`, `encrypt`, `decrypt` — keep only:
+
+```swift
+public protocol Identity {
+    func isRegistered() -> Bool
+    func register(pseudonym: String) throws
+    func pseudonym() -> String
+    func edPublicKey() -> Data
+    func xPublicKey() -> Data
+}
+```
+
+### Step 4 — Update `hexagon/Sources/services/IdentityService.swift`
+
+Add conformances (implementation is already there — just update the class declaration):
+
+```swift
+class IdentityService: Identity, ShareEncryption, RequestSigner { … }
+```
+
+### Step 5 — Update `hexagon/Sources/services/ShareService.swift`
+
+Replace the `identity: any Identity` constructor parameter with `encryption: any ShareEncryption`; update all call sites (`identity.encrypt` → `encryption.encrypt`, `identity.decrypt` → `encryption.decrypt`).
+
+### Step 6 — Update `Deposplit/api/DeposplitApiAdapter.swift`
+
+Replace the `identity: any Identity` constructor parameter with `signer: any RequestSigner`; update call sites (`identity.sign` → `signer.sign`, `identity.edPublicKey()` → `signer.edPublicKey()`).
+
+### Step 7 — Update `Deposplit/DeposplitApp.swift`
+
+```swift
+let identityService = IdentityService(store: keychainStore)
+// authAdapter: any Identity — for the UI layer
+// passed as ShareEncryption to ShareService, as RequestSigner to DeposplitApiAdapter
+let shareManagement: any ShareManagement = ShareService(
+    relay: DeposplitApiAdapter(signer: identityService),
+    encryption: identityService,
+    shareRepository: shareRepository,
+    contactRepository: contactRepository
+)
+```
+
+### Step 8 — Update `iOS/CLAUDE.md` project structure table
+
+- `services/ShareEncryption.swift` (add — note: intra-hexagon interface, not a port)
+- `driving_ports/RequestSigner.swift` (add — note: driving port, not driven)
+- Update `driving_ports/Identity.swift` description (remove `sign`, `encrypt`, `decrypt`)
+- Update `services/IdentityService.swift` description (add `ShareEncryption`, `RequestSigner`)
+- Update `services/ShareService.swift` description (`encryption: any ShareEncryption`)
+- Update `Deposplit/api/DeposplitApiAdapter.swift` description (`signer: any RequestSigner`)
+
+---
+
 ## TODO: Biometric unlock for secret reconstruction
 
 The Android app gates `viewModel.reconstruct()` behind `BiometricPrompt`. The iOS `ShareDetailView` currently calls `viewModel.reconstruct()` directly without any authentication gate.
