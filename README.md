@@ -368,4 +368,5 @@ The iOS app is feature-complete for v0.1. Planned improvements:
 
 1. **Biometric unlock** — gate `ShareDetailView.reconstruct()` behind `LAContext.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics)`, mirroring the Android `BiometricPrompt` implementation. See `iOS/CLAUDE.md` for the full implementation guide.
 2. **Identity driving port split** — split `Identity` into `Identity` (UI-only) + `ShareEncryption` (intra-hexagon interface) + `RequestSigner` (driving port). Already applied to Android and the Scala `phon` hexagon; pending for iOS. See `iOS/CLAUDE.md` for step-by-step instructions.
-3. **End-to-end test with production** — once `api.deposplit.com` is deployed, run the full flow against the live Web app/service.
+3. **Offline-capable home tabs** — introduce `ShareMetadataRepository` driven port + `LocalShareMetadataRepository` adapter; add `syncDistributed()` to `ShareManagement`; split `HomeViewModel.load()` into two phases (Phase 1: local-first render, Phase 2: relay sync with soft warning banner on failure). Already implemented on Android and Scala `phon`; full instructions in `iOS/CLAUDE.md`.
+4. **End-to-end test with production** — once `api.deposplit.com` is deployed, run the full flow against the live Web app/service.

@@ -440,6 +440,114 @@ let shareManagement: any ShareManagement = ShareService(
 
 ---
 
+## TODO: Offline-capable home tabs (ShareMetadataRepository + two-phase load)
+
+### Background
+
+The Android (`:hexagon` + `:app`) and Scala (`deposplit.com/hexagons/phon`) hexagons were updated to cache distributed `ShareMetadata` locally so the "My Shared Secrets" tab renders from device storage when the relay is unreachable. The reference implementations are `ShareService.kt`, `HomeViewModel.kt`, and `LocalShareMetadataRepository.kt` in `Android/`. Apply the same pattern here.
+
+The architectural rationale: `ShareManagement.listDistributed()` previously called `relay.listShares(.sender)` directly, making the relay the source of truth. But the relay is designed to be a loseable mailbox. At `deposit()` time the sender already has all the `ShareMetadata` on-device — it should be persisted locally then, and the relay should only refresh field updates (e.g. `pickedUpAt`) when online.
+
+### Step 1 — Create `hexagon/Sources/driven_ports/ShareMetadataRepository.swift`
+
+New driven port for the local distributed-share cache:
+
+```swift
+public protocol ShareMetadataRepository {
+    func getAll() throws -> [ShareMetadata]
+    func save(_ share: ShareMetadata) throws
+    func delete(shareId: UUID) throws
+}
+```
+
+### Step 2 — Update `hexagon/Sources/driving_ports/ShareManagement.swift`
+
+Add `syncDistributed()` to the sender section:
+
+```swift
+func syncDistributed() throws
+```
+
+### Step 3 — Update `hexagon/Sources/services/ShareService.swift`
+
+Add `shareMetadataRepository: any ShareMetadataRepository` constructor parameter. Apply the same four changes as in `ShareService.kt`:
+
+- `deposit(secret:label:contacts:threshold:)`: after each `relay.depositShare(...)`, call `try? shareMetadataRepository.save(metadata)`
+- `syncDistributed()`: `try relay.listShares(.sender).forEach { try shareMetadataRepository.save($0) }` — only updates/inserts, **never deletes**; the relay can refresh field values (e.g. `pickedUpAt`) but cannot remove entries (that would re-establish the relay as source of truth for existence)
+- `listDistributed()`: return `try shareMetadataRepository.getAll()` — local cache only; never calls the relay
+- `reconstruct(secretId:)`: after each `try? relay.deleteShare(req.share.id)`, also call `try? shareMetadataRepository.delete(shareId: req.share.id)`
+
+### Step 4 — Create `Deposplit/shares/LocalShareMetadataRepository.swift`
+
+JSON file adapter in `Documents/distributed_shares.json`. Mirror `LocalShareRepository.swift` — same Codable wire-type pattern, base64url for `senderKey` and `recipientKey`, ISO-8601 strings for timestamps. Implement upsert in `save` (replace by `id` if present, append if not).
+
+### Step 5 — Update `Deposplit/DeposplitApp.swift`
+
+Wire the new adapter:
+
+```swift
+let shareMetadataRepository = LocalShareMetadataRepository()
+let shareManagement: any ShareManagement = ShareService(
+    relay: DeposplitApiAdapter(signer: identityService),
+    encryption: identityService,
+    shareRepository: shareRepository,
+    shareMetadataRepository: shareMetadataRepository,
+    contactRepository: contactRepository
+)
+```
+
+### Step 6 — Update `Deposplit/ui/home/HomeViewModel.swift`
+
+Split `load()` into two phases (mirrors `HomeViewModel.kt`):
+
+**Phase 1** (local only, always succeeds — renders immediately even when offline):
+```swift
+let contacts = try contactManagement.listContacts()
+let distributed = try shareManagement.listDistributed()  // local cache
+let held = try shareManagement.listHeld()                 // local cache
+// build groupedSecrets with allRequests = [] (no request state yet) and heldShares
+// update @Observable state immediately
+```
+
+**Phase 2** (relay sync — soft failure, never wipes Phase 1 results):
+```swift
+do {
+    try shareManagement.syncInbox()
+    try shareManagement.syncDistributed()
+    let allRequests    = try shareManagement.listSentRequests()
+    let freshDistributed = try shareManagement.listDistributed()
+    let freshHeld      = try shareManagement.listHeld()
+    // rebuild groupedSecrets with allRequests, update heldShares
+} catch {
+    syncWarning = true
+}
+```
+
+Add `var syncWarning = false` to the `@Observable` `HomeViewModel`.
+
+### Step 7 — Update tab views to show a soft warning banner
+
+In `DistributedTab.swift` and `HeldTab.swift` (not `RecipientRequestsTab.swift`, which has its own error handling), show a small banner at the top when `homeViewModel.syncWarning` is `true`:
+
+```swift
+if homeViewModel.syncWarning {
+    Label("Couldn't sync — showing cached data", systemImage: "exclamationmark.triangle")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal)
+}
+```
+
+### Step 8 — Update `iOS/CLAUDE.md` project structure table
+
+- `driven_ports/ShareMetadataRepository.swift` (add — local cache of distributed `ShareMetadata`)
+- `services/ShareService.swift` description: add `ShareMetadataRepository` dependency
+- `shares/LocalShareMetadataRepository.swift` (add — `Documents/distributed_shares.json`)
+- `home/HomeViewModel.swift` description: note two-phase load + `syncWarning`
+
+---
+
 ## TODO: Biometric unlock for secret reconstruction
 
 The Android app gates `viewModel.reconstruct()` behind `BiometricPrompt`. The iOS `ShareDetailView` currently calls `viewModel.reconstruct()` directly without any authentication gate.
