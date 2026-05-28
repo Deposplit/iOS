@@ -13,17 +13,20 @@ public final class ShareService: ShareManagement {
     private let relay: any ShareRelay
     private let encryption: any ShareEncryption
     private let shareRepository: any ShareRepository
+    private let shareMetadataRepository: any ShareMetadataRepository
     private let contactRepository: any ContactRepository
 
     public init(
         relay: any ShareRelay,
         encryption: any ShareEncryption,
         shareRepository: any ShareRepository,
+        shareMetadataRepository: any ShareMetadataRepository,
         contactRepository: any ContactRepository
     ) {
         self.relay = relay
         self.encryption = encryption
         self.shareRepository = shareRepository
+        self.shareMetadataRepository = shareMetadataRepository
         self.contactRepository = contactRepository
     }
 
@@ -32,17 +35,25 @@ public final class ShareService: ShareManagement {
         let secretId = UUID()
         for (contact, share) in zip(contacts, shares) {
             let ciphertext = try encryption.encrypt(Data(share), recipientXPublicKey: contact.xPublicKey)
-            _ = try await relay.depositShare(
+            let metadata = try await relay.depositShare(
                 secretId: secretId,
                 label: label,
                 recipientKey: contact.edPublicKey,
                 ciphertext: ciphertext
             )
+            try? shareMetadataRepository.save(metadata)
         }
     }
 
-    public func listDistributed() async throws -> [ShareMetadata] {
-        try await relay.listShares(role: .sender, counterpartyKey: nil)
+    public func listDistributed() throws -> [ShareMetadata] {
+        try shareMetadataRepository.getAll()
+    }
+
+    public func syncDistributed() async throws {
+        let shares = try await relay.listShares(role: .sender, counterpartyKey: nil)
+        for share in shares {
+            try? shareMetadataRepository.save(share)
+        }
     }
 
     public func listSentRequests() async throws -> [ShareRequest] {
@@ -85,6 +96,7 @@ public final class ShareService: ShareManagement {
         let secretBytes = try combine(shares: decryptedShares)
         for req in retrieves {
             try? await relay.deleteShare(shareId: req.share.id)
+            try? shareMetadataRepository.delete(shareId: req.share.id)
         }
         return Data(secretBytes)
     }
@@ -107,7 +119,7 @@ public final class ShareService: ShareManagement {
         }
     }
 
-    public func listHeld() async throws -> [HeldShare] {
+    public func listHeld() throws -> [HeldShare] {
         shareRepository.getAll()
     }
 

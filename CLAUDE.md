@@ -21,17 +21,20 @@ iOS/
 │       ├── driving_ports/
 │       │   ├── Identity.swift             isRegistered, register, pseudonym, edPublicKey, xPublicKey
 │       │   ├── RequestSigner.swift        driving port: edPublicKey, sign — implemented by IdentityService, used by DeposplitApiAdapter
-│       │   ├── ShareManagement.swift      use-case interface: deposit, listDistributed, reconstruct, syncInbox, respond, …
+│       │   ├── ShareManagement.swift      use-case interface: deposit, listDistributed (sync, local cache), syncDistributed, reconstruct, syncInbox, listHeld (sync, local cache), respond, …
 │       │   └── ContactManagement.swift    listContacts, addManually, addFromQr, deleteContact
 │       ├── driven_ports/
 │       │   ├── IdentityStore.swift        isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
 │       │   ├── ContactRepository.swift    getAll, getByEdKey, save, delete
 │       │   ├── ShareRepository.swift      getAll, getCiphertext, save, delete
+│       │   ├── ShareMetadataRepository.swift  getAll, save, delete — local cache of distributed ShareMetadata
 │       │   └── ShareRelay.swift           depositShare, listShares, pickUpShare, deleteShare, share-request CRUD
 │       ├── services/
 │       │   ├── IdentityService.swift      Identity + ShareEncryption + RequestSigner impl — CryptoKit only, no Security/UserDefaults
 │       │   ├── ShareEncryption.swift      intra-hexagon interface: encrypt, decrypt — implemented by IdentityService, used by ShareService
-│       │   ├── ShareService.swift         ShareManagement impl — calls ShareRelay + ShareEncryption + ShareRepository + ContactRepository
+│       │   ├── ShareService.swift         ShareManagement impl — calls ShareRelay + ShareEncryption + ShareRepository + ShareMetadataRepository + ContactRepository;
+│       │   │                              deposit() writes to local cache; listDistributed() reads cache; syncDistributed() refreshes from relay (never deletes);
+│       │   │                              reconstruct() removes entries after successful reconstruction
 │       │   └── ContactService.swift       ContactManagement impl — validates + delegates to ContactRepository; defines ContactError
 │       └── value_objects/
 │           ├── AuthError.swift            Error enum for auth failures
@@ -49,16 +52,17 @@ iOS/
 │   ├── contacts/
 │   │   └── LocalContactRepository.swift  JSON file in Documents/contacts.json
 │   ├── shares/
-│   │   └── LocalShareRepository.swift  JSON file in Documents/shares.json; ciphertext standard base64, senderKey base64url
+│   │   ├── LocalShareRepository.swift          JSON file in Documents/shares.json; ciphertext standard base64, senderKey base64url
+│   │   └── LocalShareMetadataRepository.swift  JSON file in Documents/distributed_shares.json; base64url keys, ISO-8601 timestamps
 │   └── ui/
 │       ├── SignInViewModel.swift      Registration flow (pseudonym input)
 │       ├── SignInView.swift           Registration flow (pseudonym input)
 │       ├── HomeView.swift            NavigationStack + TabView (Distributed/Held/Requests)
 │       ├── home/
-│       │   ├── HomeViewModel.swift   syncInbox + listDistributed + listHeld via ShareManagement
+│       │   ├── HomeViewModel.swift   two-phase load: Phase 1 reads local cache (always succeeds); Phase 2 syncs relay (sets syncWarning on failure)
 │       │   ├── RequestsViewModel.swift  listPendingRequests + respond via ShareManagement; contact lookup via ContactManagement
-│       │   ├── DistributedTab.swift  Tappable share rows → ShareDetailView; takes [Contact] for name resolution
-│       │   ├── HeldTab.swift         Read-only list of held shares; takes [Contact] for name resolution
+│       │   ├── DistributedTab.swift  Tappable share rows → ShareDetailView; takes [Contact] for name resolution; shows syncWarning banner
+│       │   ├── HeldTab.swift         Read-only list of held shares; takes [Contact] for name resolution; shows syncWarning banner
 │       │   └── RecipientRequestsTab.swift  Approve/deny incoming requests
 │       ├── contacts/
 │       │   ├── ContactsViewModel.swift  listContacts + deleteContact via ContactManagement
@@ -440,7 +444,7 @@ let shareManagement: any ShareManagement = ShareService(
 
 ---
 
-## TODO: Offline-capable home tabs (ShareMetadataRepository + two-phase load)
+## DONE: Offline-capable home tabs (ShareMetadataRepository + two-phase load)
 
 ### Background
 

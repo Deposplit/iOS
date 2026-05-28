@@ -122,6 +122,7 @@ struct HomeView: View {
                 DistributedTab(
                     shares: homeViewModel.distributedShares,
                     contacts: allContacts,
+                    syncWarning: homeViewModel.syncWarning,
                     onTap: { selectedShare = $0 }
                 )
             }
@@ -136,7 +137,7 @@ struct HomeView: View {
                 ContentUnavailableView("Error", systemImage: "exclamationmark.triangle",
                                        description: Text(error))
             } else {
-                HeldTab(shares: homeViewModel.heldShares, contacts: allContacts)
+                HeldTab(shares: homeViewModel.heldShares, contacts: allContacts, syncWarning: homeViewModel.syncWarning)
             }
         }
     }
