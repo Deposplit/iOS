@@ -92,6 +92,7 @@
       }
     },
     "Contact not found for recipient — cannot decrypt share" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -120,6 +121,9 @@
           }
         }
       }
+    },
+    "Couldn't sync — showing cached data" : {
+
     },
     "Delete" : {
       "localizations" : {
@@ -197,6 +201,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fertig"
+          }
+        }
+      }
+    },
+    "e.g. BitLocker recovery key" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "z. B. BitLocker-Wiederherstellungsschlüssel"
           }
         }
       }
@@ -382,6 +396,7 @@
       }
     },
     "Need at least 2 approved retrieve requests." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -481,6 +496,16 @@
         }
       }
     },
+    "Re-open" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erneut öffnen"
+          }
+        }
+      }
+    },
     "Recipient" : {
       "localizations" : {
         "de" : {
@@ -517,16 +542,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Geheimnis rekonstruieren…"
-          }
-        }
-      }
-    },
-    "Re-open" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erneut öffnen"
           }
         }
       }
@@ -647,16 +662,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dein Name"
-          }
-        }
-      }
-    },
-    "e.g. BitLocker recovery key" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "z. B. BitLocker-Wiederherstellungsschlüssel"
           }
         }
       }

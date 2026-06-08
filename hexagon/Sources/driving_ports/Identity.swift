@@ -8,4 +8,6 @@ public protocol Identity {
     var edPublicKey: Data { get }
     /// X25519 public key — 32 raw bytes
     var xPublicKey: Data { get }
+    /// Signs `message` with the Ed25519 private key. Returns the 64-byte signature.
+    func sign(_ message: Data) throws -> Data
 }

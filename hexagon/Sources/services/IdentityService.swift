@@ -1,7 +1,7 @@
 import CryptoKit
 import Foundation
 
-public final class IdentityService: Identity, ShareEncryption, RequestSigner {
+public final class IdentityService: Identity, ShareEncryption {
     private let identityStore: any IdentityStore
 
     public init(identityStore: any IdentityStore) {

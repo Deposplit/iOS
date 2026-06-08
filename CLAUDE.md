@@ -349,7 +349,7 @@ Key call-site changes:
 
 ---
 
-## TODO: Merge `RequestSigner` back into `Identity` + extract `ShareEncryption`
+## DONE: Merge `RequestSigner` back into `Identity` + extract `ShareEncryption`
 
 The current iOS code has a `RequestSigner` driving port that was split out of `Identity`. This split has been reverted on Android and the Scala `phon` hexagon: `sign` belongs in `Identity` because `DeposplitApiAdapter` depends on *the* identity, not on some abstract signing capability. Only `ShareEncryption` (`encrypt`, `decrypt`) remains as a separate intra-hexagon interface.
 
