@@ -19,8 +19,7 @@ iOS/
 │       ├── shamir/
 │       │   └── ShamirSecretSharing.swift  SSS split/combine over GF(2⁸); ShamirError
 │       ├── driving_ports/
-│       │   ├── Identity.swift             isRegistered, register, pseudonym, edPublicKey, xPublicKey
-│       │   ├── RequestSigner.swift        driving port: edPublicKey, sign — implemented by IdentityService, used by DeposplitApiAdapter
+│       │   ├── Identity.swift             isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign
 │       │   ├── ShareManagement.swift      use-case interface: deposit, listDistributed (sync, local cache), syncDistributed, reconstruct, syncInbox, listHeld (sync, local cache), respond, …
 │       │   └── ContactManagement.swift    listContacts, addManually, addFromQr, deleteContact
 │       ├── driven_ports/
@@ -30,7 +29,7 @@ iOS/
 │       │   ├── ShareMetadataRepository.swift  getAll, save, delete — local cache of distributed ShareMetadata
 │       │   └── ShareRelay.swift           depositShare, listShares, pickUpShare, deleteShare, share-request CRUD
 │       ├── services/
-│       │   ├── IdentityService.swift      Identity + ShareEncryption + RequestSigner impl — CryptoKit only, no Security/UserDefaults
+│       │   ├── IdentityService.swift      Identity + ShareEncryption impl — CryptoKit only, no Security/UserDefaults
 │       │   ├── ShareEncryption.swift      intra-hexagon interface: encrypt, decrypt — implemented by IdentityService, used by ShareService
 │       │   ├── ShareService.swift         ShareManagement impl — calls ShareRelay + ShareEncryption + ShareRepository + ShareMetadataRepository + ContactRepository;
 │       │   │                              deposit() writes to local cache; listDistributed() reads cache; syncDistributed() refreshes from relay (never deletes);
@@ -47,7 +46,7 @@ iOS/
 │   ├── auth/
 │   │   └── KeychainIdentityStore.swift  IdentityStore adapter — Security framework + UserDefaults
 │   ├── api/
-│   │   └── DeposplitApiAdapter.swift  HTTP adapter — implements ShareRelay; URLSession + Ed25519 request signing (via RequestSigner) + SHA-256 body hash
+│   │   └── DeposplitApiAdapter.swift  HTTP adapter — implements ShareRelay; URLSession + Ed25519 request signing (via Identity) + SHA-256 body hash
 │   │                                  pickUpShare (GET /shares/:shareId) + ciphertext-on-approve (PATCH /share-requests/:id)
 │   ├── contacts/
 │   │   └── LocalContactRepository.swift  JSON file in Documents/contacts.json
@@ -350,48 +349,18 @@ Key call-site changes:
 
 ---
 
-## DONE: Split `Identity` driving port into `Identity` + `ShareEncryption` + `RequestSigner`
+## TODO: Merge `RequestSigner` back into `Identity` + extract `ShareEncryption`
 
-`IdentityService` currently implements the `Identity` **driving** port, which exposes `sign`, `encrypt`, and `decrypt` in addition to the UI-facing methods (`isRegistered`, `register`, `pseudonym`, `edPublicKey`, `xPublicKey`). `ShareService` calls `identity.encrypt/decrypt` and `DeposplitApiAdapter` calls `identity.sign/edPublicKey` — both through the driving port, which is structurally wrong: driven-side consumers (a hexagon service and an infrastructure adapter) should not depend on a driving port.
+The current iOS code has a `RequestSigner` driving port that was split out of `Identity`. This split has been reverted on Android and the Scala `phon` hexagon: `sign` belongs in `Identity` because `DeposplitApiAdapter` depends on *the* identity, not on some abstract signing capability. Only `ShareEncryption` (`encrypt`, `decrypt`) remains as a separate intra-hexagon interface.
 
-The fix — already applied in Android and the Scala `phon` hexagon — is to split into three narrow interfaces:
+Target state:
 
-| Interface | Side | Used by |
+| Interface | Where | Used by |
 |---|---|---|
-| `Identity` | driving port | UI layer only (`isRegistered`, `register`, `pseudonym`, `edPublicKey`, `xPublicKey`) |
-| `ShareEncryption` | **driven** port | `ShareService` (`encrypt`, `decrypt`) |
-| `RequestSigner` | **driven** port | `DeposplitApiAdapter` (`edPublicKey`, `sign`) |
+| `Identity` | `driving_ports/` | UI layer + `DeposplitApiAdapter` (`isRegistered`, `register`, `pseudonym`, `edPublicKey`, `xPublicKey`, `sign`) |
+| `ShareEncryption` | `services/` (intra-hexagon) | `ShareService` (`encrypt`, `decrypt`) |
 
-`IdentityService` implements all three; wiring in `DeposplitApp.swift` passes the same instance where each interface is required.
-
-### Step 1 — Create `hexagon/Sources/services/ShareEncryption.swift`
-
-`ShareEncryption` is an **intra-hexagon interface** — both its implementer (`IdentityService`) and its consumer (`ShareService`) live in the `services` layer. It belongs there rather than in `driven_ports` (which is for the hexagon reaching out to infrastructure) or `driving_ports` (which is for external actors calling into the hexagon). Alphabetically it will sit between `IdentityService` and `ShareService`, which reflects the dependency chain.
-
-```swift
-protocol ShareEncryption {
-    /// Encrypts plaintext to recipientXPublicKey via X25519+HKDF-SHA-256+ChaCha20-Poly1305.
-    /// Returns nonce(12) || ciphertext+tag.
-    func encrypt(plaintext: Data, recipientXPublicKey: Data) throws -> Data
-    /// Decrypts noncePlusCiphertext (nonce(12) || ciphertext+tag).
-    func decrypt(noncePlusCiphertext: Data, recipientXPublicKey: Data) throws -> Data
-}
-```
-
-### Step 2 — Create `hexagon/Sources/driving_ports/RequestSigner.swift`
-
-`RequestSigner` is a **driving port**: it is defined by the hexagon, implemented by `IdentityService` (a hexagon service), and consumed by the `DeposplitApiAdapter` infrastructure adapter. Placing it in `driving_ports` correctly reflects that the hexagon *provides* this capability; the adapter calls in to use it.
-
-```swift
-public protocol RequestSigner {
-    func edPublicKey() -> Data
-    func sign(message: Data) throws -> Data
-}
-```
-
-### Step 3 — Update `hexagon/Sources/driving_ports/Identity.swift`
-
-Remove `sign`, `encrypt`, `decrypt` — keep only:
+### Step 1 — Add `sign` to `hexagon/Sources/driving_ports/Identity.swift`
 
 ```swift
 public protocol Identity {
@@ -400,47 +369,61 @@ public protocol Identity {
     func pseudonym() -> String
     func edPublicKey() -> Data
     func xPublicKey() -> Data
+    func sign(message: Data) throws -> Data
 }
 ```
 
-### Step 4 — Update `hexagon/Sources/services/IdentityService.swift`
+### Step 2 — Delete `hexagon/Sources/driving_ports/RequestSigner.swift`
 
-Add conformances (implementation is already there — just update the class declaration):
+### Step 3 — Update `hexagon/Sources/services/IdentityService.swift`
+
+Remove `RequestSigner` from the conformance list:
 
 ```swift
-class IdentityService: Identity, ShareEncryption, RequestSigner { … }
+class IdentityService: Identity, ShareEncryption { … }
+```
+
+(The `sign` implementation stays — it moves from satisfying `RequestSigner` to satisfying `Identity`.)
+
+### Step 4 — Create `hexagon/Sources/services/ShareEncryption.swift`
+
+`ShareEncryption` is an **intra-hexagon interface** — both its implementer (`IdentityService`) and its consumer (`ShareService`) live in the `services` layer.
+
+```swift
+protocol ShareEncryption {
+    func encrypt(plaintext: Data, recipientXPublicKey: Data) throws -> Data
+    func decrypt(noncePlusCiphertext: Data, recipientXPublicKey: Data) throws -> Data
+}
 ```
 
 ### Step 5 — Update `hexagon/Sources/services/ShareService.swift`
 
-Replace the `identity: any Identity` constructor parameter with `encryption: any ShareEncryption`; update all call sites (`identity.encrypt` → `encryption.encrypt`, `identity.decrypt` → `encryption.decrypt`).
+Replace the `identity: any Identity` (or `signer: any RequestSigner`) constructor parameter for encryption with `encryption: any ShareEncryption`; update call sites (`identity.encrypt` / `signer.encrypt` → `encryption.encrypt`, etc.).
 
 ### Step 6 — Update `Deposplit/api/DeposplitApiAdapter.swift`
 
-Replace the `identity: any Identity` constructor parameter with `signer: any RequestSigner`; update call sites (`identity.sign` → `signer.sign`, `identity.edPublicKey()` → `signer.edPublicKey()`).
+Replace `signer: any RequestSigner` with `identity: any Identity`; update call sites (`signer.sign` → `identity.sign`, `signer.edPublicKey()` → `identity.edPublicKey()`).
 
 ### Step 7 — Update `Deposplit/DeposplitApp.swift`
 
 ```swift
 let identityService = IdentityService(store: keychainStore)
-// authAdapter: any Identity — for the UI layer
-// passed as ShareEncryption to ShareService, as RequestSigner to DeposplitApiAdapter
 let shareManagement: any ShareManagement = ShareService(
-    relay: DeposplitApiAdapter(signer: identityService),
+    relay: DeposplitApiAdapter(identity: identityService),
     encryption: identityService,
     shareRepository: shareRepository,
+    shareMetadataRepository: shareMetadataRepository,
     contactRepository: contactRepository
 )
 ```
 
-### Step 8 — Update `iOS/CLAUDE.md` project structure table ✅
+### Step 8 — Update `iOS/CLAUDE.md` project structure table
 
-- `services/ShareEncryption.swift` (added — intra-hexagon interface, not a port)
-- `driving_ports/RequestSigner.swift` (added — driving port, not driven)
-- `driving_ports/Identity.swift` description updated (removed `sign`, `encrypt`, `decrypt`)
-- `services/IdentityService.swift` description updated (added `ShareEncryption`, `RequestSigner`)
-- `services/ShareService.swift` description updated (`encryption: any ShareEncryption`)
-- `Deposplit/api/DeposplitApiAdapter.swift` description updated (`signer: any RequestSigner`)
+- Remove `driving_ports/RequestSigner.swift`
+- Update `driving_ports/Identity.swift` description to include `sign`
+- Update `services/IdentityService.swift` description to remove `RequestSigner`
+- Update `services/ShareEncryption.swift` entry (add if not present)
+- Update `Deposplit/api/DeposplitApiAdapter.swift` description (`via Identity`)
 
 ---
 
