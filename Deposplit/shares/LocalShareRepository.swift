@@ -45,25 +45,22 @@ final class LocalShareRepository: ShareRepository {
         let label: String
         let senderKey: String    // base64url
         let createdAt: String
+        let pickedUpAt: String   // ISO-8601
         let ciphertext: String   // standard base64
     }
 
     private func load() throws -> [HeldShare] {
         let data = try Data(contentsOf: fileURL)
         let items = try JSONDecoder().decode([HeldShareJSON].self, from: data)
-        return items.compactMap { json in
-            guard let id = UUID(uuidString: json.id),
-                  let secretId = UUID(uuidString: json.secretId),
-                  let senderKey = Data(base64URLEncoded: json.senderKey),
-                  let ciphertext = Data(base64Encoded: json.ciphertext),
-                  let createdAt = _localISO8601.date(from: json.createdAt) else { return nil }
-            return HeldShare(
-                id: id,
-                secretId: secretId,
+        return items.map { json in
+            HeldShare(
+                id: UUID(uuidString: json.id)!,
+                secretId: UUID(uuidString: json.secretId)!,
                 label: json.label,
-                senderKey: senderKey,
-                createdAt: createdAt,
-                ciphertext: ciphertext
+                senderKey: Data(base64URLEncoded: json.senderKey)!,
+                createdAt: _localISO8601.date(from: json.createdAt)!,
+                pickedUpAt: _localISO8601.date(from: json.pickedUpAt)!,
+                ciphertext: Data(base64Encoded: json.ciphertext)!
             )
         }
     }
@@ -76,6 +73,7 @@ final class LocalShareRepository: ShareRepository {
                 label: s.label,
                 senderKey: s.senderKey.base64URLEncoded,
                 createdAt: _localISO8601.string(from: s.createdAt),
+                pickedUpAt: _localISO8601.string(from: s.pickedUpAt),
                 ciphertext: s.ciphertext.base64EncodedString()
             )
         }

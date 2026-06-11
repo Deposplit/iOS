@@ -112,6 +112,7 @@ public final class ShareService: ShareManagement {
                         label: meta.label,
                         senderKey: meta.senderKey,
                         createdAt: meta.createdAt,
+                        pickedUpAt: Date(),
                         ciphertext: ct
                     ))
                 }
