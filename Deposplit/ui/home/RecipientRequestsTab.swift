@@ -46,7 +46,7 @@ private struct RequestCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(request.share.label).font(.headline)
+                Text(request.label).font(.headline)
                 Spacer()
                 Text(request.requestType.label)
                     .font(.caption)
@@ -81,6 +81,7 @@ private struct RequestCard: View {
 private extension ShareRequestType {
     var label: LocalizedStringKey {
         switch self {
+        case .pickUp: "Pick Up"
         case .retrieve: "Retrieve"
         case .delete: "Delete"
         }
