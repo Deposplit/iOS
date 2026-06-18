@@ -33,12 +33,14 @@ public final class ShareService: ShareManagement {
     public func deposit(secret: Data, label: String, contacts: [Contact], threshold: Int) async throws {
         let shares = try split(secret: Array(secret), shares: contacts.count, threshold: threshold)
         let secretId = UUID()
+        let createdAt = Date()
         for (contact, share) in zip(contacts, shares) {
             let ciphertext = try encryption.encrypt(Data(share), recipientXPublicKey: contact.xPublicKey)
             let metadata = try await relay.depositShare(
                 secretId: secretId,
                 label: label,
                 recipientKey: contact.edPublicKey,
+                createdAt: createdAt,
                 ciphertext: ciphertext
             )
             try? shareMetadataRepository.save(metadata)

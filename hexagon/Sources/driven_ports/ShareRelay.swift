@@ -1,7 +1,7 @@
 import Foundation
 
 public protocol ShareRelay {
-    func depositShare(secretId: UUID, label: String, recipientKey: Data, ciphertext: Data) async throws -> ShareMetadata
+    func depositShare(secretId: UUID, label: String, recipientKey: Data, createdAt: Date, ciphertext: Data) async throws -> ShareMetadata
     func listShares(role: Role, counterpartyKey: Data?) async throws -> [ShareMetadata]
     func pickUpShare(shareId: UUID) async throws -> Data
     func deleteShare(shareId: UUID) async throws

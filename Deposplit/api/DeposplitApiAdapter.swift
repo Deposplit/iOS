@@ -20,11 +20,12 @@ final class DeposplitApiAdapter: ShareRelay {
 
     // MARK: - ShareRelay
 
-    func depositShare(secretId: UUID, label: String, recipientKey: Data, ciphertext: Data) async throws -> ShareMetadata {
+    func depositShare(secretId: UUID, label: String, recipientKey: Data, createdAt: Date, ciphertext: Data) async throws -> ShareMetadata {
         let body = ShareDepositJSON(
             secretId: secretId.uuidString,
             label: label,
             recipientKey: recipientKey.base64URLEncoded,
+            createdAt: _iso8601.string(from: createdAt),
             ciphertext: ciphertext.base64EncodedString()
         )
         let data = try await execute("POST", path: "/shares", body: body)
@@ -129,6 +130,7 @@ final class DeposplitApiAdapter: ShareRelay {
         let secretId: String
         let label: String
         let recipientKey: String
+        let createdAt: String
         let ciphertext: String
     }
 
