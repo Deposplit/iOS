@@ -40,7 +40,7 @@ final class ShareDetailViewModel {
         defer { isLoading = false }
         do {
             let all = try await shareManagement.listSentRequests()
-            shareRequests = all.filter { $0.share.secretId == share.secretId }
+            shareRequests = all.filter { $0.secretId == share.secretId }
             allContacts = (try? contactManagement.listContacts()) ?? []
             updateReconstructState()
         } catch {
@@ -74,7 +74,7 @@ final class ShareDetailViewModel {
 
     func requestState(for type: ShareRequestType) -> ShareRequestState? {
         shareRequests
-            .filter { $0.share.id == share.id && $0.requestType == type }
+            .filter { $0.shareId == share.id && $0.requestType == type }
             .sorted { $0.requestedAt > $1.requestedAt }
             .first?.state
     }

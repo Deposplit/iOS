@@ -133,12 +133,17 @@ iOS/
 │       │   │                              xPublicKey, xPrivateKey
 │       │   ├── ContactRepository.swift    getAll, getByEdKey, save, delete
 │       │   ├── ShareRepository.swift      getAll, getCiphertext, save, delete
-│       │   └── ShareRelay.swift           depositShare, listShares, pickUpShare, deleteShare,
-│       │                                  share-request CRUD
+│       │   ├── ShareMetadataRepository.swift  getAll, save, delete — local cache of distributed ShareMetadata
+│       │   └── ShareRelay.swift           openShareRequest, listShareRequests, getShareRequest,
+│       │                                  respondToShareRequest, deleteShareRequest, deleteShareRequests
 │       ├── services/
-│       │   ├── IdentityService.swift      Identity impl — CryptoKit only, no Security/UserDefaults
-│       │   ├── ShareService.swift         ShareManagement impl — calls ShareRelay + Identity +
-│       │   │                              ShareRepository + ContactRepository
+│       │   ├── IdentityService.swift      Identity + ShareEncryption impl — CryptoKit only, no Security/UserDefaults
+│       │   ├── ShareEncryption.swift      Intra-hexagon interface: encrypt(plaintext, recipientXPublicKey),
+│       │   │                              decrypt(noncePlusCiphertext, recipientXPublicKey)
+│       │   ├── ShareService.swift         ShareManagement impl — calls ShareRelay + ShareEncryption +
+│       │   │                              ShareRepository + ShareMetadataRepository + ContactRepository;
+│       │   │                              deposit() writes to cache; listDistributed() reads cache;
+│       │   │                              syncInbox() auto-approves pending PickUp requests
 │       │   └── ContactService.swift       ContactManagement impl — validates + delegates to
 │       │                                  ContactRepository; defines ContactError
 │       └── value_objects/
@@ -154,12 +159,12 @@ iOS/
 │   │   └── KeychainIdentityStore.swift  IdentityStore adapter — Security framework + UserDefaults
 │   ├── api/
 │   │   └── DeposplitApiAdapter.swift  HTTP adapter — implements ShareRelay; URLSession + Ed25519 request
-│   │                                  signing + SHA-256 body hash; pickUpShare (GET /shares/:shareId) +
-│   │                                  ciphertext-on-approve (PATCH /share-requests/:id)
+│   │                                  signing + SHA-256 body hash; all /share-requests operations
 │   ├── contacts/
 │   │   └── LocalContactRepository.swift  JSON file in Documents/contacts.json
 │   ├── shares/
-│   │   └── LocalShareRepository.swift  JSON file in Documents/shares.json
+│   │   ├── LocalShareRepository.swift          JSON file in Documents/shares.json
+│   │   └── LocalShareMetadataRepository.swift  JSON file in Documents/distributed_shares.json; local cache of distributed ShareMetadata
 │   └── ui/
 │       ├── SignInViewModel.swift      Registration flow (pseudonym input)
 │       ├── SignInView.swift           Registration screen
@@ -208,7 +213,7 @@ Deposplit follows **Ports & Adapters (Hexagonal Architecture)** for the domain a
 └──────────────────────────────────────────────────────┘
 ```
 
-**Driving ports** (`Identity`, `ShareManagement`, `ContactManagement`) — Swift protocols defined by the domain; implemented by hexagon services. `Identity` currently also includes `sign`, `encrypt`, `decrypt` — these will be split into `RequestSigner` and `ShareEncryption` in a follow-up (see `iOS/CLAUDE.md`).
+**Driving ports** (`Identity`, `ShareManagement`, `ContactManagement`) — Swift protocols defined by the domain; implemented by hexagon services. `Identity` includes `sign`; encryption/decryption is handled by the `ShareEncryption` intra-hexagon interface implemented by `IdentityService`.
 
 **Services** (`IdentityService`, `ShareService`, `ContactService`) — implement the driving ports using CryptoKit (no Security/UserDefaults imports). Delegate infrastructure concerns to driven ports.
 
@@ -325,21 +330,23 @@ You need **three simulator instances** to exercise the full social flow with a 2
 | 7 | Sim-A | Add Bob and Carol as contacts (manual entry or QR) |
 | 8 | Sim-A | **+** (top right) → enter a label (e.g. "test secret") and a secret, toggle Bob and Carol on, threshold = 2 → **Deposit** |
 | 9 | Sim-A | **Distributed** tab → two entries appear (one per share/recipient, same `secretId`) |
-| 10 | Sim-A | Tap the Bob entry → **Open request** (Retrieve) |
-| 11 | Sim-A | Tap the Carol entry → **Open request** (Retrieve) |
-| 12 | Sim-B | **Requests** tab → a Retrieve request from Alice → tap **Approve** |
-| 13 | Sim-C | **Requests** tab → a Retrieve request from Alice → tap **Approve** |
-| 14 | Sim-A | Either Distributed entry → **Reconstruct secret…** button appears (both approved) → secret is displayed |
+| 10 | Sim-B | **Their Secret Shares** tab → Bob's inbox shows Alice's PickUp request → app auto-approves it, stores ciphertext locally, relay clears ciphertext |
+| 11 | Sim-C | **Their Secret Shares** tab → Carol's inbox shows Alice's PickUp request → app auto-approves the same way |
+| 12 | Sim-A | Tap the Bob entry → **Open request** (Retrieve) |
+| 13 | Sim-A | Tap the Carol entry → **Open request** (Retrieve) |
+| 14 | Sim-B | **Requests** tab → a Retrieve request from Alice → tap **Approve** |
+| 15 | Sim-C | **Requests** tab → a Retrieve request from Alice → tap **Approve** |
+| 16 | Sim-A | Either Distributed entry → **Reconstruct secret…** button appears (both approved) → secret is displayed |
 
 The threshold logic (`combine`) is tested in the unit tests; this flow validates the full path including encryption, transport, and decryption.
 
 ### Flow 2 — Deny and re-request
 
-After step 8 above: Bob taps **Deny** → on Alice's side the Retrieve row shows "Denied" and a **Re-open** button → Alice re-opens the request → Bob approves.
+After step 12 above: Bob taps **Deny** → on Alice's side the Retrieve row shows "Denied" and a **Re-open** button → Alice re-opens the request → Bob approves.
 
 ### Flow 3 — Sender-initiated deletion
 
-Alice taps **Open request** (Delete) on one of her Distributed shares → Bob's Requests tab shows a Delete request → Bob approves → verify the share is removed from Bob's Held tab.
+Alice taps **Open request** (Delete) on one of her Distributed shares → Bob's Requests tab shows a Delete request → Bob approves → Bob's PickUp row is deleted (cascade-deleting any related Retrieve/Delete rows) → the share disappears from Bob's Held tab.
 
 ### Flow 4 — Recipient-initiated deletion
 
@@ -367,6 +374,4 @@ Run Alice on an iOS Simulator and Bob on an Android emulator simultaneously. The
 The iOS app is feature-complete for v0.1. Planned improvements:
 
 1. **Biometric unlock** — gate `ShareDetailView.reconstruct()` behind `LAContext.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics)`, mirroring the Android `BiometricPrompt` implementation. See `iOS/CLAUDE.md` for the full implementation guide.
-2. **Identity driving port split** — split `Identity` into `Identity` (UI-only) + `ShareEncryption` (intra-hexagon interface) + `RequestSigner` (driving port). Already applied to Android and the Scala `phon` hexagon; pending for iOS. See `iOS/CLAUDE.md` for step-by-step instructions.
-3. **Offline-capable home tabs** — introduce `ShareMetadataRepository` driven port + `LocalShareMetadataRepository` adapter; add `syncDistributed()` to `ShareManagement`; split `HomeViewModel.load()` into two phases (Phase 1: local-first render, Phase 2: relay sync with soft warning banner on failure). Already implemented on Android and Scala `phon`; full instructions in `iOS/CLAUDE.md`.
-4. **End-to-end test with production** — once `api.deposplit.com` is deployed, run the full flow against the live Web app/service.
+2. **End-to-end test with production** — once `api.deposplit.com` is deployed, run the full flow against the live Web app/service.

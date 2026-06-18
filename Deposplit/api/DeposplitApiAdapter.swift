@@ -20,37 +20,23 @@ final class DeposplitApiAdapter: ShareRelay {
 
     // MARK: - ShareRelay
 
-    func depositShare(secretId: UUID, label: String, recipientKey: Data, createdAt: Date, ciphertext: Data) async throws -> ShareMetadata {
-        let body = ShareDepositJSON(
+    func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, requestType: ShareRequestType, shareId: UUID?, ciphertext: Data?) async throws -> ShareRequest {
+        let body = OpenShareRequestJSON(
             secretId: secretId.uuidString,
-            label: label,
             recipientKey: recipientKey.base64URLEncoded,
-            createdAt: _iso8601.string(from: createdAt),
-            ciphertext: ciphertext.base64EncodedString()
+            label: label,
+            secretCreatedAt: _iso8601.string(from: secretCreatedAt),
+            requestType: requestType.rawValue,
+            shareId: shareId?.uuidString,
+            ciphertext: ciphertext?.base64EncodedString()
         )
-        let data = try await execute("POST", path: "/shares", body: body)
-        return try JSONDecoder().decode(ShareMetadataJSON.self, from: data).toDomain()
-    }
-
-    func listShares(role: Role, counterpartyKey: Data?) async throws -> [ShareMetadata] {
-        var query = "?role=\(role.rawValue)"
-        if let key = counterpartyKey { query += "&counterpartyKey=\(key.base64URLEncoded)" }
-        let data = try await execute("GET", path: "/shares\(query)")
-        return try JSONDecoder().decode([ShareMetadataJSON].self, from: data).map { $0.toDomain() }
-    }
-
-    func deleteShare(shareId: UUID) async throws {
-        _ = try await execute("DELETE", path: "/shares/\(shareId)")
-    }
-
-    func openShareRequest(shareId: UUID, type: ShareRequestType) async throws -> ShareRequest {
-        let body = OpenShareRequestJSON(shareId: shareId.uuidString, requestType: type.rawValue)
         let data = try await execute("POST", path: "/share-requests", body: body)
         return try JSONDecoder().decode(ShareRequestJSON.self, from: data).toDomain()
     }
 
-    func listShareRequests(role: Role, state: ShareRequestState?) async throws -> [ShareRequest] {
+    func listShareRequests(role: Role, requestType: ShareRequestType?, state: ShareRequestState?) async throws -> [ShareRequest] {
         var query = "?role=\(role.rawValue)"
+        if let t = requestType { query += "&type=\(t.rawValue)" }
         if let s = state { query += "&state=\(s.rawValue)" }
         let data = try await execute("GET", path: "/share-requests\(query)")
         return try JSONDecoder().decode([ShareRequestJSON].self, from: data).map { $0.toDomain() }
@@ -61,12 +47,6 @@ final class DeposplitApiAdapter: ShareRelay {
         return try JSONDecoder().decode(ShareRequestJSON.self, from: data).toDomain()
     }
 
-    func pickUpShare(shareId: UUID) async throws -> Data {
-        let data = try await execute("GET", path: "/shares/\(shareId)")
-        let json = try JSONDecoder().decode(PickUpShareResponseJSON.self, from: data)
-        return Data(base64Encoded: json.ciphertext) ?? Data()
-    }
-
     func respondToShareRequest(requestId: UUID, approved: Bool, ciphertext: Data?) async throws -> ShareRequest {
         let body = RespondJSON(
             state: approved ? "approved" : "denied",
@@ -74,6 +54,19 @@ final class DeposplitApiAdapter: ShareRelay {
         )
         let data = try await execute("PATCH", path: "/share-requests/\(requestId)", body: body)
         return try JSONDecoder().decode(ShareRequestJSON.self, from: data).toDomain()
+    }
+
+    func deleteShareRequest(requestId: UUID) async throws {
+        _ = try await execute("DELETE", path: "/share-requests/\(requestId)")
+    }
+
+    func deleteShareRequests(senderKey: Data?, secretId: UUID?) async throws {
+        var query = ""
+        var parts: [String] = []
+        if let key = senderKey { parts.append("senderKey=\(key.base64URLEncoded)") }
+        if let id = secretId { parts.append("secretId=\(id)") }
+        if !parts.isEmpty { query = "?" + parts.joined(separator: "&") }
+        _ = try await execute("DELETE", path: "/share-requests\(query)")
     }
 
     // MARK: - HTTP
@@ -126,41 +119,14 @@ final class DeposplitApiAdapter: ShareRelay {
 
     // MARK: - JSON wire types
 
-    private struct ShareDepositJSON: Encodable {
-        let secretId: String
-        let label: String
-        let recipientKey: String
-        let createdAt: String
-        let ciphertext: String
-    }
-
-    private struct ShareMetadataJSON: Decodable {
-        let id: String
-        let secretId: String
-        let label: String
-        let senderKey: String
-        let recipientKey: String
-        let createdAt: String
-
-        func toDomain() -> ShareMetadata {
-            ShareMetadata(
-                id: UUID(uuidString: id) ?? UUID(),
-                secretId: UUID(uuidString: secretId) ?? UUID(),
-                label: label,
-                senderKey: Data(base64URLEncoded: senderKey) ?? Data(),
-                recipientKey: Data(base64URLEncoded: recipientKey) ?? Data(),
-                createdAt: parseISO8601(createdAt)
-            )
-        }
-    }
-
     private struct OpenShareRequestJSON: Encodable {
-        let shareId: String
+        let secretId: String
+        let recipientKey: String
+        let label: String
+        let secretCreatedAt: String
         let requestType: String
-    }
-
-    private struct PickUpShareResponseJSON: Decodable {
-        let ciphertext: String
+        let shareId: String?
+        let ciphertext: String?
     }
 
     private struct RespondJSON: Encodable {
@@ -170,9 +136,14 @@ final class DeposplitApiAdapter: ShareRelay {
 
     private struct ShareRequestJSON: Decodable {
         let id: String
-        let share: ShareMetadataJSON
+        let secretId: String
+        let senderKey: String
+        let recipientKey: String
+        let label: String
+        let secretCreatedAt: String
         let requestType: String
         let state: String
+        let shareId: String?
         let requestedAt: String
         let respondedAt: String?
         let ciphertext: String?
@@ -180,9 +151,14 @@ final class DeposplitApiAdapter: ShareRelay {
         func toDomain() -> ShareRequest {
             ShareRequest(
                 id: UUID(uuidString: id) ?? UUID(),
-                share: share.toDomain(),
+                secretId: UUID(uuidString: secretId) ?? UUID(),
+                senderKey: Data(base64URLEncoded: senderKey) ?? Data(),
+                recipientKey: Data(base64URLEncoded: recipientKey) ?? Data(),
+                label: label,
+                secretCreatedAt: parseISO8601(secretCreatedAt),
                 requestType: ShareRequestType(rawValue: requestType) ?? .retrieve,
                 state: ShareRequestState(rawValue: state) ?? .pending,
+                shareId: shareId.flatMap { UUID(uuidString: $0) },
                 requestedAt: parseISO8601(requestedAt),
                 respondedAt: respondedAt.map { parseISO8601($0) },
                 ciphertext: ciphertext.flatMap { Data(base64Encoded: $0) }

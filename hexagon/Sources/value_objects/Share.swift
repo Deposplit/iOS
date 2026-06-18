@@ -5,7 +5,7 @@ public enum Role: String {
 }
 
 public enum ShareRequestType: String {
-    case retrieve, delete
+    case pickUp = "pick_up", retrieve, delete
 }
 
 public enum ShareRequestState: String {
@@ -14,41 +14,50 @@ public enum ShareRequestState: String {
 
 public struct ShareMetadata: Identifiable, Equatable, Hashable {
     public func hash(into hasher: inout Hasher) { hasher.combine(id) }
-    public let id: UUID
+    public let id: UUID           // PickUp request ID
     public let secretId: UUID
     public let label: String
-    public let senderKey: Data
     public let recipientKey: Data
-    public let createdAt: Date
+    public let secretCreatedAt: Date
 
-    public init(id: UUID, secretId: UUID, label: String, senderKey: Data, recipientKey: Data, createdAt: Date) {
+    public init(id: UUID, secretId: UUID, label: String, recipientKey: Data, secretCreatedAt: Date) {
         self.id = id
         self.secretId = secretId
         self.label = label
-        self.senderKey = senderKey
         self.recipientKey = recipientKey
-        self.createdAt = createdAt
+        self.secretCreatedAt = secretCreatedAt
     }
 }
 
 public struct ShareRequest: Identifiable, Equatable {
     public let id: UUID
-    public let share: ShareMetadata
+    public let secretId: UUID
+    public let senderKey: Data
+    public let recipientKey: Data
+    public let label: String
+    public let secretCreatedAt: Date
     public let requestType: ShareRequestType
     public let state: ShareRequestState
+    public let shareId: UUID?
     public let requestedAt: Date
     public let respondedAt: Date?
     public let ciphertext: Data?
 
     public init(
-        id: UUID, share: ShareMetadata,
+        id: UUID, secretId: UUID, senderKey: Data, recipientKey: Data,
+        label: String, secretCreatedAt: Date,
         requestType: ShareRequestType, state: ShareRequestState,
-        requestedAt: Date, respondedAt: Date?, ciphertext: Data?
+        shareId: UUID?, requestedAt: Date, respondedAt: Date?, ciphertext: Data?
     ) {
         self.id = id
-        self.share = share
+        self.secretId = secretId
+        self.senderKey = senderKey
+        self.recipientKey = recipientKey
+        self.label = label
+        self.secretCreatedAt = secretCreatedAt
         self.requestType = requestType
         self.state = state
+        self.shareId = shareId
         self.requestedAt = requestedAt
         self.respondedAt = respondedAt
         self.ciphertext = ciphertext

@@ -42,7 +42,7 @@ final class RequestsViewModel {
     }
 
     func senderName(for request: ShareRequest) -> String {
-        allContacts.first(where: { $0.edPublicKey == request.share.senderKey })?.pseudonym
-            ?? request.share.senderKey.base64URLEncoded.prefix(8) + "…"
+        allContacts.first(where: { $0.edPublicKey == request.senderKey })?.pseudonym
+            ?? request.senderKey.base64URLEncoded.prefix(8) + "…"
     }
 }

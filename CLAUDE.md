@@ -27,7 +27,7 @@ iOS/
 │       │   ├── ContactRepository.swift    getAll, getByEdKey, save, delete
 │       │   ├── ShareRepository.swift      getAll, getCiphertext, save, delete
 │       │   ├── ShareMetadataRepository.swift  getAll, save, delete — local cache of distributed ShareMetadata
-│       │   └── ShareRelay.swift           depositShare, listShares, pickUpShare, deleteShare, share-request CRUD
+│       │   └── ShareRelay.swift           openShareRequest, listShareRequests, getShareRequest, respondToShareRequest, deleteShareRequest, deleteShareRequests
 │       ├── services/
 │       │   ├── IdentityService.swift      Identity + ShareEncryption impl — CryptoKit only, no Security/UserDefaults
 │       │   ├── ShareEncryption.swift      intra-hexagon interface: encrypt, decrypt — implemented by IdentityService, used by ShareService
@@ -46,8 +46,7 @@ iOS/
 │   ├── auth/
 │   │   └── KeychainIdentityStore.swift  IdentityStore adapter — Security framework + UserDefaults
 │   ├── api/
-│   │   └── DeposplitApiAdapter.swift  HTTP adapter — implements ShareRelay; URLSession + Ed25519 request signing (via Identity) + SHA-256 body hash
-│   │                                  pickUpShare (GET /shares/:shareId) + ciphertext-on-approve (PATCH /share-requests/:id)
+│   │   └── DeposplitApiAdapter.swift  HTTP adapter — implements ShareRelay; URLSession + Ed25519 request signing (via Identity) + SHA-256 body hash; all /share-requests operations
 │   ├── contacts/
 │   │   └── LocalContactRepository.swift  JSON file in Documents/contacts.json
 │   ├── shares/

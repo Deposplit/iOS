@@ -39,9 +39,8 @@ final class LocalShareMetadataRepository: ShareMetadataRepository {
         let id: String
         let secretId: String
         let label: String
-        let senderKey: String     // base64url
         let recipientKey: String  // base64url
-        let createdAt: String
+        let secretCreatedAt: String
     }
 
     private func load() throws -> [ShareMetadata] {
@@ -50,16 +49,14 @@ final class LocalShareMetadataRepository: ShareMetadataRepository {
         return items.compactMap { json in
             guard let id = UUID(uuidString: json.id),
                   let secretId = UUID(uuidString: json.secretId),
-                  let senderKey = Data(base64URLEncoded: json.senderKey),
                   let recipientKey = Data(base64URLEncoded: json.recipientKey),
-                  let createdAt = _smrISO8601.date(from: json.createdAt) else { return nil }
+                  let secretCreatedAt = _smrISO8601.date(from: json.secretCreatedAt) else { return nil }
             return ShareMetadata(
                 id: id,
                 secretId: secretId,
                 label: json.label,
-                senderKey: senderKey,
                 recipientKey: recipientKey,
-                createdAt: createdAt
+                secretCreatedAt: secretCreatedAt
             )
         }
     }
@@ -70,9 +67,8 @@ final class LocalShareMetadataRepository: ShareMetadataRepository {
                 id: s.id.uuidString,
                 secretId: s.secretId.uuidString,
                 label: s.label,
-                senderKey: s.senderKey.base64URLEncoded,
                 recipientKey: s.recipientKey.base64URLEncoded,
-                createdAt: _smrISO8601.string(from: s.createdAt)
+                secretCreatedAt: _smrISO8601.string(from: s.secretCreatedAt)
             )
         }
         let data = try JSONEncoder().encode(items)

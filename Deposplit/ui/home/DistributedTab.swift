@@ -28,7 +28,7 @@ struct DistributedTab: View {
                             Text(recipientName(for: share))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            Text(share.createdAt.formatted(date: .abbreviated, time: .omitted))
+                            Text(share.secretCreatedAt.formatted(date: .abbreviated, time: .omitted))
                                 .font(.caption2)
                                 .foregroundStyle(.tertiary)
                         }
