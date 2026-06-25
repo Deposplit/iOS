@@ -14,13 +14,13 @@ struct SignInView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Your name", text: $viewModel.pseudonym)
+                    TextField("Your pseudonym", text: $viewModel.pseudonym)
                         .textContentType(.name)
                         .autocorrectionDisabled()
                 } header: {
-                    Text("Choose a name")
+                    Text("Choose a pseudonym")
                 } footer: {
-                    Text("This name is stored only on your device and shared with contacts when they scan your QR code.")
+                    Text("This pseudonym is stored on your device and shared with contacts when they scan your QR code.")
                 }
 
                 if let error = viewModel.error {

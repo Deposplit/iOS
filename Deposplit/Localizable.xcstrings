@@ -81,12 +81,12 @@
         }
       }
     },
-    "Choose a name" : {
+    "Choose a pseudonym" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Name wählen"
+            "value" : "Ein Pseudonym wählen"
           }
         }
       }
@@ -622,12 +622,12 @@
         }
       }
     },
-    "This name is stored only on your device and shared with contacts when they scan your QR code." : {
+    "This pseudonym is stored on your device and shared with contacts when they scan your QR code." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieser Name wird nur auf deinem Gerät gespeichert und mit Kontakten geteilt, wenn sie deinen QR-Code scannen."
+            "value" : "Dieses Pseudonym wird auf deinem Gerät gespeichert und mit Kontakten geteilt, wenn sie deinen QR-Code scannen."
           }
         }
       }
@@ -662,12 +662,12 @@
         }
       }
     },
-    "Your name" : {
+    "Your pseudonym" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dein Name"
+            "value" : "Dein Pseudonym"
           }
         }
       }
