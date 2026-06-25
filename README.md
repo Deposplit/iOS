@@ -133,7 +133,7 @@ iOS/
 │       │   │                              xPublicKey, xPrivateKey
 │       │   ├── ContactRepository.swift    getAll, getByEdKey, save, delete
 │       │   ├── ShareRepository.swift      getAll, getCiphertext, save, delete
-│       │   ├── ShareMetadataRepository.swift  getAll, save, delete — local cache of distributed ShareMetadata
+│       │   ├── ShareMetadataRepository.swift  getAll, save, delete — local store of distributed ShareMetadata
 │       │   └── ShareRelay.swift           openShareRequest, listShareRequests, getShareRequest,
 │       │                                  respondToShareRequest, deleteShareRequest, deleteShareRequests
 │       ├── services/
@@ -142,7 +142,7 @@ iOS/
 │       │   │                              decrypt(noncePlusCiphertext, recipientXPublicKey)
 │       │   ├── ShareService.swift         ShareManagement impl — calls ShareRelay + ShareEncryption +
 │       │   │                              ShareRepository + ShareMetadataRepository + ContactRepository;
-│       │   │                              deposit() writes to cache; listDistributed() reads cache;
+│       │   │                              deposit() writes to local store; listDistributed() reads from local store;
 │       │   │                              syncInbox() auto-approves pending PickUp requests
 │       │   └── ContactService.swift       ContactManagement impl — validates + delegates to
 │       │                                  ContactRepository; defines ContactError
@@ -164,7 +164,7 @@ iOS/
 │   │   └── LocalContactRepository.swift  JSON file in Documents/contacts.json
 │   ├── shares/
 │   │   ├── LocalShareRepository.swift          JSON file in Documents/shares.json
-│   │   └── LocalShareMetadataRepository.swift  JSON file in Documents/distributed_shares.json; local cache of distributed ShareMetadata
+│   │   └── LocalShareMetadataRepository.swift  JSON file in Documents/distributed_shares.json; local store of distributed ShareMetadata
 │   └── ui/
 │       ├── SignInViewModel.swift      Registration flow (pseudonym input)
 │       ├── SignInView.swift           Registration screen

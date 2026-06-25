@@ -28,33 +28,31 @@ struct HomeView: View {
 
     var body: some View {
         NavigationStack {
-            TabView(selection: $selectedTab) {
-                Tab("Distributed", systemImage: "arrow.up.circle", value: 0) {
-                    distributedContent
-                }
-                Tab("Held", systemImage: "tray.fill", value: 1) {
-                    heldContent
-                }
-                Tab("Requests", systemImage: "bell", value: 2) {
-                    RecipientRequestsTab(viewModel: requestsViewModel)
-                }
-            }
-            .safeAreaInset(edge: .top, spacing: 0) {
+            VStack(spacing: 0) {
                 if homeViewModel.syncWarning {
-                    VStack(spacing: 0) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "exclamationmark.triangle")
-                                .imageScale(.small)
-                            Text("Relay not reachable")
-                                .font(.caption)
-                            Spacer()
-                        }
-                        .foregroundStyle(.red)
-                        .padding(.horizontal)
-                        .padding(.vertical, 6)
-                        Divider()
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .imageScale(.small)
+                        Text("Relay not reachable")
+                            .font(.caption)
+                        Spacer()
                     }
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+                    .padding(.vertical, 6)
                     .background(.bar)
+                    Divider()
+                }
+                TabView(selection: $selectedTab) {
+                    Tab("Distributed", systemImage: "arrow.up.circle", value: 0) {
+                        distributedContent
+                    }
+                    Tab("Held", systemImage: "tray.fill", value: 1) {
+                        heldContent
+                    }
+                    Tab("Requests", systemImage: "bell", value: 2) {
+                        RecipientRequestsTab(viewModel: requestsViewModel)
+                    }
                 }
             }
             .navigationTitle(tabTitle)

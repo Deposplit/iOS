@@ -20,19 +20,19 @@ iOS/
 │       │   └── ShamirSecretSharing.swift  SSS split/combine over GF(2⁸); ShamirError
 │       ├── driving_ports/
 │       │   ├── Identity.swift             isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign
-│       │   ├── ShareManagement.swift      use-case interface: deposit, listDistributed (sync, local cache), syncDistributed, reconstruct, syncInbox, listHeld (sync, local cache), respond, …
+│       │   ├── ShareManagement.swift      use-case interface: deposit, listDistributed (reads local store), syncDistributed, reconstruct, syncInbox, listHeld (reads local store), respond, …
 │       │   └── ContactManagement.swift    listContacts, addManually, addFromQr, deleteContact
 │       ├── driven_ports/
 │       │   ├── IdentityStore.swift        isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
 │       │   ├── ContactRepository.swift    getAll, getByEdKey, save, delete
 │       │   ├── ShareRepository.swift      getAll, getCiphertext, save, delete
-│       │   ├── ShareMetadataRepository.swift  getAll, save, delete — local cache of distributed ShareMetadata
+│       │   ├── ShareMetadataRepository.swift  getAll, save, delete — local store of distributed ShareMetadata
 │       │   └── ShareRelay.swift           openShareRequest, listShareRequests, getShareRequest, respondToShareRequest, deleteShareRequest, deleteShareRequests
 │       ├── services/
 │       │   ├── IdentityService.swift      Identity + ShareEncryption impl — CryptoKit only, no Security/UserDefaults
 │       │   ├── ShareEncryption.swift      intra-hexagon interface: encrypt, decrypt — implemented by IdentityService, used by ShareService
 │       │   ├── ShareService.swift         ShareManagement impl — calls ShareRelay + ShareEncryption + ShareRepository + ShareMetadataRepository + ContactRepository;
-│       │   │                              deposit() writes to local cache; listDistributed() reads cache; syncDistributed() refreshes from relay (never deletes);
+│       │   │                              deposit() writes to local store; listDistributed() reads from local store; syncDistributed() syncs field updates from relay (never deletes);
 │       │   │                              reconstruct() removes entries after successful reconstruction
 │       │   └── ContactService.swift       ContactManagement impl — validates + delegates to ContactRepository; defines ContactError
 │       └── value_objects/
@@ -51,13 +51,13 @@ iOS/
 │   │   └── LocalContactRepository.swift  JSON file in Documents/contacts.json
 │   ├── shares/
 │   │   ├── LocalShareRepository.swift          JSON file in Documents/shares.json; ciphertext standard base64, senderKey base64url
-│   │   └── LocalShareMetadataRepository.swift  JSON file in Documents/distributed_shares.json; base64url keys, ISO-8601 timestamps
+│   │   └── LocalShareMetadataRepository.swift  JSON file in Documents/distributed_shares.json; local store of distributed ShareMetadata; base64url keys, ISO-8601 timestamps
 │   └── ui/
 │       ├── SignInViewModel.swift      Registration flow (pseudonym input)
 │       ├── SignInView.swift           Registration flow (pseudonym input)
 │       ├── HomeView.swift            NavigationStack + TabView (Distributed/Held/Requests)
 │       ├── home/
-│       │   ├── HomeViewModel.swift   two-phase load: Phase 1 reads local cache (always succeeds); Phase 2 syncs relay (sets syncWarning on failure)
+│       │   ├── HomeViewModel.swift   two-phase load: Phase 1 reads from device storage (always succeeds); Phase 2 syncs relay (sets syncWarning on failure)
 │       │   ├── RequestsViewModel.swift  listPendingRequests + respond via ShareManagement; contact lookup via ContactManagement
 │       │   ├── DistributedTab.swift  Tappable share rows → ShareDetailView; takes [Contact] for name resolution; shows syncWarning banner
 │       │   ├── HeldTab.swift         Read-only list of held shares; takes [Contact] for name resolution; shows syncWarning banner
@@ -430,13 +430,13 @@ let shareManagement: any ShareManagement = ShareService(
 
 ### Background
 
-The Android (`:hexagon` + `:app`) and Scala (`deposplit.com/hexagons/phon`) hexagons were updated to cache distributed `ShareMetadata` locally so the "My Shared Secrets" tab renders from device storage when the relay is unreachable. The reference implementations are `ShareService.kt`, `HomeViewModel.kt`, and `LocalShareMetadataRepository.kt` in `Android/`. Apply the same pattern here.
+The Android (`:hexagon` + `:app`) and Scala (`deposplit.com/hexagons/phon`) hexagons were updated to persist distributed `ShareMetadata` on-device so the "My Shared Secrets" tab renders from device storage when the relay is unreachable. The reference implementations are `ShareService.kt`, `HomeViewModel.kt`, and `LocalShareMetadataRepository.kt` in `Android/`. Apply the same pattern here.
 
-The architectural rationale: `ShareManagement.listDistributed()` previously called `relay.listShares(.sender)` directly, making the relay the source of truth. But the relay is designed to be a loseable mailbox. At `deposit()` time the sender already has all the `ShareMetadata` on-device — it should be persisted locally then, and the relay should only refresh field updates (e.g. `pickedUpAt`) when online.
+The architectural rationale: `ShareManagement.listDistributed()` previously called `relay.listShares(.sender)` directly, making the relay the source of truth. But the relay is designed to be a loseable mailbox. At `deposit()` time the sender already has all the `ShareMetadata` on-device — it should be persisted locally then, and the relay should only sync field updates (e.g. `pickedUpAt`) when online.
 
 ### Step 1 — Create `hexagon/Sources/driven_ports/ShareMetadataRepository.swift`
 
-New driven port for the local distributed-share cache:
+New driven port for the local distributed-share store:
 
 ```swift
 public protocol ShareMetadataRepository {
@@ -459,8 +459,8 @@ func syncDistributed() throws
 Add `shareMetadataRepository: any ShareMetadataRepository` constructor parameter. Apply the same four changes as in `ShareService.kt`:
 
 - `deposit(secret:label:contacts:threshold:)`: after each `relay.depositShare(...)`, call `try? shareMetadataRepository.save(metadata)`
-- `syncDistributed()`: `try relay.listShares(.sender).forEach { try shareMetadataRepository.save($0) }` — only updates/inserts, **never deletes**; the relay can refresh field values (e.g. `pickedUpAt`) but cannot remove entries (that would re-establish the relay as source of truth for existence)
-- `listDistributed()`: return `try shareMetadataRepository.getAll()` — local cache only; never calls the relay
+- `syncDistributed()`: `try relay.listShares(.sender).forEach { try shareMetadataRepository.save($0) }` — only updates/inserts, **never deletes**; the relay can update field values (e.g. `pickedUpAt`) but cannot remove entries (that would re-establish the relay as source of truth for existence)
+- `listDistributed()`: return `try shareMetadataRepository.getAll()` — local store only; never calls the relay
 - `reconstruct(secretId:)`: after each `try? relay.deleteShare(req.share.id)`, also call `try? shareMetadataRepository.delete(shareId: req.share.id)`
 
 ### Step 4 — Create `Deposplit/shares/LocalShareMetadataRepository.swift`
@@ -489,8 +489,8 @@ Split `load()` into two phases (mirrors `HomeViewModel.kt`):
 **Phase 1** (local only, always succeeds — renders immediately even when offline):
 ```swift
 let contacts = try contactManagement.listContacts()
-let distributed = try shareManagement.listDistributed()  // local cache
-let held = try shareManagement.listHeld()                 // local cache
+let distributed = try shareManagement.listDistributed()  // local store
+let held = try shareManagement.listHeld()                 // local store
 // build groupedSecrets with allRequests = [] (no request state yet) and heldShares
 // update @Observable state immediately
 ```
@@ -517,7 +517,7 @@ In `DistributedTab.swift` and `HeldTab.swift` (not `RecipientRequestsTab.swift`,
 
 ```swift
 if homeViewModel.syncWarning {
-    Label("Couldn't sync — showing cached data", systemImage: "exclamationmark.triangle")
+    Label("Relay not reachable", systemImage: "exclamationmark.triangle")
         .font(.caption)
         .foregroundStyle(.secondary)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -527,7 +527,7 @@ if homeViewModel.syncWarning {
 
 ### Step 8 — Update `iOS/CLAUDE.md` project structure table
 
-- `driven_ports/ShareMetadataRepository.swift` (add — local cache of distributed `ShareMetadata`)
+- `driven_ports/ShareMetadataRepository.swift` (add — local store of distributed `ShareMetadata`)
 - `services/ShareService.swift` description: add `ShareMetadataRepository` dependency
 - `shares/LocalShareMetadataRepository.swift` (add — `Documents/distributed_shares.json`)
 - `home/HomeViewModel.swift` description: note two-phase load + `syncWarning`
