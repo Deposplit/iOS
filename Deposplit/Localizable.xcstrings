@@ -122,9 +122,6 @@
         }
       }
     },
-    "Couldn't sync — showing cached data" : {
-
-    },
     "Delete" : {
       "localizations" : {
         "de" : {
@@ -549,6 +546,16 @@
         }
       }
     },
+    "Relay not reachable" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relay nicht erreichbar"
+          }
+        }
+      }
+    },
     "Requests" : {
       "localizations" : {
         "de" : {
@@ -570,7 +577,14 @@
       }
     },
     "Retry" : {
-
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erneut versuchen"
+          }
+        }
+      }
     },
     "Save" : {
       "localizations" : {

@@ -39,6 +39,24 @@ struct HomeView: View {
                     RecipientRequestsTab(viewModel: requestsViewModel)
                 }
             }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if homeViewModel.syncWarning {
+                    VStack(spacing: 0) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle")
+                                .imageScale(.small)
+                            Text("Relay not reachable")
+                                .font(.caption)
+                            Spacer()
+                        }
+                        .foregroundStyle(.red)
+                        .padding(.horizontal)
+                        .padding(.vertical, 6)
+                        Divider()
+                    }
+                    .background(.bar)
+                }
+            }
             .navigationTitle(tabTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -70,6 +88,7 @@ struct HomeView: View {
                         } label: {
                             Image(systemName: "arrow.clockwise")
                         }
+                        .tint(homeViewModel.syncWarning ? .red : .accentColor)
                     }
                 }
             }
@@ -122,7 +141,6 @@ struct HomeView: View {
                 DistributedTab(
                     shares: homeViewModel.distributedShares,
                     contacts: allContacts,
-                    syncWarning: homeViewModel.syncWarning,
                     onTap: { selectedShare = $0 }
                 )
             }
@@ -137,7 +155,7 @@ struct HomeView: View {
                 ContentUnavailableView("Error", systemImage: "exclamationmark.triangle",
                                        description: Text(error))
             } else {
-                HeldTab(shares: homeViewModel.heldShares, contacts: allContacts, syncWarning: homeViewModel.syncWarning)
+                HeldTab(shares: homeViewModel.heldShares, contacts: allContacts)
             }
         }
     }

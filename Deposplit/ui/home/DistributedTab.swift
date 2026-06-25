@@ -4,20 +4,10 @@ import SwiftUI
 struct DistributedTab: View {
     let shares: [ShareMetadata]
     let contacts: [Contact]
-    let syncWarning: Bool
     let onTap: (ShareMetadata) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
-            if syncWarning {
-                Label("Couldn't sync — showing cached data", systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                    .padding(.vertical, 6)
-                Divider()
-            }
             if shares.isEmpty {
                 ContentUnavailableView("No distributed shares", systemImage: "lock.open")
             } else {

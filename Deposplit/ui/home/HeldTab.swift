@@ -4,19 +4,9 @@ import SwiftUI
 struct HeldTab: View {
     let shares: [HeldShare]
     let contacts: [Contact]
-    let syncWarning: Bool
 
     var body: some View {
         VStack(spacing: 0) {
-            if syncWarning {
-                Label("Couldn't sync — showing cached data", systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                    .padding(.vertical, 6)
-                Divider()
-            }
             if shares.isEmpty {
                 ContentUnavailableView("No held shares", systemImage: "tray")
             } else {
