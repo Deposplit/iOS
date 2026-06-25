@@ -5,10 +5,27 @@ struct RecipientRequestsTab: View {
     @Bindable var viewModel: RequestsViewModel
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            if let error = viewModel.error {
+                HStack(spacing: 4) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .imageScale(.small)
+                    Text(error)
+                        .font(.caption)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Button("Retry") { Task { await viewModel.load() } }
+                        .font(.caption)
+                }
+                .foregroundStyle(.red)
+                .padding(.horizontal)
+                .padding(.vertical, 6)
+                Divider()
+            }
             if viewModel.isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if viewModel.error != nil && viewModel.pendingRequests.isEmpty {
+                Spacer()
             } else if viewModel.pendingRequests.isEmpty {
                 ContentUnavailableView("No pending requests", systemImage: "checkmark.circle")
             } else {
@@ -21,16 +38,6 @@ struct RecipientRequestsTab: View {
                         onDeny: { Task { await viewModel.respond(to: request, approve: false) } }
                     )
                 }
-            }
-        }
-        .overlay(alignment: .bottom) {
-            if let error = viewModel.error {
-                Text(error)
-                    .font(.caption)
-                    .foregroundStyle(.white)
-                    .padding(8)
-                    .background(.red, in: RoundedRectangle(cornerRadius: 8))
-                    .padding()
             }
         }
     }
