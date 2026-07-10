@@ -20,7 +20,7 @@ final class DeposplitApiAdapter: ShareRelay {
 
     // MARK: - ShareRelay
 
-    func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, requestType: ShareRequestType, shareId: UUID?, ciphertext: Data?) async throws -> ShareRequest {
+    func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, requestType: ShareRequestType, shareId: UUID?, ciphertext: Data?, senderSignature: Data) async throws -> ShareRequest {
         let body = OpenShareRequestJSON(
             secretId: secretId.uuidString,
             recipientKey: recipientKey.base64URLEncoded,
@@ -28,7 +28,8 @@ final class DeposplitApiAdapter: ShareRelay {
             secretCreatedAt: _iso8601.string(from: secretCreatedAt),
             requestType: requestType.rawValue,
             shareId: shareId?.uuidString,
-            ciphertext: ciphertext?.base64EncodedString()
+            ciphertext: ciphertext?.base64EncodedString(),
+            senderSignature: senderSignature.base64URLEncoded
         )
         let data = try await execute("POST", path: "/share-requests", body: body)
         return try JSONDecoder().decode(ShareRequestJSON.self, from: data).toDomain()
@@ -47,10 +48,11 @@ final class DeposplitApiAdapter: ShareRelay {
         return try JSONDecoder().decode(ShareRequestJSON.self, from: data).toDomain()
     }
 
-    func respondToShareRequest(requestId: UUID, approved: Bool, ciphertext: Data?) async throws -> ShareRequest {
+    func respondToShareRequest(requestId: UUID, approved: Bool, ciphertext: Data?, recipientSignature: Data) async throws -> ShareRequest {
         let body = RespondJSON(
             state: approved ? "approved" : "denied",
-            ciphertext: ciphertext?.base64EncodedString()
+            ciphertext: ciphertext?.base64EncodedString(),
+            recipientSignature: recipientSignature.base64URLEncoded
         )
         let data = try await execute("PATCH", path: "/share-requests/\(requestId)", body: body)
         return try JSONDecoder().decode(ShareRequestJSON.self, from: data).toDomain()
@@ -127,11 +129,13 @@ final class DeposplitApiAdapter: ShareRelay {
         let requestType: String
         let shareId: String?
         let ciphertext: String?
+        let senderSignature: String
     }
 
     private struct RespondJSON: Encodable {
         let state: String
         let ciphertext: String?
+        let recipientSignature: String
     }
 
     private struct ShareRequestJSON: Decodable {
@@ -147,6 +151,8 @@ final class DeposplitApiAdapter: ShareRelay {
         let requestedAt: String
         let respondedAt: String?
         let ciphertext: String?
+        let senderSignature: String
+        let recipientSignature: String?
 
         func toDomain() -> ShareRequest {
             ShareRequest(
@@ -161,7 +167,9 @@ final class DeposplitApiAdapter: ShareRelay {
                 shareId: shareId.flatMap { UUID(uuidString: $0) },
                 requestedAt: parseISO8601(requestedAt),
                 respondedAt: respondedAt.map { parseISO8601($0) },
-                ciphertext: ciphertext.flatMap { Data(base64Encoded: $0) }
+                ciphertext: ciphertext.flatMap { Data(base64Encoded: $0) },
+                senderSignature: Data(base64URLEncoded: senderSignature) ?? Data(),
+                recipientSignature: recipientSignature.flatMap { Data(base64URLEncoded: $0) }
             )
         }
     }

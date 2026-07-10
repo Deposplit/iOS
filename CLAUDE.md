@@ -2,6 +2,30 @@
 
 Platform-specific guidance for the `iOS/` repository. Cross-project context lives in `deposplit.com/CLAUDE.md` (loaded automatically when launching Claude from the workspace root via the `@`-import in `Deposplit/CLAUDE.md`).
 
+## TODO for Claude on macOS: verify the BYOR / payload-signature changes
+
+The recipient-side Ed25519 signature verification and BYOR (per deposplit.com/CLAUDE.md's "BYOR" section) work was implemented on Windows, where no Swift toolchain is actually installed on this machine (contrary to an earlier assumption) — so **none of it has been compiled or test-run**. Everything below was written carefully mirroring the already-verified Android/Kotlin and Scala implementations, but needs a real `swift build`/`swift test` pass:
+
+```bash
+# from iOS/hexagon/
+swift build
+swift test                                    # all tests
+swift test --filter ShareServiceTests         # signature-verification + BYOR fan-out gating
+swift test --filter PayloadCanonicalVectorTests  # cross-platform interop vector — must match the
+                                                   # already-passing Scala/Kotlin fixtures byte-for-byte
+swift test --filter IdentityServiceVerifyTests
+```
+
+Also worth an `xcodebuild build`/`xcodebuild test` pass on the `Deposplit.xcodeproj` app target (not just the `hexagon` package) since the UI-layer wiring (`DeposplitApp.swift`, `HomeView.swift`, `QrDisplayView(Model)`, `QrScanView`, `AddContactView(Model)`, new `ui/settings/`) hasn't been compiler-checked either.
+
+Files most likely to have a small mistake, in rough order of risk:
+- `hexagon/Sources/value_objects/PayloadCanonical.swift` — the cross-platform vector test will catch a wrong byte construction immediately if this is off.
+- `hexagon/Sources/driving_adapters/ShareService.swift` — the fan-out/relay-resolution rewrite (`allRelays()`, `findShareRequest`, the `(relay:, request:)` tuple plumbing in `reconstruct`).
+- `hexagon/Tests/ShareServiceTests.swift` / `PayloadCanonicalVectorTests.swift` — new test files, never compiled.
+- `Deposplit/api/DeposplitRelayResolver.swift`, `Deposplit/settings/UserDefaultsRelaySettings.swift` — new app-layer adapters.
+
+If `swift build` fails, the fix is almost certainly localized (a label/type mismatch) rather than a design problem — the Android/Kotlin port of the identical logic already compiles and passes 31/31 hexagon tests, and the Scala backend's version passes 88/88 tests, so the algorithm itself is proven; only the Swift transliteration is unverified.
+
 ## Toolchain
 
 - Xcode 26+, Swift 6

@@ -11,9 +11,11 @@ final class QrDisplayViewModel {
     var pseudonym: String = ""
 
     private let auth: Identity
+    private let relaySettings: any RelaySettings
 
-    init(auth: Identity) {
+    init(auth: Identity, relaySettings: any RelaySettings) {
         self.auth = auth
+        self.relaySettings = relaySettings
     }
 
     func generate() {
@@ -21,7 +23,8 @@ final class QrDisplayViewModel {
         let json = QrPayload.encode(
             pseudonym: auth.pseudonym,
             edPublicKey: auth.edPublicKey,
-            xPublicKey: auth.xPublicKey
+            xPublicKey: auth.xPublicKey,
+            relayBaseUrl: relaySettings.defaultRelayBaseURL()
         ) ?? ""
         qrImage = makeQRImage(from: json)
     }

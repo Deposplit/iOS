@@ -7,6 +7,7 @@ final class AddContactViewModel {
     var pseudonym = ""
     var edKeyInput = ""
     var xKeyInput = ""
+    var relayBaseUrlInput = ""
     var error: String?
 
     private let contactManagement: any ContactManagement
@@ -24,8 +25,9 @@ final class AddContactViewModel {
         guard let x = Data(base64URLEncoded: xKeyInput.trimmingCharacters(in: .whitespaces)),
               x.count == 32
             else { error = String(localized: "Invalid X25519 key (expected 32 bytes, base64url)."); return false }
+        let trimmedRelay = relayBaseUrlInput.trimmingCharacters(in: .whitespaces)
         do {
-            try contactManagement.addManually(pseudonym: pseudonym, edPublicKey: ed, xPublicKey: x)
+            try contactManagement.addManually(pseudonym: pseudonym, edPublicKey: ed, xPublicKey: x, relayBaseUrl: trimmedRelay.isEmpty ? nil : trimmedRelay)
             return true
         } catch {
             self.error = error.localizedDescription

@@ -31,6 +31,11 @@ public final class IdentityService: Identity, ShareEncryption {
         return try key.signature(for: message)
     }
 
+    public func verify(_ message: Data, signature: Data, publicKey: Data) -> Bool {
+        guard let key = try? Curve25519.Signing.PublicKey(rawRepresentation: publicKey) else { return false }
+        return key.isValidSignature(signature, for: message)
+    }
+
     public func encrypt(_ plaintext: Data, recipientXPublicKey: Data) throws -> Data {
         let rawKey = try identityStore.xPrivateKey()
         let myKey = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: rawKey)

@@ -5,6 +5,7 @@ struct HomeView: View {
     private let auth: any Identity
     private let shareManagement: any ShareManagement
     private let contactManagement: any ContactManagement
+    private let relaySettings: any RelaySettings
 
     @State private var homeViewModel: HomeViewModel
     @State private var requestsViewModel: RequestsViewModel
@@ -13,12 +14,14 @@ struct HomeView: View {
     @State private var showContacts = false
     @State private var showQrDisplay = false
     @State private var showDeposit = false
+    @State private var showSettings = false
     @State private var selectedShare: ShareMetadata?
 
-    init(auth: any Identity, shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
+    init(auth: any Identity, shareManagement: any ShareManagement, contactManagement: any ContactManagement, relaySettings: any RelaySettings) {
         self.auth = auth
         self.shareManagement = shareManagement
         self.contactManagement = contactManagement
+        self.relaySettings = relaySettings
         _homeViewModel = State(initialValue: HomeViewModel(shareManagement: shareManagement))
         _requestsViewModel = State(initialValue: RequestsViewModel(
             shareManagement: shareManagement,
@@ -72,6 +75,13 @@ struct HomeView: View {
                         Image(systemName: "qrcode")
                     }
                 }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                }
                 ToolbarItem(placement: .primaryAction) {
                     HStack {
                         Button {
@@ -98,7 +108,10 @@ struct HomeView: View {
             ContactsView(contactManagement: contactManagement)
         }
         .sheet(isPresented: $showQrDisplay) {
-            QrDisplayView(auth: auth)
+            QrDisplayView(auth: auth, relaySettings: relaySettings)
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView(relaySettings: relaySettings)
         }
         .sheet(isPresented: $showDeposit, onDismiss: {
             Task { await homeViewModel.load() }

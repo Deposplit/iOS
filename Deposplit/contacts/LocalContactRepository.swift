@@ -47,6 +47,7 @@ final class LocalContactRepository: ContactRepository {
         let verificationLevel: VerificationLevel
         let verifiedAt: String?
         let addedAt: String
+        let relayBaseUrl: String?
     }
 
     private func load() throws -> [Contact] {
@@ -64,7 +65,8 @@ final class LocalContactRepository: ContactRepository {
                 xPublicKey: x,
                 verificationLevel: json.verificationLevel,
                 verifiedAt: json.verifiedAt?.parseISO8601(),
-                addedAt: addedAt
+                addedAt: addedAt,
+                relayBaseUrl: json.relayBaseUrl
             )
         }
     }
@@ -78,7 +80,8 @@ final class LocalContactRepository: ContactRepository {
                 xPublicKey: c.xPublicKey.base64URLEncoded,
                 verificationLevel: c.verificationLevel,
                 verifiedAt: c.verifiedAt.map { _localISO8601.string(from: $0) },
-                addedAt: _localISO8601.string(from: c.addedAt)
+                addedAt: _localISO8601.string(from: c.addedAt),
+                relayBaseUrl: c.relayBaseUrl
             )
         }
         let data = try JSONEncoder().encode(items)

@@ -67,7 +67,7 @@ final class QrScanViewModel {
 
     func handleScan(_ string: String) {
         guard !hasScanned else { return }
-        guard let payload = QrPayload.decode(string), payload.v == 1 else {
+        guard let payload = QrPayload.decode(string), (1...2).contains(payload.v) else {
             error = String(localized: "Not a valid Deposplit QR code.")
             return
         }
@@ -76,7 +76,7 @@ final class QrScanViewModel {
             return
         }
         do {
-            try contactManagement.addFromQr(pseudonym: payload.pseudonym, edPublicKey: ed, xPublicKey: x)
+            try contactManagement.addFromQr(pseudonym: payload.pseudonym, edPublicKey: ed, xPublicKey: x, relayBaseUrl: payload.relay)
             hasScanned = true
             didSave = true
         } catch {

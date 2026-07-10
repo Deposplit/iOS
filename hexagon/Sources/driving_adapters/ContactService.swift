@@ -22,7 +22,7 @@ public final class ContactService: ContactManagement {
         contactRepository.getAll()
     }
 
-    public func addManually(pseudonym: String, edPublicKey: Data, xPublicKey: Data) throws {
+    public func addManually(pseudonym: String, edPublicKey: Data, xPublicKey: Data, relayBaseUrl: String?) throws {
         let name = pseudonym.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { throw ContactError.blankPseudonym }
         guard edPublicKey.count == 32 else { throw ContactError.invalidKeySize }
@@ -35,11 +35,12 @@ public final class ContactService: ContactManagement {
             xPublicKey: xPublicKey,
             verificationLevel: .unverified,
             verifiedAt: nil,
-            addedAt: now
+            addedAt: now,
+            relayBaseUrl: relayBaseUrl
         ))
     }
 
-    public func addFromQr(pseudonym: String, edPublicKey: Data, xPublicKey: Data) throws {
+    public func addFromQr(pseudonym: String, edPublicKey: Data, xPublicKey: Data, relayBaseUrl: String?) throws {
         let name = pseudonym.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { throw ContactError.blankPseudonym }
         guard edPublicKey.count == 32 else { throw ContactError.invalidKeySize }
@@ -52,7 +53,8 @@ public final class ContactService: ContactManagement {
             xPublicKey: xPublicKey,
             verificationLevel: .verified,
             verifiedAt: now,
-            addedAt: now
+            addedAt: now,
+            relayBaseUrl: relayBaseUrl
         ))
     }
 

@@ -5,8 +5,8 @@ struct QrDisplayView: View {
     @State private var viewModel: QrDisplayViewModel
     @Environment(\.dismiss) private var dismiss
 
-    init(auth: Identity) {
-        _viewModel = State(initialValue: QrDisplayViewModel(auth: auth))
+    init(auth: Identity, relaySettings: any RelaySettings) {
+        _viewModel = State(initialValue: QrDisplayViewModel(auth: auth, relaySettings: relaySettings))
     }
 
     var body: some View {

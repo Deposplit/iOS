@@ -42,12 +42,17 @@ public struct ShareRequest: Identifiable, Equatable {
     public let requestedAt: Date
     public let respondedAt: Date?
     public let ciphertext: Data?
+    /// Ed25519 signature over `PayloadCanonical.forOpen` — see that type for what's signed.
+    public let senderSignature: Data
+    /// Ed25519 signature over `PayloadCanonical.forRespond`; nil while pending.
+    public let recipientSignature: Data?
 
     public init(
         id: UUID, secretId: UUID, senderKey: Data, recipientKey: Data,
         label: String, secretCreatedAt: Date,
         requestType: ShareRequestType, state: ShareRequestState,
-        shareId: UUID?, requestedAt: Date, respondedAt: Date?, ciphertext: Data?
+        shareId: UUID?, requestedAt: Date, respondedAt: Date?, ciphertext: Data?,
+        senderSignature: Data, recipientSignature: Data?
     ) {
         self.id = id
         self.secretId = secretId
@@ -61,5 +66,7 @@ public struct ShareRequest: Identifiable, Equatable {
         self.requestedAt = requestedAt
         self.respondedAt = respondedAt
         self.ciphertext = ciphertext
+        self.senderSignature = senderSignature
+        self.recipientSignature = recipientSignature
     }
 }

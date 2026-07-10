@@ -28,6 +28,13 @@ struct AddContactView: View {
                         .autocapitalization(.none)
                         .font(.system(.body, design: .monospaced))
                 }
+                Section("Relay override (optional, BYOR)") {
+                    TextField("https://…", text: $viewModel.relayBaseUrlInput)
+                        .autocorrectionDisabled()
+                        .autocapitalization(.none)
+                        .keyboardType(.URL)
+                        .font(.system(.body, design: .monospaced))
+                }
                 if let error = viewModel.error {
                     Section {
                         Text(error).foregroundStyle(.red)
