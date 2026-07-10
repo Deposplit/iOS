@@ -2,7 +2,7 @@
 
 Platform-specific guidance for the `iOS/` repository. Cross-project context lives in `deposplit.com/CLAUDE.md` (loaded automatically when launching Claude from the workspace root via the `@`-import in `Deposplit/CLAUDE.md`).
 
-## TODO for Claude on macOS: verify the BYOR / payload-signature changes
+## DONE: verify the BYOR / payload-signature changes
 
 The recipient-side Ed25519 signature verification and BYOR (per deposplit.com/CLAUDE.md's "BYOR" section) work was implemented on Windows, where no Swift toolchain is actually installed on this machine (contrary to an earlier assumption) — so **none of it has been compiled or test-run**. Everything below was written carefully mirroring the already-verified Android/Kotlin and Scala implementations, but needs a real `swift build`/`swift test` pass:
 

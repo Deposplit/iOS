@@ -54,7 +54,13 @@ private func base64URLEncode(_ data: Data) -> String {
     #expect(String(data: canon, encoding: .utf8) == expected)
 }
 
-@Test func signingTheCanonicalBytesWithTheFixedSeedReproducesTheFixedSignature() throws {
+// NOTE: CryptoKit uses hedged (randomized) Ed25519 for fault-attack resistance — signature bytes
+// differ from BouncyCastle's deterministic RFC 8032 output even for the same seed and message.
+// Cross-library sign byte-identity therefore cannot be checked here. Instead: (a) the canonical
+// bytes test above confirms field-order/encoding is identical on all platforms; (b) the
+// verification test below confirms CryptoKit accepts a BouncyCastle-produced signature;
+// (c) this test confirms CryptoKit's public key derivation matches and its own signatures verify.
+@Test func signingWithTheFixedSeedDerivesTheExpectedPublicKeyAndProducesAVerifiableSignature() throws {
     let canon = PayloadCanonical.forOpen(
         secretId: fixtureSecretId, requestType: .pickUp, recipientKey: fixtureRecipientKey,
         label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, shareId: nil, ciphertext: fixtureCiphertext
@@ -63,7 +69,7 @@ private func base64URLEncode(_ data: Data) -> String {
     #expect(base64URLEncode(privateKey.publicKey.rawRepresentation) == expectedPublicKeyBase64Url)
 
     let signature = try privateKey.signature(for: canon)
-    #expect(base64URLEncode(signature) == expectedSignatureBase64Url)
+    #expect(privateKey.publicKey.isValidSignature(signature, for: canon))
 }
 
 @Test func theFixedSignatureVerifiesAgainstTheFixedPublicKey() throws {

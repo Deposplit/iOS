@@ -1,10 +1,10 @@
 import Foundation
 
-public enum VerificationLevel: String, Codable {
+public enum VerificationLevel: String, Codable, Sendable {
     case unverified, verified
 }
 
-public struct Contact: Identifiable, Equatable {
+public struct Contact: Identifiable, Equatable, Sendable {
     public let id: UUID
     public let pseudonym: String
     public let edPublicKey: Data
