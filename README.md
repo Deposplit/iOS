@@ -293,6 +293,10 @@ Or in Xcode: **Product → Test (⌘U)**.
 
 On first launch the app shows the sign-in screen. Enter a pseudonym (display name only — stored locally, never sent to the Web app/service). Tapping **Get started** generates Ed25519 and X25519 keypairs via CryptoKit, stores the private keys in the Keychain, and navigates to the home screen.
 
+### Continuous Integration
+
+A GitHub Actions workflow (`.github/workflows/test.yml`) runs `swift test` against the `hexagon` Swift package on `macos-latest` for every push and on pull requests targeting `main`. The `Deposplit.xcodeproj` app target isn't covered yet — that needs a simulator. Dependabot (`.github/dependabot.yml`) keeps GitHub Actions and Swift Package Manager dependencies (scoped to `/hexagon`) current on a weekly schedule.
+
 ---
 
 ## Testing against a local Web app/service

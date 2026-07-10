@@ -103,6 +103,10 @@ xcodebuild test \
 swift test --package-path hexagon
 ```
 
+## Continuous Integration
+
+`.github/workflows/test.yml` runs `swift test` (`working-directory: hexagon`) on `macos-latest` for every push and for pull requests targeting `main` — Swift ships with the runner's Xcode install, so no separate setup step is needed. This covers only the `hexagon` Swift package; the `Deposplit.xcodeproj` app target (`xcodebuild test`) needs a simulator and is not yet part of CI. `.github/dependabot.yml` covers the `github-actions` and `swift` ecosystems on a weekly schedule; the latter is scoped to `/hexagon` and is currently a no-op since `hexagon/Package.swift` declares no external dependencies.
+
 ## Key decisions to preserve
 
 - **iOS 26+ deployment target** — `IPHONEOS_DEPLOYMENT_TARGET = 26.4` in project settings. Do not lower.
