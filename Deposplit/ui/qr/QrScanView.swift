@@ -76,7 +76,11 @@ final class QrScanViewModel {
             return
         }
         do {
-            try contactManagement.addFromQr(pseudonym: payload.pseudonym, edPublicKey: ed, xPublicKey: x, relayBaseUrl: payload.relay)
+            // A QR scan defaults to in-person co-presence, the strongest assurance the current
+            // scan flow can claim (CLAUDE.md item 6). A remote/video-call scan is a weaker claim,
+            // but there's no UI step here to downgrade it yet — the user can always edit the
+            // contact's level later once item 6's on-device editing UI exists.
+            try contactManagement.addFromQr(pseudonym: payload.pseudonym, edPublicKey: ed, xPublicKey: x, verificationLevel: .veryHigh, relayBaseUrl: payload.relay)
             hasScanned = true
             didSave = true
         } catch {

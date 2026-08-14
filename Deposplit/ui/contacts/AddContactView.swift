@@ -35,6 +35,33 @@ struct AddContactView: View {
                         .keyboardType(.URL)
                         .font(.system(.body, design: .monospaced))
                 }
+                Section {
+                    ForEach(viewModel.selectableLevels, id: \.self) { level in
+                        Button {
+                            viewModel.verificationLevel = level
+                        } label: {
+                            HStack(alignment: .top) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(level.displayName)
+                                        .foregroundStyle(.primary)
+                                    Text(level.guidance)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if viewModel.verificationLevel == level {
+                                    Image(systemName: "checkmark")
+                                        .foregroundStyle(.blue)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } header: {
+                    Text("Verification Level")
+                } footer: {
+                    Text("How sure are you this is really them? Count your independent assurances: a trusted channel, and/or live proof you saw them.")
+                }
                 if let error = viewModel.error {
                     Section {
                         Text(error).foregroundStyle(.red)

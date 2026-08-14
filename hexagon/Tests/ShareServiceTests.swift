@@ -128,7 +128,7 @@ private let strangerKeys = TestKeyPair()
 private let aliceContact = Contact(
     id: UUID(), pseudonym: "alice", edPublicKey: aliceKeys.publicKey,
     xPublicKey: Data(repeating: 0x01, count: 32),
-    verificationLevel: .verified, verifiedAt: nil, addedAt: Date()
+    verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date()
 )
 
 private func makeService(relay: FakeShareRelay) throws -> (svc: ShareService, bob: IdentityService, shareRepo: FakeShareRepository) {
@@ -269,7 +269,7 @@ private final class TwoRelayResolver: ShareRelayResolver {
     let charlieContact = Contact(
         id: UUID(), pseudonym: "charlie", edPublicKey: charlieKeys.publicKey,
         xPublicKey: Data(repeating: 0x02, count: 32),
-        verificationLevel: .verified, verifiedAt: nil, addedAt: Date(),
+        verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date(),
         relayBaseUrl: byorUrl
     )
     let defaultRelay = FakeShareRelay()
@@ -308,7 +308,7 @@ private final class TwoRelayResolver: ShareRelayResolver {
     let charlieContact = Contact(
         id: UUID(), pseudonym: "charlie", edPublicKey: charlieKeys.publicKey,
         xPublicKey: Data(repeating: 0x02, count: 32),
-        verificationLevel: .verified, verifiedAt: nil, addedAt: Date(),
+        verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date(),
         relayBaseUrl: byorUrl
     )
     let defaultRelay = FakeShareRelay()

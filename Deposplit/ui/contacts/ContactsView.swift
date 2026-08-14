@@ -1,6 +1,17 @@
 import hexagon
 import SwiftUI
 
+private extension VerificationLevel {
+    var badgeColor: Color {
+        switch self {
+        case .veryLow: .gray
+        case .low: .yellow
+        case .high: .blue
+        case .veryHigh: .green
+        }
+    }
+}
+
 struct ContactsView: View {
     @State private var viewModel: ContactsViewModel
     @State private var showAddContact = false
@@ -26,10 +37,13 @@ struct ContactsView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack {
                                     Text(contact.pseudonym).font(.headline)
-                                    if contact.verificationLevel == .verified {
-                                        Image(systemName: "checkmark.seal.fill")
-                                            .foregroundStyle(.green)
-                                            .font(.caption)
+                                    if contact.verificationLevel > .veryLow {
+                                        Text(contact.verificationLevel.displayName)
+                                            .font(.caption2.weight(.semibold))
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(contact.verificationLevel.badgeColor.opacity(0.15), in: Capsule())
+                                            .foregroundStyle(contact.verificationLevel.badgeColor)
                                     }
                                 }
                                 Text(contact.edPublicKey.base64URLEncoded.prefix(16) + "…")

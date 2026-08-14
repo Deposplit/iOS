@@ -369,7 +369,7 @@ Run Alice on an iOS Simulator and Bob on an Android emulator simultaneously. The
 - Re-registering (delete and reinstall the app) generates fresh keypairs — existing contacts cannot decrypt new shares with the old keys.
 - The **Reconstruct secret…** button is hidden until ≥ 2 approved retrieve shares exist for the same `secretId`.
 - 2-of-3 threshold: split across three contacts, have only two approve — the secret should still reconstruct.
-- Contacts added by manual key entry have `verificationLevel = .unverified`; contacts added by QR scan have `verificationLevel = .verified` (shown with a green checkmark badge).
+- Contacts added by manual key entry default to `verificationLevel = .veryLow` and can be raised to `.low`/`.high` via the level picker (`.veryHigh` is not offered — it requires physical co-presence); contacts added by QR scan default to `.veryHigh` (shown with a colored level badge; no badge at `.veryLow`).
 
 ---
 

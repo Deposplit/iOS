@@ -8,7 +8,12 @@ final class AddContactViewModel {
     var edKeyInput = ""
     var xKeyInput = ""
     var relayBaseUrlInput = ""
+    var verificationLevel: VerificationLevel = .veryLow
     var error: String?
+
+    /// `.veryHigh` requires physical co-presence, which manual key entry can't assert — that's
+    /// what the in-person QR scan flow is for. See CLAUDE.md item 6.
+    let selectableLevels = VerificationLevel.allCases.filter { $0 != .veryHigh }
 
     private let contactManagement: any ContactManagement
 
@@ -27,7 +32,7 @@ final class AddContactViewModel {
             else { error = String(localized: "Invalid X25519 key (expected 32 bytes, base64url)."); return false }
         let trimmedRelay = relayBaseUrlInput.trimmingCharacters(in: .whitespaces)
         do {
-            try contactManagement.addManually(pseudonym: pseudonym, edPublicKey: ed, xPublicKey: x, relayBaseUrl: trimmedRelay.isEmpty ? nil : trimmedRelay)
+            try contactManagement.addManually(pseudonym: pseudonym, edPublicKey: ed, xPublicKey: x, verificationLevel: verificationLevel, relayBaseUrl: trimmedRelay.isEmpty ? nil : trimmedRelay)
             return true
         } catch {
             self.error = error.localizedDescription
