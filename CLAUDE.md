@@ -48,7 +48,7 @@ iOS/
 │       │   └── ContactManagement.swift    listContacts, addManually, addFromQr, deleteContact
 │       ├── driven_ports/
 │       │   ├── IdentityStore.swift        isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
-│       │   ├── ContactRepository.swift    getAll, getByEdKey, save, delete
+│       │   ├── ContactRepository.swift    getAll, getByEdKey, getById, save, delete
 │       │   ├── ShareRepository.swift      getAll, getCiphertext, save, delete
 │       │   ├── ShareMetadataRepository.swift  getAll, save, delete — local store of distributed ShareMetadata
 │       │   └── ShareRelay.swift           openShareRequest, listShareRequests, getShareRequest, respondToShareRequest, deleteShareRequest, deleteShareRequests
@@ -74,7 +74,7 @@ iOS/
 │   ├── contacts/
 │   │   └── LocalContactRepository.swift  JSON file in Documents/contacts.json
 │   ├── shares/
-│   │   ├── LocalShareRepository.swift          JSON file in Documents/shares.json; ciphertext standard base64, senderKey base64url
+│   │   ├── LocalShareRepository.swift          JSON file in Documents/shares.json; plaintext share standard base64, contactId + senderPseudonym
 │   │   └── LocalShareMetadataRepository.swift  JSON file in Documents/distributed_shares.json; local store of distributed ShareMetadata; base64url keys, ISO-8601 timestamps
 │   └── ui/
 │       ├── SignInViewModel.swift      Registration flow (pseudonym input)

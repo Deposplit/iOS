@@ -28,7 +28,7 @@ struct HeldTab: View {
     }
 
     private func senderName(for share: HeldShare) -> String {
-        contacts.first(where: { $0.edPublicKey == share.senderKey })?.pseudonym
-            ?? share.senderKey.base64URLEncoded.prefix(8) + "…"
+        contacts.first(where: { $0.id == share.contactId })?.pseudonym
+            ?? share.senderPseudonym
     }
 }

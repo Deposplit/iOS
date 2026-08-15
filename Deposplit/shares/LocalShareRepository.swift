@@ -18,8 +18,8 @@ final class LocalShareRepository: ShareRepository {
         return shares
     }
 
-    func getCiphertext(shareId: UUID) -> Data? {
-        getAll().first { $0.id == shareId }?.ciphertext
+    func getPlaintextShare(shareId: UUID) -> Data? {
+        getAll().first { $0.id == shareId }?.plaintextShare
     }
 
     func save(_ share: HeldShare) {
@@ -43,10 +43,11 @@ final class LocalShareRepository: ShareRepository {
         let id: String
         let secretId: String
         let label: String
-        let senderKey: String    // base64url
+        let contactId: String
+        let senderPseudonym: String
         let createdAt: String
         let pickedUpAt: String   // ISO-8601
-        let ciphertext: String   // standard base64
+        let plaintextShare: String   // standard base64
     }
 
     private func load() throws -> [HeldShare] {
@@ -57,10 +58,11 @@ final class LocalShareRepository: ShareRepository {
                 id: UUID(uuidString: json.id)!,
                 secretId: UUID(uuidString: json.secretId)!,
                 label: json.label,
-                senderKey: Data(base64URLEncoded: json.senderKey)!,
+                contactId: UUID(uuidString: json.contactId)!,
+                senderPseudonym: json.senderPseudonym,
                 createdAt: _localISO8601.date(from: json.createdAt)!,
                 pickedUpAt: _localISO8601.date(from: json.pickedUpAt)!,
-                ciphertext: Data(base64Encoded: json.ciphertext)!
+                plaintextShare: Data(base64Encoded: json.plaintextShare)!
             )
         }
     }
@@ -71,10 +73,11 @@ final class LocalShareRepository: ShareRepository {
                 id: s.id.uuidString,
                 secretId: s.secretId.uuidString,
                 label: s.label,
-                senderKey: s.senderKey.base64URLEncoded,
+                contactId: s.contactId.uuidString,
+                senderPseudonym: s.senderPseudonym,
                 createdAt: _localISO8601.string(from: s.createdAt),
                 pickedUpAt: _localISO8601.string(from: s.pickedUpAt),
-                ciphertext: s.ciphertext.base64EncodedString()
+                plaintextShare: s.plaintextShare.base64EncodedString()
             )
         }
         let data = try JSONEncoder().encode(items)

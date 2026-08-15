@@ -30,8 +30,8 @@ final class ShareDetailViewModel {
 
     var shareLabel: String { share.label }
     var recipientName: String {
-        allContacts.first(where: { $0.edPublicKey == share.recipientKey })?.pseudonym
-            ?? share.recipientKey.base64URLEncoded.prefix(8) + "…"
+        allContacts.first(where: { $0.id == share.contactId })?.pseudonym
+            ?? String(localized: "Unknown contact")
     }
 
     func load() async {

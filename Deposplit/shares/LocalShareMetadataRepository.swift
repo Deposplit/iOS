@@ -39,7 +39,7 @@ final class LocalShareMetadataRepository: ShareMetadataRepository {
         let id: String
         let secretId: String
         let label: String
-        let recipientKey: String  // base64url
+        let contactId: String
         let secretCreatedAt: String
     }
 
@@ -49,13 +49,13 @@ final class LocalShareMetadataRepository: ShareMetadataRepository {
         return items.compactMap { json in
             guard let id = UUID(uuidString: json.id),
                   let secretId = UUID(uuidString: json.secretId),
-                  let recipientKey = Data(base64URLEncoded: json.recipientKey),
+                  let contactId = UUID(uuidString: json.contactId),
                   let secretCreatedAt = _smrISO8601.date(from: json.secretCreatedAt) else { return nil }
             return ShareMetadata(
                 id: id,
                 secretId: secretId,
                 label: json.label,
-                recipientKey: recipientKey,
+                contactId: contactId,
                 secretCreatedAt: secretCreatedAt
             )
         }
@@ -67,7 +67,7 @@ final class LocalShareMetadataRepository: ShareMetadataRepository {
                 id: s.id.uuidString,
                 secretId: s.secretId.uuidString,
                 label: s.label,
-                recipientKey: s.recipientKey.base64URLEncoded,
+                contactId: s.contactId.uuidString,
                 secretCreatedAt: _smrISO8601.string(from: s.secretCreatedAt)
             )
         }

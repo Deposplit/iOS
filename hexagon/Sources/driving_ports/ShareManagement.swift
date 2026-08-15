@@ -16,5 +16,5 @@ public protocol ShareManagement {
     func listPendingRequests() async throws -> [ShareRequest]
     func respond(requestId: UUID, approved: Bool) async throws
     func deleteHeldShare(shareId: UUID) async throws
-    func deleteAllHeldFromSender(senderKey: Data) async throws
+    func deleteAllHeldFromSender(contactId: UUID) async throws
 }

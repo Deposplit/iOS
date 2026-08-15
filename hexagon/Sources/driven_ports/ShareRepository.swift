@@ -2,7 +2,7 @@ import Foundation
 
 public protocol ShareRepository {
     func getAll() -> [HeldShare]
-    func getCiphertext(shareId: UUID) -> Data?
+    func getPlaintextShare(shareId: UUID) -> Data?
     func save(_ share: HeldShare)
     func delete(shareId: UUID)
 }

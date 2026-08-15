@@ -334,7 +334,7 @@ You need **three simulator instances** to exercise the full social flow with a 2
 | 7 | Sim-A | Add Bob and Carol as contacts (manual entry or QR) |
 | 8 | Sim-A | **+** (top right) → enter a label (e.g. "test secret") and a secret, toggle Bob and Carol on, threshold = 2 → **Deposit** |
 | 9 | Sim-A | **Distributed** tab → two entries appear (one per share/recipient, same `secretId`) |
-| 10 | Sim-B | **Their Secret Shares** tab → Bob's inbox shows Alice's PickUp request → app auto-approves it, stores ciphertext locally, relay clears ciphertext |
+| 10 | Sim-B | **Their Secret Shares** tab → Bob's inbox shows Alice's PickUp request → app auto-approves it, decrypts the share, and stores it as plaintext locally; relay clears the ciphertext |
 | 11 | Sim-C | **Their Secret Shares** tab → Carol's inbox shows Alice's PickUp request → app auto-approves the same way |
 | 12 | Sim-A | Tap the Bob entry → **Open request** (Retrieve) |
 | 13 | Sim-A | Tap the Carol entry → **Open request** (Retrieve) |

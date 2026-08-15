@@ -17,14 +17,16 @@ public struct ShareMetadata: Identifiable, Equatable, Hashable {
     public let id: UUID           // PickUp request ID
     public let secretId: UUID
     public let label: String
-    public let recipientKey: Data
+    // The holder's stable local contact id — not their Ed25519 key — so this record survives a
+    // holder key rotation/recovery (see deposplit.com/CLAUDE.md "What is next" item 7).
+    public let contactId: UUID
     public let secretCreatedAt: Date
 
-    public init(id: UUID, secretId: UUID, label: String, recipientKey: Data, secretCreatedAt: Date) {
+    public init(id: UUID, secretId: UUID, label: String, contactId: UUID, secretCreatedAt: Date) {
         self.id = id
         self.secretId = secretId
         self.label = label
-        self.recipientKey = recipientKey
+        self.contactId = contactId
         self.secretCreatedAt = secretCreatedAt
     }
 }

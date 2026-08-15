@@ -34,7 +34,7 @@ struct DistributedTab: View {
     }
 
     private func recipientName(for share: ShareMetadata) -> String {
-        contacts.first(where: { $0.edPublicKey == share.recipientKey })?.pseudonym
-            ?? share.recipientKey.base64URLEncoded.prefix(8) + "…"
+        contacts.first(where: { $0.id == share.contactId })?.pseudonym
+            ?? String(localized: "Unknown contact")
     }
 }

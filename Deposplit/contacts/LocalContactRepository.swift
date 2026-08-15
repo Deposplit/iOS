@@ -22,6 +22,10 @@ final class LocalContactRepository: ContactRepository {
         getAll().first { $0.edPublicKey == edPublicKey }
     }
 
+    func getById(_ id: UUID) -> Contact? {
+        getAll().first { $0.id == id }
+    }
+
     func save(_ contact: Contact) {
         var all = getAll()
         all.removeAll { $0.id == contact.id }

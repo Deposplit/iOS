@@ -49,6 +49,7 @@ private final class FakeContactRepository: ContactRepository {
     init(_ contacts: [Contact]) { self.contacts = contacts }
     func getAll() -> [Contact] { contacts }
     func getByEdKey(_ edPublicKey: Data) -> Contact? { contacts.first { $0.edPublicKey == edPublicKey } }
+    func getById(_ id: UUID) -> Contact? { contacts.first { $0.id == id } }
     func save(_ contact: Contact) {}
     func delete(contactId: UUID) {}
 }
@@ -56,7 +57,7 @@ private final class FakeContactRepository: ContactRepository {
 private final class FakeShareRepository: ShareRepository {
     private var shares: [HeldShare] = []
     func getAll() -> [HeldShare] { shares }
-    func getCiphertext(shareId: UUID) -> Data? { shares.first { $0.id == shareId }?.ciphertext }
+    func getPlaintextShare(shareId: UUID) -> Data? { shares.first { $0.id == shareId }?.plaintextShare }
     func save(_ share: HeldShare) { shares.append(share) }
     func delete(shareId: UUID) { shares.removeAll { $0.id == shareId } }
 }
