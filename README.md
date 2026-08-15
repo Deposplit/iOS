@@ -125,14 +125,16 @@ iOS/
 │       │   ├── Identity.swift             isRegistered, register, pseudonym, edPublicKey, xPublicKey,
 │       │   │                              sign, encrypt, decrypt (Identity split into Identity + ShareEncryption
 │       │   │                              + RequestSigner is pending — see iOS/CLAUDE.md)
-│       │   ├── ShareManagement.swift      use-case interface: deposit, listDistributed, reconstruct,
+│       │   ├── ShareManagement.swift      use-case interface: deposit, listSecrets, listDistributed,
+│       │   │                              reconstruct (pure read, real k), discardSecret, forceForgetSecret,
 │       │   │                              syncInbox, listPendingRequests, respond, …
 │       │   └── ContactManagement.swift    listContacts, addManually, addFromQr, deleteContact
 │       ├── driven_ports/
 │       │   ├── IdentityStore.swift        isRegistered, save, pseudonym, edPublicKey, edPrivateKey,
 │       │   │                              xPublicKey, xPrivateKey
-│       │   ├── ContactRepository.swift    getAll, getByEdKey, save, delete
-│       │   ├── ShareRepository.swift      getAll, getCiphertext, save, delete
+│       │   ├── ContactRepository.swift    getAll, getByEdKey, getById, save, delete
+│       │   ├── ShareRepository.swift      getAll, getPlaintextShare, save, delete
+│       │   ├── SecretRepository.swift     getAll, save, delete — local store of sender-side Secret aggregates (item 11)
 │       │   ├── ShareMetadataRepository.swift  getAll, save, delete — local store of distributed ShareMetadata
 │       │   └── ShareRelay.swift           openShareRequest, listShareRequests, getShareRequest,
 │       │                                  respondToShareRequest, deleteShareRequest, deleteShareRequests
@@ -141,17 +143,20 @@ iOS/
 │       │   ├── ShareEncryption.swift      Intra-hexagon interface: encrypt(plaintext, recipientXPublicKey),
 │       │   │                              decrypt(noncePlusCiphertext, recipientXPublicKey)
 │       │   ├── ShareService.swift         ShareManagement impl — calls ShareRelay + ShareEncryption +
-│       │   │                              ShareRepository + ShareMetadataRepository + ContactRepository;
-│       │   │                              deposit() writes to local store; listDistributed() reads from local store;
-│       │   │                              syncInbox() auto-approves pending PickUp requests
+│       │   │                              ShareRepository + ShareMetadataRepository + SecretRepository + ContactRepository;
+│       │   │                              deposit() writes ShareMetadata + a Secret to local store; listDistributed()/listSecrets()
+│       │   │                              read from local store; reconstruct() is a pure read (item 11); discardSecret()/
+│       │   │                              forceForgetSecret() are the teardown primitives; syncInbox() auto-approves pending PickUp requests
 │       │   └── ContactService.swift       ContactManagement impl — validates + delegates to
 │       │                                  ContactRepository; defines ContactError
 │       └── value_objects/
 │           ├── AuthError.swift            Error enum for auth failures
 │           ├── Contact.swift              Contact struct + VerificationLevel enum
 │           ├── HeldShare.swift            HeldShare struct
+│           ├── Secret.swift               Secret struct (id, label, k, n, secretCreatedAt, state) + SecretState —
+│           │                              sender-side per-secret aggregate, see CLAUDE.md item 11
 │           └── Share.swift               Role, ShareRequestType, ShareRequestState,
-│                                          ShareMetadata, ShareRequest
+│                                          ShareMetadata (id/secretId/contactId only), ShareRequest
 ├── Deposplit.xcodeproj/
 ├── Deposplit/                        ← app target (adapters + UI); PBXFileSystemSynchronizedRootGroup
 │   ├── DeposplitApp.swift            @main entry point + RootView (routes to SignInView or HomeView)
@@ -164,15 +169,18 @@ iOS/
 │   │   └── LocalContactRepository.swift  JSON file in Documents/contacts.json
 │   ├── shares/
 │   │   ├── LocalShareRepository.swift          JSON file in Documents/shares.json
+│   │   ├── LocalSecretRepository.swift         JSON file in Documents/secrets.json; local store of sender-side Secret aggregates
 │   │   └── LocalShareMetadataRepository.swift  JSON file in Documents/distributed_shares.json; local store of distributed ShareMetadata
 │   └── ui/
 │       ├── SignInViewModel.swift      Registration flow (pseudonym input)
 │       ├── SignInView.swift           Registration screen
 │       ├── HomeView.swift            NavigationStack + TabView (Distributed/Held/Requests)
 │       ├── home/
-│       │   ├── HomeViewModel.swift   syncInbox + listDistributed + listHeld via ShareManagement
+│       │   ├── HomeViewModel.swift   syncInbox + listSecrets + listDistributed + listHeld via ShareManagement;
+│       │   │                        SecretGroup (wraps a Secret) + SecretHealth badge; requestAll/discardSecret/forceForgetSecret (item 11)
 │       │   ├── RequestsViewModel.swift  listPendingRequests + respond via ShareManagement
-│       │   ├── DistributedTab.swift  Tappable share rows → ShareDetailView
+│       │   ├── DistributedTab.swift  Per-secret grouped cards (item 11) → tapping a holder navigates to ShareDetailView
+│       │   │                        via a ShareDetailTarget (secret + share); health badge, discard/force-forget actions
 │       │   ├── HeldTab.swift         Read-only list of held shares
 │       │   └── RecipientRequestsTab.swift  Approve/deny incoming requests
 │       ├── contacts/
@@ -181,10 +189,11 @@ iOS/
 │       │   ├── AddContactViewModel.swift  addManually via ContactManagement
 │       │   └── AddContactView.swift
 │       ├── deposit/
-│       │   ├── DepositViewModel.swift  deposit via ShareManagement; listContacts via ContactManagement
-│       │   └── DepositView.swift
+│       │   ├── DepositViewModel.swift  deposit via ShareManagement; listContacts via ContactManagement; splitTimeWarnings (item 11)
+│       │   └── DepositView.swift     confirmationDialog surfaces splitTimeWarnings before deposit if any apply
 │       ├── sharedetail/
-│       │   ├── ShareDetailViewModel.swift  Open RETRIEVE/DELETE requests; reconstruct via ShareManagement
+│       │   ├── ShareDetailViewModel.swift  Takes a ShareDetailTarget (Secret + ShareMetadata); open RETRIEVE/DELETE
+│       │   │                        requests; reconstruct via ShareManagement (ready-threshold reads Secret.k)
 │       │   └── ShareDetailView.swift
 │       └── qr/
 │           ├── QrPayload.swift       {"v":1,"pseudonym":"…","ed":"…","x":"…"} encode/decode

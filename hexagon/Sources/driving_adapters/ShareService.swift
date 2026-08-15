@@ -3,16 +3,18 @@ import Foundation
 public enum ShareServiceError: Error, LocalizedError {
     case contactNotFound
     case shareNotFound
+    case secretNotFound
     case missingShareId
-    case notEnoughApprovedShares(Int)
+    case notEnoughApprovedShares(have: Int, need: Int)
     case signatureVerificationFailed(String)
     case shareRequestNotFoundOnAnyRelay(UUID)
     public var errorDescription: String? {
         switch self {
         case .contactNotFound: "Contact not found — cannot decrypt share."
         case .shareNotFound: "No local share record found."
+        case .secretNotFound: "No local record for this secret."
         case .missingShareId: "Retrieve request has no associated share ID."
-        case .notEnoughApprovedShares(let count): "Need at least 2 approved shares (have \(count))."
+        case .notEnoughApprovedShares(let have, let need): "Need at least \(need) approved shares (have \(have))."
         case .signatureVerificationFailed(let detail): "Signature verification failed: \(detail)"
         case .shareRequestNotFoundOnAnyRelay(let id): "Share request \(id) not found on any known relay."
         }
@@ -24,6 +26,7 @@ public final class ShareService: ShareManagement {
     private let encryption: any ShareEncryption
     private let shareRepository: any ShareRepository
     private let shareMetadataRepository: any ShareMetadataRepository
+    private let secretRepository: any SecretRepository
     private let contactRepository: any ContactRepository
     private let identity: any Identity
 
@@ -32,6 +35,7 @@ public final class ShareService: ShareManagement {
         encryption: any ShareEncryption,
         shareRepository: any ShareRepository,
         shareMetadataRepository: any ShareMetadataRepository,
+        secretRepository: any SecretRepository,
         contactRepository: any ContactRepository,
         identity: any Identity
     ) {
@@ -39,6 +43,7 @@ public final class ShareService: ShareManagement {
         self.encryption = encryption
         self.shareRepository = shareRepository
         self.shareMetadataRepository = shareMetadataRepository
+        self.secretRepository = secretRepository
         self.contactRepository = contactRepository
         self.identity = identity
     }
@@ -119,8 +124,13 @@ public final class ShareService: ShareManagement {
                 ciphertext: ciphertext,
                 senderSignature: senderSignature
             )
-            try? shareMetadataRepository.save(ShareMetadata(id: req.id, secretId: secretId, label: label, contactId: contact.id, secretCreatedAt: createdAt))
+            try? shareMetadataRepository.save(ShareMetadata(id: req.id, secretId: secretId, contactId: contact.id))
         }
+        try? secretRepository.save(Secret(id: secretId, label: label, k: threshold, n: contacts.count, secretCreatedAt: createdAt, state: .active))
+    }
+
+    public func listSecrets() throws -> [Secret] {
+        try secretRepository.getAll()
     }
 
     public func listDistributed() throws -> [ShareMetadata] {
@@ -134,7 +144,38 @@ public final class ShareService: ShareManagement {
                 // A row for a holder we no longer have a contact record for can't be re-anchored
                 // to a contactId — skip rather than drop the holder's identity on the floor.
                 guard let contact = contactRepository.getByEdKey(req.recipientKey) else { continue }
-                try? shareMetadataRepository.save(ShareMetadata(id: req.id, secretId: req.secretId, label: req.label, contactId: contact.id, secretCreatedAt: req.secretCreatedAt))
+                try? shareMetadataRepository.save(ShareMetadata(id: req.id, secretId: req.secretId, contactId: contact.id))
+            }
+        }
+        await reconcileDiscarding()
+    }
+
+    /// For every `.discarding` `Secret`, checks whether each remaining holder's fanned-out
+    /// `delete` request has been approved; approved ones are cleaned up (relay row deleted, local
+    /// `ShareMetadata` removed). Once a `.discarding` secret has no `ShareMetadata` rows left, its
+    /// `Secret` record itself is removed. See item 11's two-state lifecycle.
+    private func reconcileDiscarding() async {
+        let secrets = (try? secretRepository.getAll()) ?? []
+        let discarding = secrets.filter { $0.state == .discarding }
+        guard !discarding.isEmpty else { return }
+        let discardingIds = Set(discarding.map(\.id))
+
+        var deleteRequests: [(relay: any ShareRelay, request: ShareRequest)] = []
+        for relay in allRelays() {
+            let reqs = (try? await relay.listShareRequests(role: .sender, requestType: .delete, state: nil)) ?? []
+            deleteRequests += reqs.filter { discardingIds.contains($0.secretId) }.map { (relay: relay, request: $0) }
+        }
+
+        for secret in discarding {
+            let metasForSecret = ((try? shareMetadataRepository.getAll()) ?? []).filter { $0.secretId == secret.id }
+            for meta in metasForSecret {
+                guard let approvedDelete = deleteRequests.first(where: { $0.request.shareId == meta.id && $0.request.state == .approved }) else { continue }
+                try? await approvedDelete.relay.deleteShareRequest(requestId: meta.id)
+                try? shareMetadataRepository.delete(shareId: meta.id)
+            }
+            let remaining = ((try? shareMetadataRepository.getAll()) ?? []).filter { $0.secretId == secret.id }
+            if remaining.isEmpty {
+                try? secretRepository.delete(secretId: secret.id)
             }
         }
     }
@@ -148,6 +189,7 @@ public final class ShareService: ShareManagement {
     }
 
     public func requestAll(secretId: UUID) async throws {
+        guard let secret = (try? secretRepository.getAll())?.first(where: { $0.id == secretId }) else { return }
         let deposited = (try? shareMetadataRepository.getAll()) ?? []
         let forSecret = deposited.filter { $0.secretId == secretId }
         var existing: [ShareRequest] = []
@@ -160,13 +202,13 @@ public final class ShareService: ShareManagement {
                 $0.shareId == meta.id && ($0.state == .pending || $0.state == .approved)
             }
             if !hasActive {
-                let canon = PayloadCanonical.forOpen(secretId: meta.secretId, requestType: .retrieve, recipientKey: contact.edPublicKey, label: meta.label, secretCreatedAt: meta.secretCreatedAt, shareId: meta.id, ciphertext: nil)
+                let canon = PayloadCanonical.forOpen(secretId: meta.secretId, requestType: .retrieve, recipientKey: contact.edPublicKey, label: secret.label, secretCreatedAt: secret.secretCreatedAt, shareId: meta.id, ciphertext: nil)
                 if let senderSignature = try? identity.sign(canon) {
                     _ = try? await relay(for: contact).openShareRequest(
                         secretId: meta.secretId,
                         recipientKey: contact.edPublicKey,
-                        label: meta.label,
-                        secretCreatedAt: meta.secretCreatedAt,
+                        label: secret.label,
+                        secretCreatedAt: secret.secretCreatedAt,
                         requestType: .retrieve,
                         shareId: meta.id,
                         ciphertext: nil,
@@ -182,16 +224,19 @@ public final class ShareService: ShareManagement {
         guard let meta = all.first(where: { $0.id == shareId }) else {
             throw ShareServiceError.shareNotFound
         }
+        guard let secret = (try? secretRepository.getAll())?.first(where: { $0.id == meta.secretId }) else {
+            throw ShareServiceError.secretNotFound
+        }
         guard let contact = contactRepository.getById(meta.contactId) else {
             throw ShareServiceError.contactNotFound
         }
-        let canon = PayloadCanonical.forOpen(secretId: meta.secretId, requestType: type, recipientKey: contact.edPublicKey, label: meta.label, secretCreatedAt: meta.secretCreatedAt, shareId: shareId, ciphertext: nil)
+        let canon = PayloadCanonical.forOpen(secretId: meta.secretId, requestType: type, recipientKey: contact.edPublicKey, label: secret.label, secretCreatedAt: secret.secretCreatedAt, shareId: shareId, ciphertext: nil)
         let senderSignature = try identity.sign(canon)
         return try await relay(for: contact).openShareRequest(
             secretId: meta.secretId,
             recipientKey: contact.edPublicKey,
-            label: meta.label,
-            secretCreatedAt: meta.secretCreatedAt,
+            label: secret.label,
+            secretCreatedAt: secret.secretCreatedAt,
             requestType: type,
             shareId: shareId,
             ciphertext: nil,
@@ -199,7 +244,13 @@ public final class ShareService: ShareManagement {
         )
     }
 
+    /// Pure read (item 11): collects and decrypts `k` approved retrieve shares, but never tears
+    /// down local `ShareMetadata` or relay rows. Use `discardSecret` for teardown — reconstruct is
+    /// now a *step* toward a possible re-split, not an implicit "I'm done with this" signal.
     public func reconstruct(secretId: UUID) async throws -> Data {
+        guard let secret = (try? secretRepository.getAll())?.first(where: { $0.id == secretId }) else {
+            throw ShareServiceError.secretNotFound
+        }
         var allRequests: [(relay: any ShareRelay, request: ShareRequest)] = []
         for relay in allRelays() {
             let reqs = (try? await relay.listShareRequests(role: .sender, requestType: .retrieve, state: nil)) ?? []
@@ -210,8 +261,8 @@ public final class ShareService: ShareManagement {
         let approved = allRequests.filter { pair in
             pair.request.secretId == secretId && pair.request.state == .approved && pair.request.ciphertext != nil && verifyRespond(pair.request)
         }
-        guard approved.count >= 2 else {
-            throw ShareServiceError.notEnoughApprovedShares(approved.count)
+        guard approved.count >= secret.k else {
+            throw ShareServiceError.notEnoughApprovedShares(have: approved.count, need: secret.k)
         }
         let decryptedShares: [[UInt8]] = try approved.map { pair in
             let ct = pair.request.ciphertext!
@@ -222,14 +273,31 @@ public final class ShareService: ShareManagement {
             return Array(plaintext)
         }
         let secretBytes = try combine(shares: decryptedShares)
-        // Delete via the same relay each row was found on — the relay cascades to Retrieve/Delete rows.
-        for pair in approved {
-            if let pickUpId = pair.request.shareId {
-                try? await pair.relay.deleteShareRequest(requestId: pickUpId)
-                try? shareMetadataRepository.delete(shareId: pickUpId)
-            }
-        }
         return Data(secretBytes)
+    }
+
+    /// Fans out a sender-initiated `delete` to every known holder of `secretId` and flips the
+    /// `Secret` to `.discarding` immediately, before any holder has responded — see item 11.
+    public func discardSecret(secretId: UUID) async throws {
+        guard let secret = (try? secretRepository.getAll())?.first(where: { $0.id == secretId }) else {
+            throw ShareServiceError.secretNotFound
+        }
+        try secretRepository.save(Secret(id: secret.id, label: secret.label, k: secret.k, n: secret.n, secretCreatedAt: secret.secretCreatedAt, state: .discarding))
+        let shares = ((try? shareMetadataRepository.getAll()) ?? []).filter { $0.secretId == secretId }
+        for share in shares {
+            _ = try? await openRequest(shareId: share.id, type: .delete)
+        }
+    }
+
+    /// Local-only teardown for a `.discarding` secret whose holders won't all respond (e.g. a
+    /// permanently dark holder) — removes the `Secret` and its remaining `ShareMetadata` rows
+    /// without waiting for relay confirmation. See item 11.
+    public func forceForgetSecret(secretId: UUID) throws {
+        let shares = ((try? shareMetadataRepository.getAll()) ?? []).filter { $0.secretId == secretId }
+        for share in shares {
+            try? shareMetadataRepository.delete(shareId: share.id)
+        }
+        try secretRepository.delete(secretId: secretId)
     }
 
     // MARK: - Recipient flows

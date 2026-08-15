@@ -69,6 +69,16 @@ private final class FakeShareMetadataRepository: ShareMetadataRepository {
     func delete(shareId: UUID) throws { metas.removeAll { $0.id == shareId } }
 }
 
+private final class FakeSecretRepository: SecretRepository {
+    private var secrets: [Secret] = []
+    func getAll() throws -> [Secret] { secrets }
+    func save(_ secret: Secret) throws {
+        secrets.removeAll { $0.id == secret.id }
+        secrets.append(secret)
+    }
+    func delete(secretId: UUID) throws { secrets.removeAll { $0.id == secretId } }
+}
+
 private struct NoOpShareEncryption: ShareEncryption {
     func encrypt(_ plaintext: Data, recipientXPublicKey: Data) throws -> Data { plaintext }
     func decrypt(_ noncePlusCiphertext: Data, recipientXPublicKey: Data) throws -> Data { noncePlusCiphertext }
@@ -141,6 +151,7 @@ private func makeService(relay: FakeShareRelay) throws -> (svc: ShareService, bo
         encryption: NoOpShareEncryption(),
         shareRepository: shareRepo,
         shareMetadataRepository: FakeShareMetadataRepository(),
+        secretRepository: FakeSecretRepository(),
         contactRepository: FakeContactRepository([aliceContact]),
         identity: bobIdentity
     )
@@ -283,6 +294,7 @@ private final class TwoRelayResolver: ShareRelayResolver {
         encryption: NoOpShareEncryption(),
         shareRepository: shareRepo,
         shareMetadataRepository: FakeShareMetadataRepository(),
+        secretRepository: FakeSecretRepository(),
         contactRepository: FakeContactRepository([aliceContact, charlieContact]),
         identity: bobIdentity
     )
@@ -323,6 +335,7 @@ private final class TwoRelayResolver: ShareRelayResolver {
         encryption: NoOpShareEncryption(),
         shareRepository: shareRepo,
         shareMetadataRepository: FakeShareMetadataRepository(),
+        secretRepository: FakeSecretRepository(),
         contactRepository: FakeContactRepository([aliceContact, charlieContact]),
         identity: bobIdentity
     )

@@ -4,6 +4,7 @@ import SwiftUI
 struct DepositView: View {
     @State private var viewModel: DepositViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var showWarningConfirmation = false
 
     init(shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
         _viewModel = State(initialValue: DepositViewModel(
@@ -63,10 +64,20 @@ struct DepositView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Deposit") {
-                        Task { await viewModel.deposit() }
+                        if viewModel.splitTimeWarnings.isEmpty {
+                            Task { await viewModel.deposit() }
+                        } else {
+                            showWarningConfirmation = true
+                        }
                     }
                     .disabled(!viewModel.canDeposit || viewModel.isDepositing)
                 }
+            }
+            .confirmationDialog("Are you sure?", isPresented: $showWarningConfirmation, titleVisibility: .visible) {
+                Button("Deposit Anyway") { Task { await viewModel.deposit() } }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(viewModel.splitTimeWarnings.joined(separator: "\n\n"))
             }
             .overlay {
                 if viewModel.isDepositing {

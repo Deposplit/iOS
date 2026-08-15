@@ -17,18 +17,20 @@ final class ShareDetailViewModel {
     var error: String?
     var reconstructState: ReconstructState = .unavailable(String(localized: "Loading…"))
 
+    private let secret: Secret
     private let share: ShareMetadata
     private let shareManagement: any ShareManagement
     private let contactManagement: any ContactManagement
     private var allContacts: [Contact] = []
 
-    init(share: ShareMetadata, shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
-        self.share = share
+    init(target: ShareDetailTarget, shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
+        self.secret = target.secret
+        self.share = target.share
         self.shareManagement = shareManagement
         self.contactManagement = contactManagement
     }
 
-    var shareLabel: String { share.label }
+    var shareLabel: String { secret.label }
     var recipientName: String {
         allContacts.first(where: { $0.id == share.contactId })?.pseudonym
             ?? String(localized: "Unknown contact")
@@ -62,10 +64,10 @@ final class ShareDetailViewModel {
     func reconstruct() async -> String? {
         do {
             let secretData = try await shareManagement.reconstruct(secretId: share.secretId)
-            let secret = String(bytes: Array(secretData), encoding: .utf8)
+            let secretText = String(bytes: Array(secretData), encoding: .utf8)
                 ?? secretData.base64EncodedString()
-            reconstructState = .reconstructed(secret)
-            return secret
+            reconstructState = .reconstructed(secretText)
+            return secretText
         } catch {
             reconstructState = .failed(error.localizedDescription)
             return nil
@@ -83,10 +85,10 @@ final class ShareDetailViewModel {
         let approvedCount = shareRequests.filter {
             $0.requestType == .retrieve && $0.state == .approved && $0.ciphertext != nil
         }.count
-        if approvedCount >= 2 {
+        if approvedCount >= secret.k {
             reconstructState = .ready
         } else {
-            reconstructState = .unavailable(String(localized: "Need \(2 - approvedCount) more approved retrieval(s)."))
+            reconstructState = .unavailable(String(localized: "Need \(secret.k - approvedCount) more approved retrieval(s)."))
         }
     }
 }

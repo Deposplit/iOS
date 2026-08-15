@@ -38,9 +38,7 @@ final class LocalShareMetadataRepository: ShareMetadataRepository {
     private struct ShareMetadataJSON: Codable {
         let id: String
         let secretId: String
-        let label: String
         let contactId: String
-        let secretCreatedAt: String
     }
 
     private func load() throws -> [ShareMetadata] {
@@ -49,31 +47,16 @@ final class LocalShareMetadataRepository: ShareMetadataRepository {
         return items.compactMap { json in
             guard let id = UUID(uuidString: json.id),
                   let secretId = UUID(uuidString: json.secretId),
-                  let contactId = UUID(uuidString: json.contactId),
-                  let secretCreatedAt = _smrISO8601.date(from: json.secretCreatedAt) else { return nil }
-            return ShareMetadata(
-                id: id,
-                secretId: secretId,
-                label: json.label,
-                contactId: contactId,
-                secretCreatedAt: secretCreatedAt
-            )
+                  let contactId = UUID(uuidString: json.contactId) else { return nil }
+            return ShareMetadata(id: id, secretId: secretId, contactId: contactId)
         }
     }
 
     private func persist(_ shares: [ShareMetadata]) throws {
         let items = shares.map { s in
-            ShareMetadataJSON(
-                id: s.id.uuidString,
-                secretId: s.secretId.uuidString,
-                label: s.label,
-                contactId: s.contactId.uuidString,
-                secretCreatedAt: _smrISO8601.string(from: s.secretCreatedAt)
-            )
+            ShareMetadataJSON(id: s.id.uuidString, secretId: s.secretId.uuidString, contactId: s.contactId.uuidString)
         }
         let data = try JSONEncoder().encode(items)
         try data.write(to: fileURL, options: .atomic)
     }
 }
-
-private let _smrISO8601 = ISO8601DateFormatter()

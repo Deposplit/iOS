@@ -15,7 +15,7 @@ struct HomeView: View {
     @State private var showQrDisplay = false
     @State private var showDeposit = false
     @State private var showSettings = false
-    @State private var selectedShare: ShareMetadata?
+    @State private var selectedShareTarget: ShareDetailTarget?
 
     init(auth: any Identity, shareManagement: any ShareManagement, contactManagement: any ContactManagement, relaySettings: any RelaySettings) {
         self.auth = auth
@@ -100,8 +100,8 @@ struct HomeView: View {
                     }
                 }
             }
-            .navigationDestination(item: $selectedShare) { share in
-                ShareDetailView(share: share, shareManagement: shareManagement, contactManagement: contactManagement)
+            .navigationDestination(item: $selectedShareTarget) { target in
+                ShareDetailView(target: target, shareManagement: shareManagement, contactManagement: contactManagement)
             }
         }
         .sheet(isPresented: $showContacts, onDismiss: { loadContacts() }) {
@@ -150,9 +150,13 @@ struct HomeView: View {
                                        description: Text(error))
             } else {
                 DistributedTab(
-                    shares: homeViewModel.distributedShares,
+                    groups: homeViewModel.groupedSecrets,
                     contacts: allContacts,
-                    onTap: { selectedShare = $0 }
+                    requestingAllIds: homeViewModel.requestingAllIds,
+                    onTapHolder: { selectedShareTarget = $0 },
+                    onRequestAll: { secretId in Task { await homeViewModel.requestAll(secretId: secretId) } },
+                    onDiscard: { secretId in Task { await homeViewModel.discardSecret(secretId) } },
+                    onForceForget: { secretId in Task { await homeViewModel.forceForgetSecret(secretId) } }
                 )
             }
         }

@@ -4,9 +4,9 @@ import SwiftUI
 struct ShareDetailView: View {
     @State private var viewModel: ShareDetailViewModel
 
-    init(share: ShareMetadata, shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
+    init(target: ShareDetailTarget, shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
         _viewModel = State(initialValue: ShareDetailViewModel(
-            share: share, shareManagement: shareManagement, contactManagement: contactManagement))
+            target: target, shareManagement: shareManagement, contactManagement: contactManagement))
     }
 
     var body: some View {

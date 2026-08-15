@@ -12,22 +12,21 @@ public enum ShareRequestState: String {
     case pending, approved, denied
 }
 
+/// Per-share record on the sender's device — one per holder of a `Secret`. Normalized to
+/// reference its parent `Secret` (by `secretId`) rather than duplicating `label`/
+/// `secretCreatedAt` — see deposplit.com/CLAUDE.md "What is next" item 11.
 public struct ShareMetadata: Identifiable, Equatable, Hashable {
     public func hash(into hasher: inout Hasher) { hasher.combine(id) }
     public let id: UUID           // PickUp request ID
     public let secretId: UUID
-    public let label: String
     // The holder's stable local contact id — not their Ed25519 key — so this record survives a
     // holder key rotation/recovery (see deposplit.com/CLAUDE.md "What is next" item 7).
     public let contactId: UUID
-    public let secretCreatedAt: Date
 
-    public init(id: UUID, secretId: UUID, label: String, contactId: UUID, secretCreatedAt: Date) {
+    public init(id: UUID, secretId: UUID, contactId: UUID) {
         self.id = id
         self.secretId = secretId
-        self.label = label
         self.contactId = contactId
-        self.secretCreatedAt = secretCreatedAt
     }
 }
 

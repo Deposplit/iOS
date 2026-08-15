@@ -15,12 +15,14 @@ struct DeposplitApp: App {
         let contactRepository = LocalContactRepository()
         let shareRepository = LocalShareRepository()
         let shareMetadataRepository = LocalShareMetadataRepository()
+        let secretRepository = LocalSecretRepository()
         let relayResolver = DeposplitRelayResolver(identity: identityService, relaySettings: relaySettings)
         shareManagement = ShareService(
             relayResolver: relayResolver,
             encryption: identityService,
             shareRepository: shareRepository,
             shareMetadataRepository: shareMetadataRepository,
+            secretRepository: secretRepository,
             contactRepository: contactRepository,
             identity: identityService
         )
