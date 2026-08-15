@@ -5,6 +5,7 @@ struct HomeView: View {
     private let auth: any Identity
     private let shareManagement: any ShareManagement
     private let contactManagement: any ContactManagement
+    private let catalogManagement: any CatalogManagement
     private let relaySettings: any RelaySettings
 
     @State private var homeViewModel: HomeViewModel
@@ -17,10 +18,11 @@ struct HomeView: View {
     @State private var showSettings = false
     @State private var selectedShareTarget: ShareDetailTarget?
 
-    init(auth: any Identity, shareManagement: any ShareManagement, contactManagement: any ContactManagement, relaySettings: any RelaySettings) {
+    init(auth: any Identity, shareManagement: any ShareManagement, contactManagement: any ContactManagement, catalogManagement: any CatalogManagement, relaySettings: any RelaySettings) {
         self.auth = auth
         self.shareManagement = shareManagement
         self.contactManagement = contactManagement
+        self.catalogManagement = catalogManagement
         self.relaySettings = relaySettings
         _homeViewModel = State(initialValue: HomeViewModel(shareManagement: shareManagement))
         _requestsViewModel = State(initialValue: RequestsViewModel(
@@ -105,13 +107,13 @@ struct HomeView: View {
             }
         }
         .sheet(isPresented: $showContacts, onDismiss: { loadContacts() }) {
-            ContactsView(contactManagement: contactManagement)
+            ContactsView(contactManagement: contactManagement, shareManagement: shareManagement)
         }
         .sheet(isPresented: $showQrDisplay) {
             QrDisplayView(auth: auth, relaySettings: relaySettings)
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView(relaySettings: relaySettings)
+            SettingsView(relaySettings: relaySettings, catalogManagement: catalogManagement)
         }
         .sheet(isPresented: $showDeposit, onDismiss: {
             Task { await homeViewModel.load() }

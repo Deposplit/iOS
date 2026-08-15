@@ -20,7 +20,7 @@ import CryptoKit
 // Private key seed: bytes 0x00..0x1f. Not a real identity — a fixed, reproducible fixture.
 private let privateKeySeed = Data((0..<32).map { UInt8($0) })
 private let expectedPublicKeyBase64Url = "A6EHv_POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg"
-private let expectedSignatureBase64Url = "_EvKOl019mJekfMc34HdAkiEULJGph_zAz-yqwqgX25_JlBkTweeqOeSJJKf2tEb0peCZez_3YKY-DHdHF7NAw"
+private let expectedSignatureBase64Url = "0B6IPdj4W_Nusz0CWKznDI6o0LYUASyzRUNNsO_tPFHhy3RaQFz1FVR7c9LVEYnafuzMYia6t6ATS1UXsepEBQ"
 
 private let fixtureSecretId = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
 private let fixtureRecipientKey = Data(repeating: 0x02, count: 32)
@@ -30,6 +30,10 @@ private let fixtureSecretCreatedAt: Date = {
     return f.date(from: "2026-01-01T00:00:00Z")!
 }()
 private let fixtureCiphertext = Data([1, 2, 3, 4, 5])
+// k/n (item 8) — appended at the end of the field sequence, so the pre-item-8 fields above are
+// byte-identical to the original vector; only the two new trailing lines are new.
+private let fixtureK = 2
+private let fixtureN = 3
 
 private func base64URLDecode(_ string: String) -> Data {
     var s = string.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
@@ -48,9 +52,10 @@ private func base64URLEncode(_ data: Data) -> String {
 @Test func forOpenProducesTheFixedCanonicalBytes() {
     let canon = PayloadCanonical.forOpen(
         secretId: fixtureSecretId, requestType: .pickUp, recipientKey: fixtureRecipientKey,
-        label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, shareId: nil, ciphertext: fixtureCiphertext
+        label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, shareId: nil, ciphertext: fixtureCiphertext,
+        k: fixtureK, n: fixtureN
     )
-    let expected = "11111111-1111-1111-1111-111111111111\npick_up\nAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI\ncross-platform test vector\n1767225600000\n\nAQIDBAU="
+    let expected = "11111111-1111-1111-1111-111111111111\npick_up\nAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI\ncross-platform test vector\n1767225600000\n\nAQIDBAU=\n2\n3"
     #expect(String(data: canon, encoding: .utf8) == expected)
 }
 
@@ -63,7 +68,8 @@ private func base64URLEncode(_ data: Data) -> String {
 @Test func signingWithTheFixedSeedDerivesTheExpectedPublicKeyAndProducesAVerifiableSignature() throws {
     let canon = PayloadCanonical.forOpen(
         secretId: fixtureSecretId, requestType: .pickUp, recipientKey: fixtureRecipientKey,
-        label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, shareId: nil, ciphertext: fixtureCiphertext
+        label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, shareId: nil, ciphertext: fixtureCiphertext,
+        k: fixtureK, n: fixtureN
     )
     let privateKey = try Curve25519.Signing.PrivateKey(rawRepresentation: privateKeySeed)
     #expect(base64URLEncode(privateKey.publicKey.rawRepresentation) == expectedPublicKeyBase64Url)
@@ -75,7 +81,8 @@ private func base64URLEncode(_ data: Data) -> String {
 @Test func theFixedSignatureVerifiesAgainstTheFixedPublicKey() throws {
     let canon = PayloadCanonical.forOpen(
         secretId: fixtureSecretId, requestType: .pickUp, recipientKey: fixtureRecipientKey,
-        label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, shareId: nil, ciphertext: fixtureCiphertext
+        label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, shareId: nil, ciphertext: fixtureCiphertext,
+        k: fixtureK, n: fixtureN
     )
     let publicKey = try Curve25519.Signing.PublicKey(rawRepresentation: base64URLDecode(expectedPublicKeyBase64Url))
     let signature = base64URLDecode(expectedSignatureBase64Url)

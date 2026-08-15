@@ -6,6 +6,7 @@ struct DeposplitApp: App {
     private let auth: any Identity
     private let shareManagement: any ShareManagement
     private let contactManagement: any ContactManagement
+    private let catalogManagement: any CatalogManagement
     private let relaySettings: any RelaySettings
 
     init() {
@@ -27,11 +28,16 @@ struct DeposplitApp: App {
             identity: identityService
         )
         contactManagement = ContactService(contactRepository: contactRepository)
+        catalogManagement = CatalogService(
+            contactRepository: contactRepository,
+            secretRepository: secretRepository,
+            shareMetadataRepository: shareMetadataRepository
+        )
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView(auth: auth, shareManagement: shareManagement, contactManagement: contactManagement, relaySettings: relaySettings)
+            RootView(auth: auth, shareManagement: shareManagement, contactManagement: contactManagement, catalogManagement: catalogManagement, relaySettings: relaySettings)
         }
     }
 }
@@ -40,20 +46,22 @@ struct RootView: View {
     let auth: any Identity
     let shareManagement: any ShareManagement
     let contactManagement: any ContactManagement
+    let catalogManagement: any CatalogManagement
     let relaySettings: any RelaySettings
     @State private var isRegistered: Bool
 
-    init(auth: any Identity, shareManagement: any ShareManagement, contactManagement: any ContactManagement, relaySettings: any RelaySettings) {
+    init(auth: any Identity, shareManagement: any ShareManagement, contactManagement: any ContactManagement, catalogManagement: any CatalogManagement, relaySettings: any RelaySettings) {
         self.auth = auth
         self.shareManagement = shareManagement
         self.contactManagement = contactManagement
+        self.catalogManagement = catalogManagement
         self.relaySettings = relaySettings
         _isRegistered = State(initialValue: auth.isRegistered)
     }
 
     var body: some View {
         if isRegistered {
-            HomeView(auth: auth, shareManagement: shareManagement, contactManagement: contactManagement, relaySettings: relaySettings)
+            HomeView(auth: auth, shareManagement: shareManagement, contactManagement: contactManagement, catalogManagement: catalogManagement, relaySettings: relaySettings)
         } else {
             SignInView(auth: auth) {
                 isRegistered = true

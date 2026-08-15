@@ -91,6 +91,9 @@ private extension ShareRequestType {
         case .pickUp: "Pick Up"
         case .retrieve: "Retrieve"
         case .delete: "Delete"
+        // Never surfaced here — recoveryMetadata is a self-approved push, consumed silently by
+        // syncInbox's processRecoveryMetadata, not routed through listPendingRequests.
+        case .recoveryMetadata: "Recovery"
         }
     }
 }

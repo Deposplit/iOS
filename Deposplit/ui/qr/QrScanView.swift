@@ -89,7 +89,7 @@ final class QrScanViewModel {
     }
 }
 
-private struct DataScannerRepresentable: UIViewControllerRepresentable {
+struct DataScannerRepresentable: UIViewControllerRepresentable {
     let onScan: (String) -> Void
 
     func makeUIViewController(context: Context) -> DataScannerViewController {

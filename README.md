@@ -127,48 +127,60 @@ iOS/
 │       │   │                              + RequestSigner is pending — see iOS/CLAUDE.md)
 │       │   ├── ShareManagement.swift      use-case interface: deposit, listSecrets, listDistributed,
 │       │   │                              reconstruct (pure read, real k), discardSecret, forceForgetSecret,
-│       │   │                              syncInbox, listPendingRequests, respond, …
-│       │   └── ContactManagement.swift    listContacts, addManually, addFromQr, deleteContact
+│       │   │                              syncInbox, listPendingRequests, respond, pushRecoveryMetadata (item 8), …
+│       │   ├── ContactManagement.swift    listContacts, addManually, addFromQr, updateContact (item 8 —
+│       │   │                              contact-update-in-place, key change forces a fresh verificationLevel), deleteContact
+│       │   └── CatalogManagement.swift    exportCatalog, importCatalog — optional non-secret catalog backup (item 8)
 │       ├── driven_ports/
 │       │   ├── IdentityStore.swift        isRegistered, save, pseudonym, edPublicKey, edPrivateKey,
 │       │   │                              xPublicKey, xPrivateKey
 │       │   ├── ContactRepository.swift    getAll, getByEdKey, getById, save, delete
-│       │   ├── ShareRepository.swift      getAll, getPlaintextShare, save, delete
+│       │   ├── ShareRepository.swift      getAll, getPlaintextShare (keyed on secretId, not the pickup relay-row id — item 8), save, delete
 │       │   ├── SecretRepository.swift     getAll, save, delete — local store of sender-side Secret aggregates (item 11)
 │       │   ├── ShareMetadataRepository.swift  getAll, save, delete — local store of distributed ShareMetadata
-│       │   └── ShareRelay.swift           openShareRequest, listShareRequests, getShareRequest,
-│       │                                  respondToShareRequest, deleteShareRequest, deleteShareRequests
+│       │   ├── ShareRelay.swift           openShareRequest (incl. k/n — item 8), listShareRequests, getShareRequest,
+│       │   │                              respondToShareRequest, deleteShareRequest, deleteShareRequests
+│       │   ├── ShareRelayResolver.swift   resolve(relayBaseUrl:) — BYOR factory/cache; nil resolves to the device's default relay
+│       │   └── RelaySettings.swift        defaultRelayBaseURL, setDefaultRelayBaseURL — device's runtime-configurable default relay
 │       ├── services/
 │       │   ├── IdentityService.swift      Identity + ShareEncryption impl — CryptoKit only, no Security/UserDefaults
 │       │   ├── ShareEncryption.swift      Intra-hexagon interface: encrypt(plaintext, recipientXPublicKey),
 │       │   │                              decrypt(noncePlusCiphertext, recipientXPublicKey)
 │       │   ├── ShareService.swift         ShareManagement impl — calls ShareRelay + ShareEncryption +
 │       │   │                              ShareRepository + ShareMetadataRepository + SecretRepository + ContactRepository;
-│       │   │                              deposit() writes ShareMetadata + a Secret to local store; listDistributed()/listSecrets()
+│       │   │                              deposit() writes ShareMetadata + a Secret to local store (incl. k/n); listDistributed()/listSecrets()
 │       │   │                              read from local store; reconstruct() is a pure read (item 11); discardSecret()/
 │       │   │                              forceForgetSecret() are the teardown primitives; syncInbox() auto-approves pending PickUp requests
-│       │   └── ContactService.swift       ContactManagement impl — validates + delegates to
-│       │                                  ContactRepository; defines ContactError
+│       │   │                              then calls processRecoveryMetadata() (item 8); pushRecoveryMetadata(contactId) is the holder-side push
+│       │   ├── ContactService.swift       ContactManagement impl — validates + delegates to
+│       │   │                              ContactRepository; defines ContactError; updateContact requires a fresh
+│       │   │                              verificationLevel whenever either key changes (item 8)
+│       │   └── CatalogService.swift       CatalogManagement impl — exportCatalog/importCatalog (upsert-if-absent-by-id), item 8
 │       └── value_objects/
 │           ├── AuthError.swift            Error enum for auth failures
-│           ├── Contact.swift              Contact struct + VerificationLevel enum
-│           ├── HeldShare.swift            HeldShare struct
+│           ├── Catalog.swift              Catalog struct (contacts, secrets, shareMetadata) — item 8's optional backup; Codable
+│           ├── Contact.swift              Contact struct + VerificationLevel enum; Codable
+│           ├── HeldShare.swift            HeldShare struct (incl. k/n — item 8)
 │           ├── Secret.swift               Secret struct (id, label, k, n, secretCreatedAt, state) + SecretState —
-│           │                              sender-side per-secret aggregate, see CLAUDE.md item 11
-│           └── Share.swift               Role, ShareRequestType, ShareRequestState,
-│                                          ShareMetadata (id/secretId/contactId only), ShareRequest
+│           │                              sender-side per-secret aggregate, see CLAUDE.md item 11; Codable
+│           └── Share.swift               Role, ShareRequestType (incl. .recoveryMetadata — item 8), ShareRequestState,
+│                                          ShareMetadata (id/secretId/contactId only; Codable), ShareRequest (incl. k/n)
 ├── Deposplit.xcodeproj/
 ├── Deposplit/                        ← app target (adapters + UI); PBXFileSystemSynchronizedRootGroup
-│   ├── DeposplitApp.swift            @main entry point + RootView (routes to SignInView or HomeView)
+│   ├── DeposplitApp.swift            @main entry point + RootView (routes to SignInView or HomeView); wires
+│   │                                  CatalogService alongside ShareService/ContactService (item 8)
 │   ├── auth/
 │   │   └── KeychainIdentityStore.swift  IdentityStore adapter — Security framework + UserDefaults
 │   ├── api/
-│   │   └── DeposplitApiAdapter.swift  HTTP adapter — implements ShareRelay; URLSession + Ed25519 request
-│   │                                  signing + SHA-256 body hash; all /share-requests operations
+│   │   ├── DeposplitApiAdapter.swift  HTTP adapter — implements ShareRelay; URLSession + Ed25519 request
+│   │   │                              signing + SHA-256 body hash; all /share-requests operations (incl. k/n — item 8)
+│   │   └── DeposplitRelayResolver.swift  Implements ShareRelayResolver — memoizes one adapter per resolved base URL
 │   ├── contacts/
 │   │   └── LocalContactRepository.swift  JSON file in Documents/contacts.json
+│   ├── settings/
+│   │   └── UserDefaultsRelaySettings.swift  Implements RelaySettings
 │   ├── shares/
-│   │   ├── LocalShareRepository.swift          JSON file in Documents/shares.json
+│   │   ├── LocalShareRepository.swift          JSON file in Documents/shares.json; incl. k/n (item 8); getPlaintextShare keyed on secretId
 │   │   ├── LocalSecretRepository.swift         JSON file in Documents/secrets.json; local store of sender-side Secret aggregates
 │   │   └── LocalShareMetadataRepository.swift  JSON file in Documents/distributed_shares.json; local store of distributed ShareMetadata
 │   └── ui/
@@ -185,9 +197,11 @@ iOS/
 │       │   └── RecipientRequestsTab.swift  Approve/deny incoming requests
 │       ├── contacts/
 │       │   ├── ContactsViewModel.swift  listContacts + deleteContact via ContactManagement
-│       │   ├── ContactsView.swift    List + delete + add via QR or manual entry
+│       │   ├── ContactsView.swift    List + delete + add via QR or manual entry; per-row "Relink (Key Changed)" action (item 8)
 │       │   ├── AddContactViewModel.swift  addManually via ContactManagement
-│       │   └── AddContactView.swift
+│       │   ├── AddContactView.swift
+│       │   └── RelinkContactView.swift + RelinkContactViewModel.swift  (item 8) QR re-scan → updateContact + pushRecoveryMetadata;
+│       │                              distinct from QrScanView, which always mints a *new* contact
 │       ├── deposit/
 │       │   ├── DepositViewModel.swift  deposit via ShareManagement; listContacts via ContactManagement; splitTimeWarnings (item 11)
 │       │   └── DepositView.swift     confirmationDialog surfaces splitTimeWarnings before deposit if any apply
@@ -195,11 +209,15 @@ iOS/
 │       │   ├── ShareDetailViewModel.swift  Takes a ShareDetailTarget (Secret + ShareMetadata); open RETRIEVE/DELETE
 │       │   │                        requests; reconstruct via ShareManagement (ready-threshold reads Secret.k)
 │       │   └── ShareDetailView.swift
-│       └── qr/
-│           ├── QrPayload.swift       {"v":1,"pseudonym":"…","ed":"…","x":"…"} encode/decode
-│           ├── QrDisplayViewModel.swift  CoreImage QR generation
-│           ├── QrDisplayView.swift
-│           └── QrScanView.swift      DataScannerViewController (VisionKit) + QrScanViewModel
+│       ├── qr/
+│       │   ├── QrPayload.swift       {"v":1,"pseudonym":"…","ed":"…","x":"…"} encode/decode
+│       │   ├── QrDisplayViewModel.swift  CoreImage QR generation
+│       │   ├── QrDisplayView.swift
+│       │   └── QrScanView.swift      DataScannerViewController (VisionKit) + QrScanViewModel; DataScannerRepresentable
+│       │                              is shared (not private) with RelinkContactView (item 8)
+│       └── settings/
+│           ├── SettingsView.swift    Default relay editor; "Catalog Backup" export/import (item 8)
+│           └── SettingsViewModel.swift
 └── DeposplitTests/                   ← unit test target (@testable import hexagon)
     └── ShamirSecretSharingTests.swift  Swift Testing — round-trip and cross-platform vectors
 ```

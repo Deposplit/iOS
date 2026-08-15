@@ -57,7 +57,7 @@ private final class FakeContactRepository: ContactRepository {
 private final class FakeShareRepository: ShareRepository {
     private var shares: [HeldShare] = []
     func getAll() -> [HeldShare] { shares }
-    func getPlaintextShare(shareId: UUID) -> Data? { shares.first { $0.id == shareId }?.plaintextShare }
+    func getPlaintextShare(secretId: UUID) -> Data? { shares.first { $0.secretId == secretId }?.plaintextShare }
     func save(_ share: HeldShare) { shares.append(share) }
     func delete(shareId: UUID) { shares.removeAll { $0.id == shareId } }
 }
@@ -84,23 +84,43 @@ private struct NoOpShareEncryption: ShareEncryption {
     func decrypt(_ noncePlusCiphertext: Data, recipientXPublicKey: Data) throws -> Data { noncePlusCiphertext }
 }
 
-/// In-memory ShareRelay test double — listShareRequests ignores its filters and just returns
-/// whatever `pending` is configured to, which is all these tests need.
+/// In-memory ShareRelay test double. `listShareRequests` filters by `requestType`/`state` (role
+/// is ignored — every fixture row here is already addressed correctly) since `syncInbox` now
+/// issues two differently-filtered queries per relay (pickUp/pending, then
+/// recoveryMetadata/approved) that must not see each other's rows.
 private final class FakeShareRelay: ShareRelay {
+    struct OpenedRequest {
+        let secretId: UUID
+        let recipientKey: Data
+        let requestType: ShareRequestType
+        let k: Int?
+        let n: Int?
+    }
+
     var pending: [ShareRequest] = []
     var byId: [UUID: ShareRequest] = [:]
     var respondCalls: [UUID] = []
+    var deletedRequestIds: [UUID] = []
+    var openedRequests: [OpenedRequest] = []
     var unreachable = false
 
-    func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, requestType: ShareRequestType, shareId: UUID?, ciphertext: Data?, senderSignature: Data) async throws -> ShareRequest {
-        fatalError("not exercised by these tests")
+    func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, requestType: ShareRequestType, shareId: UUID?, ciphertext: Data?, k: Int?, n: Int?, senderSignature: Data) async throws -> ShareRequest {
+        openedRequests.append(OpenedRequest(secretId: secretId, recipientKey: recipientKey, requestType: requestType, k: k, n: n))
+        let now = Date()
+        let selfApproved = requestType == .recoveryMetadata
+        return ShareRequest(
+            id: UUID(), secretId: secretId, senderKey: Data(), recipientKey: recipientKey, label: label,
+            secretCreatedAt: secretCreatedAt, requestType: requestType, state: selfApproved ? .approved : .pending,
+            shareId: shareId, requestedAt: now, respondedAt: selfApproved ? now : nil,
+            ciphertext: nil, k: k, n: n, senderSignature: senderSignature, recipientSignature: nil
+        )
     }
 
     struct SimulatedOutage: Error {}
 
     func listShareRequests(role: Role, requestType: ShareRequestType?, state: ShareRequestState?) async throws -> [ShareRequest] {
         if unreachable { throw SimulatedOutage() }
-        return pending
+        return pending.filter { (requestType == nil || $0.requestType == requestType) && (state == nil || $0.state == state) }
     }
 
     func getShareRequest(requestId: UUID) async throws -> ShareRequest {
@@ -114,14 +134,14 @@ private final class FakeShareRelay: ShareRelay {
             id: existing.id, secretId: existing.secretId, senderKey: existing.senderKey, recipientKey: existing.recipientKey,
             label: existing.label, secretCreatedAt: existing.secretCreatedAt, requestType: existing.requestType,
             state: approved ? .approved : .denied, shareId: existing.shareId, requestedAt: existing.requestedAt,
-            respondedAt: existing.respondedAt, ciphertext: existing.ciphertext,
+            respondedAt: existing.respondedAt, ciphertext: existing.ciphertext, k: existing.k, n: existing.n,
             senderSignature: existing.senderSignature, recipientSignature: existing.recipientSignature
         )
         byId[requestId] = updated
         return updated
     }
 
-    func deleteShareRequest(requestId: UUID) async throws {}
+    func deleteShareRequest(requestId: UUID) async throws { deletedRequestIds.append(requestId) }
     func deleteShareRequests(senderKey: Data?, secretId: UUID?) async throws {}
 }
 
@@ -164,15 +184,21 @@ private func makeService(relay: FakeShareRelay) throws -> (svc: ShareService, bo
 private func makeSignedRow(
     id: UUID, senderKey: Data, recipientKey: Data, signer: TestKeyPair,
     requestType: ShareRequestType = .pickUp, shareId: UUID? = nil, ciphertext: Data? = Data([1, 2, 3]),
-    label: String = "test secret", createdAt: Date = Date()
+    label: String = "test secret", createdAt: Date = Date(),
+    k: Int? = nil, n: Int? = nil
 ) throws -> ShareRequest {
     let secretId = UUID()
-    let canon = PayloadCanonical.forOpen(secretId: secretId, requestType: requestType, recipientKey: recipientKey, label: label, secretCreatedAt: createdAt, shareId: shareId, ciphertext: ciphertext)
+    // k/n are required on pickUp/recoveryMetadata rows and forbidden otherwise — default them
+    // here (like production's relay-side validation would) so pickUp fixtures don't need every
+    // call site updated just to keep passing syncInbox's k/n guard.
+    let isRoot = requestType == .pickUp || requestType == .recoveryMetadata
+    let (kk, nn): (Int?, Int?) = isRoot ? (k ?? 2, n ?? 3) : (nil, nil)
+    let canon = PayloadCanonical.forOpen(secretId: secretId, requestType: requestType, recipientKey: recipientKey, label: label, secretCreatedAt: createdAt, shareId: shareId, ciphertext: ciphertext, k: kk, n: nn)
     let sig = try signer.sign(canon)
     return ShareRequest(
         id: id, secretId: secretId, senderKey: senderKey, recipientKey: recipientKey, label: label,
         secretCreatedAt: createdAt, requestType: requestType, state: .pending, shareId: shareId,
-        requestedAt: Date(), respondedAt: nil, ciphertext: ciphertext, senderSignature: sig, recipientSignature: nil
+        requestedAt: Date(), respondedAt: nil, ciphertext: ciphertext, k: kk, n: nn, senderSignature: sig, recipientSignature: nil
     )
 }
 
@@ -349,4 +375,111 @@ private final class TwoRelayResolver: ShareRelayResolver {
 
     #expect(defaultRelay.respondCalls == [fromAliceId])
     #expect(shareRepo.getAll().map(\.id) == [fromAliceId])
+}
+
+// MARK: - Identity recovery (item 8)
+
+private func makeServiceForRecoveryTest(relay: FakeShareRelay) throws -> (
+    svc: ShareService, bob: IdentityService, shareRepo: FakeShareRepository,
+    secretRepo: FakeSecretRepository, metaRepo: FakeShareMetadataRepository
+) {
+    let bobIdentity = IdentityService(identityStore: InMemoryIdentityStoreForShareServiceTest())
+    try bobIdentity.register(pseudonym: "bob")
+    let shareRepo = FakeShareRepository()
+    let secretRepo = FakeSecretRepository()
+    let metaRepo = FakeShareMetadataRepository()
+    let svc = ShareService(
+        relayResolver: FixedShareRelayResolver(relay),
+        encryption: NoOpShareEncryption(),
+        shareRepository: shareRepo,
+        shareMetadataRepository: metaRepo,
+        secretRepository: secretRepo,
+        contactRepository: FakeContactRepository([aliceContact]),
+        identity: bobIdentity
+    )
+    return (svc, bobIdentity, shareRepo, secretRepo, metaRepo)
+}
+
+/// A self-approved recoveryMetadata row, as the relay would hand it back — `state: .approved`
+/// and `respondedAt` set at creation, since this type has no consent phase (see item 8).
+private func makeApprovedRecoveryMetadataRow(
+    secretId: UUID, senderKey: Data, recipientKey: Data, signer: TestKeyPair,
+    k: Int = 2, n: Int = 3, label: String = "recovered secret", createdAt: Date = Date()
+) throws -> ShareRequest {
+    let canon = PayloadCanonical.forOpen(secretId: secretId, requestType: .recoveryMetadata, recipientKey: recipientKey, label: label, secretCreatedAt: createdAt, shareId: nil, ciphertext: nil, k: k, n: n)
+    let sig = try signer.sign(canon)
+    let now = Date()
+    return ShareRequest(
+        id: UUID(), secretId: secretId, senderKey: senderKey, recipientKey: recipientKey, label: label,
+        secretCreatedAt: createdAt, requestType: .recoveryMetadata, state: .approved, shareId: nil,
+        requestedAt: now, respondedAt: now, ciphertext: nil, k: k, n: n, senderSignature: sig, recipientSignature: nil
+    )
+}
+
+@Test func pushRecoveryMetadataOpensARecoveryMetadataPushForEveryHeldShareFromThatContact() async throws {
+    let relay = FakeShareRelay()
+    let (svc, _, shareRepo, _, _) = try makeServiceForRecoveryTest(relay: relay)
+    let secretId = UUID()
+    shareRepo.save(HeldShare(
+        id: UUID(), secretId: secretId, label: "test secret", contactId: aliceContact.id,
+        senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([9]),
+        k: 2, n: 3
+    ))
+
+    try await svc.pushRecoveryMetadata(contactId: aliceContact.id)
+
+    #expect(relay.openedRequests.count == 1)
+    #expect(relay.openedRequests.first?.requestType == .recoveryMetadata)
+    #expect(relay.openedRequests.first?.secretId == secretId)
+    #expect(relay.openedRequests.first?.recipientKey == aliceContact.edPublicKey)
+    #expect(relay.openedRequests.first?.k == 2)
+    #expect(relay.openedRequests.first?.n == 3)
+}
+
+@Test func pushRecoveryMetadataThrowsContactNotFoundForAnUnknownContact() async throws {
+    let relay = FakeShareRelay()
+    let (svc, _, _, _, _) = try makeServiceForRecoveryTest(relay: relay)
+
+    do {
+        try await svc.pushRecoveryMetadata(contactId: UUID())
+        Issue.record("expected ShareServiceError.contactNotFound")
+    } catch ShareServiceError.contactNotFound {
+        // expected
+    }
+}
+
+@Test func syncInboxProcessesAnApprovedRecoveryMetadataPushAndRebuildsSecretAndShareMetadata() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, _, secretRepo, metaRepo) = try makeServiceForRecoveryTest(relay: relay)
+    let secretId = UUID()
+    let pushRow = try makeApprovedRecoveryMetadataRow(secretId: secretId, senderKey: aliceKeys.publicKey, recipientKey: bob.edPublicKey, signer: aliceKeys)
+    relay.pending = [pushRow]
+
+    try await svc.syncInbox()
+
+    let secrets = try secretRepo.getAll()
+    #expect(secrets.map(\.id) == [secretId])
+    #expect(secrets.first?.k == 2)
+    #expect(secrets.first?.n == 3)
+    let metas = try metaRepo.getAll()
+    #expect(metas.count == 1)
+    #expect(metas.first?.secretId == secretId)
+    #expect(metas.first?.contactId == aliceContact.id)
+    // Consumed: deleted from the relay so it isn't reprocessed on the next poll.
+    #expect(relay.deletedRequestIds == [pushRow.id])
+}
+
+@Test func syncInboxIgnoresARecoveryMetadataPushWithAForgedSignature() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, _, secretRepo, metaRepo) = try makeServiceForRecoveryTest(relay: relay)
+    let secretId = UUID()
+    // Claims to be from alice but signed by a stranger.
+    let pushRow = try makeApprovedRecoveryMetadataRow(secretId: secretId, senderKey: aliceKeys.publicKey, recipientKey: bob.edPublicKey, signer: strangerKeys)
+    relay.pending = [pushRow]
+
+    try await svc.syncInbox()
+
+    #expect(try secretRepo.getAll().isEmpty)
+    #expect(try metaRepo.getAll().isEmpty)
+    #expect(relay.deletedRequestIds.isEmpty)
 }

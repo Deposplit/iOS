@@ -16,12 +16,15 @@ struct ContactsView: View {
     @State private var viewModel: ContactsViewModel
     @State private var showAddContact = false
     @State private var showQrScanner = false
+    @State private var relinkTarget: Contact?
     @Environment(\.dismiss) private var dismiss
 
     private let contactManagement: any ContactManagement
+    private let shareManagement: any ShareManagement
 
-    init(contactManagement: any ContactManagement) {
+    init(contactManagement: any ContactManagement, shareManagement: any ShareManagement) {
         self.contactManagement = contactManagement
+        self.shareManagement = shareManagement
         _viewModel = State(initialValue: ContactsViewModel(contactManagement: contactManagement))
     }
 
@@ -49,6 +52,13 @@ struct ContactsView: View {
                                 Text(contact.edPublicKey.base64URLEncoded.prefix(16) + "…")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                            }
+                            .contextMenu {
+                                Button {
+                                    relinkTarget = contact
+                                } label: {
+                                    Label("Relink (Key Changed)", systemImage: "arrow.triangle.2.circlepath")
+                                }
                             }
                         }
                         .onDelete { viewModel.delete(at: $0) }
@@ -84,6 +94,9 @@ struct ContactsView: View {
             }
             .sheet(isPresented: $showQrScanner, onDismiss: { viewModel.load() }) {
                 QrScanView(contactManagement: contactManagement)
+            }
+            .sheet(item: $relinkTarget, onDismiss: { viewModel.load() }) { contact in
+                RelinkContactView(contact: contact, contactManagement: contactManagement, shareManagement: shareManagement)
             }
         }
     }

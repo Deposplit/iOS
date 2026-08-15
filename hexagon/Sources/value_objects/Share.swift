@@ -6,6 +6,9 @@ public enum Role: String {
 
 public enum ShareRequestType: String {
     case pickUp = "pick_up", retrieve, delete
+    // A holder-initiated metadata-only push during identity recovery — not consent-gated, unlike
+    // the other three. See deposplit.com/CLAUDE.md "What is next" item 8.
+    case recoveryMetadata = "recovery_metadata"
 }
 
 public enum ShareRequestState: String {
@@ -15,7 +18,7 @@ public enum ShareRequestState: String {
 /// Per-share record on the sender's device — one per holder of a `Secret`. Normalized to
 /// reference its parent `Secret` (by `secretId`) rather than duplicating `label`/
 /// `secretCreatedAt` — see deposplit.com/CLAUDE.md "What is next" item 11.
-public struct ShareMetadata: Identifiable, Equatable, Hashable {
+public struct ShareMetadata: Identifiable, Equatable, Hashable, Codable {
     public func hash(into hasher: inout Hasher) { hasher.combine(id) }
     public let id: UUID           // PickUp request ID
     public let secretId: UUID
@@ -43,6 +46,10 @@ public struct ShareRequest: Identifiable, Equatable {
     public let requestedAt: Date
     public let respondedAt: Date?
     public let ciphertext: Data?
+    // SSS threshold/share-count — populated for pickUp/recoveryMetadata, nil for retrieve/delete.
+    // See deposplit.com/CLAUDE.md "What is next" items 8 and 11.
+    public let k: Int?
+    public let n: Int?
     /// Ed25519 signature over `PayloadCanonical.forOpen` — see that type for what's signed.
     public let senderSignature: Data
     /// Ed25519 signature over `PayloadCanonical.forRespond`; nil while pending.
@@ -53,6 +60,7 @@ public struct ShareRequest: Identifiable, Equatable {
         label: String, secretCreatedAt: Date,
         requestType: ShareRequestType, state: ShareRequestState,
         shareId: UUID?, requestedAt: Date, respondedAt: Date?, ciphertext: Data?,
+        k: Int? = nil, n: Int? = nil,
         senderSignature: Data, recipientSignature: Data?
     ) {
         self.id = id
@@ -67,6 +75,8 @@ public struct ShareRequest: Identifiable, Equatable {
         self.requestedAt = requestedAt
         self.respondedAt = respondedAt
         self.ciphertext = ciphertext
+        self.k = k
+        self.n = n
         self.senderSignature = senderSignature
         self.recipientSignature = recipientSignature
     }

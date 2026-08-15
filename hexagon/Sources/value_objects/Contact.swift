@@ -38,7 +38,7 @@ public enum VerificationLevel: String, Codable, Sendable, CaseIterable, Hashable
     public static func < (lhs: VerificationLevel, rhs: VerificationLevel) -> Bool { lhs.rank < rhs.rank }
 }
 
-public struct Contact: Identifiable, Equatable, Sendable {
+public struct Contact: Identifiable, Equatable, Sendable, Codable {
     public let id: UUID
     public let pseudonym: String
     public let edPublicKey: Data

@@ -10,7 +10,7 @@ public enum SecretState: String, Codable, Sendable, Equatable {
 /// Sender-side per-secret aggregate — the single source of truth for `k`/`n`/`label`/
 /// `secretCreatedAt`, keyed by `secretId`. `ShareMetadata` rows reference this rather than
 /// duplicating its fields. See deposplit.com/CLAUDE.md "What is next" item 11.
-public struct Secret: Identifiable, Equatable, Hashable {
+public struct Secret: Identifiable, Equatable, Hashable, Codable {
     public let id: UUID
     public let label: String
     public let k: Int

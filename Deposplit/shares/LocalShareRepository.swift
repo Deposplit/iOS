@@ -18,8 +18,8 @@ final class LocalShareRepository: ShareRepository {
         return shares
     }
 
-    func getPlaintextShare(shareId: UUID) -> Data? {
-        getAll().first { $0.id == shareId }?.plaintextShare
+    func getPlaintextShare(secretId: UUID) -> Data? {
+        getAll().first { $0.secretId == secretId }?.plaintextShare
     }
 
     func save(_ share: HeldShare) {
@@ -48,6 +48,8 @@ final class LocalShareRepository: ShareRepository {
         let createdAt: String
         let pickedUpAt: String   // ISO-8601
         let plaintextShare: String   // standard base64
+        let k: Int
+        let n: Int
     }
 
     private func load() throws -> [HeldShare] {
@@ -62,7 +64,9 @@ final class LocalShareRepository: ShareRepository {
                 senderPseudonym: json.senderPseudonym,
                 createdAt: _localISO8601.date(from: json.createdAt)!,
                 pickedUpAt: _localISO8601.date(from: json.pickedUpAt)!,
-                plaintextShare: Data(base64Encoded: json.plaintextShare)!
+                plaintextShare: Data(base64Encoded: json.plaintextShare)!,
+                k: json.k,
+                n: json.n
             )
         }
     }
@@ -77,7 +81,9 @@ final class LocalShareRepository: ShareRepository {
                 senderPseudonym: s.senderPseudonym,
                 createdAt: _localISO8601.string(from: s.createdAt),
                 pickedUpAt: _localISO8601.string(from: s.pickedUpAt),
-                plaintextShare: s.plaintextShare.base64EncodedString()
+                plaintextShare: s.plaintextShare.base64EncodedString(),
+                k: s.k,
+                n: s.n
             )
         }
         let data = try JSONEncoder().encode(items)

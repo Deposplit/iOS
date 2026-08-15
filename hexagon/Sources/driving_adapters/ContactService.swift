@@ -4,11 +4,15 @@ public enum ContactError: Error, LocalizedError {
     case blankPseudonym
     case invalidKeySize
     case veryHighRequiresInPersonScan
+    case contactNotFound
+    case levelRequiredOnKeyChange
     public var errorDescription: String? {
         switch self {
         case .blankPseudonym: "Name must not be blank."
         case .invalidKeySize: "Invalid key size — expected 32 bytes."
         case .veryHighRequiresInPersonScan: "Very High verification requires an in-person QR scan."
+        case .contactNotFound: "Contact not found."
+        case .levelRequiredOnKeyChange: "A verification level must be chosen fresh whenever a contact's keys change."
         }
     }
 }
@@ -60,6 +64,24 @@ public final class ContactService: ContactManagement {
             verifiedAt: now,
             addedAt: now,
             relayBaseUrl: relayBaseUrl
+        ))
+    }
+
+    public func updateContact(contactId: UUID, edPublicKey: Data?, xPublicKey: Data?, verificationLevel: VerificationLevel?) throws {
+        guard let existing = contactRepository.getById(contactId) else { throw ContactError.contactNotFound }
+        let changingKeys = edPublicKey != nil || xPublicKey != nil
+        if changingKeys && verificationLevel == nil { throw ContactError.levelRequiredOnKeyChange }
+        if let ed = edPublicKey { guard ed.count == 32 else { throw ContactError.invalidKeySize } }
+        if let x = xPublicKey { guard x.count == 32 else { throw ContactError.invalidKeySize } }
+        contactRepository.save(Contact(
+            id: existing.id,
+            pseudonym: existing.pseudonym,
+            edPublicKey: edPublicKey ?? existing.edPublicKey,
+            xPublicKey: xPublicKey ?? existing.xPublicKey,
+            verificationLevel: verificationLevel ?? existing.verificationLevel,
+            verifiedAt: verificationLevel != nil ? Date() : existing.verifiedAt,
+            addedAt: existing.addedAt,
+            relayBaseUrl: existing.relayBaseUrl
         ))
     }
 

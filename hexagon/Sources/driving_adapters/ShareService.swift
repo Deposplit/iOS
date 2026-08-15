@@ -4,7 +4,6 @@ public enum ShareServiceError: Error, LocalizedError {
     case contactNotFound
     case shareNotFound
     case secretNotFound
-    case missingShareId
     case notEnoughApprovedShares(have: Int, need: Int)
     case signatureVerificationFailed(String)
     case shareRequestNotFoundOnAnyRelay(UUID)
@@ -13,7 +12,6 @@ public enum ShareServiceError: Error, LocalizedError {
         case .contactNotFound: "Contact not found — cannot decrypt share."
         case .shareNotFound: "No local share record found."
         case .secretNotFound: "No local record for this secret."
-        case .missingShareId: "Retrieve request has no associated share ID."
         case .notEnoughApprovedShares(let have, let need): "Need at least \(need) approved shares (have \(have))."
         case .signatureVerificationFailed(let detail): "Signature verification failed: \(detail)"
         case .shareRequestNotFoundOnAnyRelay(let id): "Share request \(id) not found on any known relay."
@@ -86,7 +84,8 @@ public final class ShareService: ShareManagement {
         guard let contact = contactRepository.getByEdKey(req.senderKey) else { return false }
         let canon = PayloadCanonical.forOpen(
             secretId: req.secretId, requestType: req.requestType, recipientKey: req.recipientKey,
-            label: req.label, secretCreatedAt: req.secretCreatedAt, shareId: req.shareId, ciphertext: req.ciphertext
+            label: req.label, secretCreatedAt: req.secretCreatedAt, shareId: req.shareId, ciphertext: req.ciphertext,
+            k: req.k, n: req.n
         )
         return identity.verify(canon, signature: req.senderSignature, publicKey: contact.edPublicKey)
     }
@@ -112,7 +111,7 @@ public final class ShareService: ShareManagement {
         let createdAt = Date()
         for (contact, share) in zip(contacts, shares) {
             let ciphertext = try encryption.encrypt(Data(share), recipientXPublicKey: contact.xPublicKey)
-            let canon = PayloadCanonical.forOpen(secretId: secretId, requestType: .pickUp, recipientKey: contact.edPublicKey, label: label, secretCreatedAt: createdAt, shareId: nil, ciphertext: ciphertext)
+            let canon = PayloadCanonical.forOpen(secretId: secretId, requestType: .pickUp, recipientKey: contact.edPublicKey, label: label, secretCreatedAt: createdAt, shareId: nil, ciphertext: ciphertext, k: threshold, n: contacts.count)
             let senderSignature = try identity.sign(canon)
             let req = try await relay(for: contact).openShareRequest(
                 secretId: secretId,
@@ -122,6 +121,8 @@ public final class ShareService: ShareManagement {
                 requestType: .pickUp,
                 shareId: nil,
                 ciphertext: ciphertext,
+                k: threshold,
+                n: contacts.count,
                 senderSignature: senderSignature
             )
             try? shareMetadataRepository.save(ShareMetadata(id: req.id, secretId: secretId, contactId: contact.id))
@@ -198,8 +199,10 @@ public final class ShareService: ShareManagement {
         }
         for meta in forSecret {
             guard let contact = contactRepository.getById(meta.contactId) else { continue }
+            // Matched on secretId, not the local shareId — a recovered ShareMetadata's id is a
+            // freshly generated local UUID with no relay-row counterpart. See item 8.
             let hasActive = existing.contains {
-                $0.shareId == meta.id && ($0.state == .pending || $0.state == .approved)
+                $0.secretId == meta.secretId && ($0.state == .pending || $0.state == .approved)
             }
             if !hasActive {
                 let canon = PayloadCanonical.forOpen(secretId: meta.secretId, requestType: .retrieve, recipientKey: contact.edPublicKey, label: secret.label, secretCreatedAt: secret.secretCreatedAt, shareId: meta.id, ciphertext: nil)
@@ -212,6 +215,8 @@ public final class ShareService: ShareManagement {
                         requestType: .retrieve,
                         shareId: meta.id,
                         ciphertext: nil,
+                        k: nil,
+                        n: nil,
                         senderSignature: senderSignature
                     )
                 }
@@ -240,6 +245,8 @@ public final class ShareService: ShareManagement {
             requestType: type,
             shareId: shareId,
             ciphertext: nil,
+            k: nil,
+            n: nil,
             senderSignature: senderSignature
         )
     }
@@ -308,7 +315,11 @@ public final class ShareService: ShareManagement {
             // Unknown sender or unverified senderSignature: skip silently, do not auto-approve.
             for req in pending where verifyOpen(req) {
                 guard let senderContact = contactRepository.getByEdKey(req.senderKey) else { continue }
-                if shareRepository.getPlaintextShare(shareId: req.id) == nil {
+                // A pick_up without valid k/n can't happen against a conforming relay (required by
+                // ShareRequestsService) — skip defensively rather than store a share we can't
+                // later report thresholds for during recovery.
+                guard let k = req.k, let n = req.n else { continue }
+                if shareRepository.getPlaintextShare(secretId: req.secretId) == nil {
                     let canon = PayloadCanonical.forRespond(requestId: req.id, approved: true, ciphertext: nil)
                     guard let recipientSignature = try? identity.sign(canon) else { continue }
                     if let responded = try? await relay.respondToShareRequest(requestId: req.id, approved: true, ciphertext: nil, recipientSignature: recipientSignature),
@@ -322,11 +333,61 @@ public final class ShareService: ShareManagement {
                             senderPseudonym: senderContact.pseudonym,
                             createdAt: req.secretCreatedAt,
                             pickedUpAt: Date(),
-                            plaintextShare: plaintext
+                            plaintextShare: plaintext,
+                            k: k,
+                            n: n
                         ))
                     }
                 }
             }
+        }
+        await processRecoveryMetadata()
+    }
+
+    /// Identity recovery (item 8) — sender/owner side. Consumes pending `recoveryMetadata` pushes
+    /// addressed to this device, rebuilding `Secret`/`ShareMetadata` records from what each holder
+    /// reports. A push is trusted only once its `senderSignature` verifies against a *known*
+    /// contact — the holder must already have been re-added out-of-band (item 8 step 1) before
+    /// their push is honored. Consumed rows are deleted from the relay once processed.
+    private func processRecoveryMetadata() async {
+        for relay in allRelays() {
+            let pushes = (try? await relay.listShareRequests(role: .recipient, requestType: .recoveryMetadata, state: .approved)) ?? []
+            for req in pushes where verifyOpen(req) {
+                guard let holderContact = contactRepository.getByEdKey(req.senderKey) else { continue }
+                guard let k = req.k, let n = req.n else { continue }
+                let existingSecrets = (try? secretRepository.getAll()) ?? []
+                if !existingSecrets.contains(where: { $0.id == req.secretId }) {
+                    try? secretRepository.save(Secret(id: req.secretId, label: req.label, k: k, n: n, secretCreatedAt: req.secretCreatedAt, state: .active))
+                }
+                let existingMeta = (try? shareMetadataRepository.getAll()) ?? []
+                if !existingMeta.contains(where: { $0.secretId == req.secretId && $0.contactId == holderContact.id }) {
+                    try? shareMetadataRepository.save(ShareMetadata(id: UUID(), secretId: req.secretId, contactId: holderContact.id))
+                }
+                try? await relay.deleteShareRequest(requestId: req.id)
+            }
+        }
+    }
+
+    public func pushRecoveryMetadata(contactId: UUID) async throws {
+        guard let contact = contactRepository.getById(contactId) else {
+            throw ShareServiceError.contactNotFound
+        }
+        let heldFromContact = shareRepository.getAll().filter { $0.contactId == contactId }
+        for share in heldFromContact {
+            let canon = PayloadCanonical.forOpen(secretId: share.secretId, requestType: .recoveryMetadata, recipientKey: contact.edPublicKey, label: share.label, secretCreatedAt: share.createdAt, shareId: nil, ciphertext: nil, k: share.k, n: share.n)
+            guard let senderSignature = try? identity.sign(canon) else { continue }
+            _ = try? await relay(for: contact).openShareRequest(
+                secretId: share.secretId,
+                recipientKey: contact.edPublicKey,
+                label: share.label,
+                secretCreatedAt: share.createdAt,
+                requestType: .recoveryMetadata,
+                shareId: nil,
+                ciphertext: nil,
+                k: share.k,
+                n: share.n,
+                senderSignature: senderSignature
+            )
         }
     }
 
@@ -350,10 +411,9 @@ public final class ShareService: ShareManagement {
         }
         let ciphertext: Data?
         if approved && request.requestType == .retrieve {
-            guard let pickUpId = request.shareId else {
-                throw ShareServiceError.missingShareId
-            }
-            guard let plaintext = shareRepository.getPlaintextShare(shareId: pickUpId) else {
+            // Matched on secretId, not the sender's local shareId — that id is meaningless to
+            // this device once identities can be rebuilt independently after recovery (item 8).
+            guard let plaintext = shareRepository.getPlaintextShare(secretId: request.secretId) else {
                 throw ShareServiceError.shareNotFound
             }
             // Re-encrypt to the requester's *current* X25519 key — looked up live, not pinned at
@@ -370,8 +430,8 @@ public final class ShareService: ShareManagement {
         let recipientSignature = try identity.sign(canon)
         _ = try await relay.respondToShareRequest(requestId: requestId, approved: approved, ciphertext: ciphertext, recipientSignature: recipientSignature)
         if approved && request.requestType == .delete {
-            if let pickUpId = request.shareId {
-                shareRepository.delete(shareId: pickUpId)
+            if let heldShare = shareRepository.getAll().first(where: { $0.secretId == request.secretId }) {
+                shareRepository.delete(shareId: heldShare.id)
             }
         }
     }

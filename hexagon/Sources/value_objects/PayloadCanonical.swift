@@ -21,6 +21,9 @@ public enum PayloadCanonical {
     private static func wire(_ type: ShareRequestType) -> String { type.rawValue }
 
     /// Signed by the sender when opening a share request (`senderSignature`).
+    ///
+    /// `k`/`n` (item 8) are appended at the end of the sequence, keeping the existing field
+    /// order — and this construction's cross-platform byte-vector test — undisturbed.
     public static func forOpen(
         secretId: UUID,
         requestType: ShareRequestType,
@@ -28,7 +31,9 @@ public enum PayloadCanonical {
         label: String,
         secretCreatedAt: Date,
         shareId: UUID?,
-        ciphertext: Data?
+        ciphertext: Data?,
+        k: Int? = nil,
+        n: Int? = nil
     ) -> Data {
         let epochMs = Int64(secretCreatedAt.timeIntervalSince1970 * 1000)
         let parts = [
@@ -39,6 +44,8 @@ public enum PayloadCanonical {
             String(epochMs),
             shareId?.uuidString.lowercased() ?? "",
             ciphertext?.base64EncodedString() ?? "",
+            k.map(String.init) ?? "",
+            n.map(String.init) ?? "",
         ]
         return Data(parts.joined(separator: "\n").utf8)
     }
