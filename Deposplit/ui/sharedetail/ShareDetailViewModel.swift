@@ -50,7 +50,7 @@ final class ShareDetailViewModel {
         }
     }
 
-    func openRequest(type: ShareRequestType) async {
+    func openRequest(type: ShareTransactionType) async {
         isActing = true
         defer { isActing = false }
         do {
@@ -74,16 +74,16 @@ final class ShareDetailViewModel {
         }
     }
 
-    func requestState(for type: ShareRequestType) -> ShareRequestState? {
+    func requestState(for type: ShareTransactionType) -> ShareRequestState? {
         shareRequests
-            .filter { $0.shareId == share.id && $0.requestType == type }
+            .filter { $0.shareId == share.id && $0.transactionType == type }
             .sorted { $0.requestedAt > $1.requestedAt }
             .first?.state
     }
 
     private func updateReconstructState() {
         let approvedCount = shareRequests.filter {
-            $0.requestType == .retrieve && $0.state == .approved && $0.ciphertext != nil
+            $0.transactionType == .retrieval && $0.state == .approved && $0.ciphertext != nil
         }.count
         if approvedCount >= secret.k {
             reconstructState = .ready

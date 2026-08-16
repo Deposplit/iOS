@@ -55,7 +55,7 @@ private struct RequestCard: View {
             HStack {
                 Text(request.label).font(.headline)
                 Spacer()
-                Text(request.requestType.label)
+                Text(request.transactionType.label)
                     .font(.caption)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
@@ -81,19 +81,19 @@ private struct RequestCard: View {
     }
 
     private var badgeColor: Color {
-        request.requestType == .retrieve ? .blue : .orange
+        request.transactionType == .retrieval ? .blue : .orange
     }
 }
 
-private extension ShareRequestType {
+private extension ShareTransactionType {
     var label: LocalizedStringKey {
         switch self {
-        case .pickUp: "Pick Up"
-        case .retrieve: "Retrieve"
-        case .delete: "Delete"
-        // Never surfaced here — recoveryMetadata is a self-approved push, consumed silently by
+        case .deposit: "Deposit"
+        case .retrieval: "Retrieval"
+        case .removal: "Removal"
+        // Never surfaced here — inventory is a self-approved push, consumed silently by
         // syncInbox's processRecoveryMetadata, not routed through listPendingRequests.
-        case .recoveryMetadata: "Recovery"
+        case .inventory: "Inventory"
         }
     }
 }

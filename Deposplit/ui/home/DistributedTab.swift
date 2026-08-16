@@ -105,7 +105,7 @@ private struct SecretGroupRow: View {
                         HStack {
                             Text(contactName(holder.contactId))
                             Spacer()
-                            if let state = holder.retrieveRequest?.state {
+                            if let state = holder.retrievalRequest?.state {
                                 Text(state.label).font(.caption).foregroundStyle(.secondary)
                             }
                         }

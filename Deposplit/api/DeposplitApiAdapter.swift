@@ -20,13 +20,13 @@ final class DeposplitApiAdapter: ShareRelay {
 
     // MARK: - ShareRelay
 
-    func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, requestType: ShareRequestType, shareId: UUID?, ciphertext: Data?, k: Int?, n: Int?, senderSignature: Data) async throws -> ShareRequest {
+    func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, transactionType: ShareTransactionType, shareId: UUID?, ciphertext: Data?, k: Int?, n: Int?, senderSignature: Data) async throws -> ShareRequest {
         let body = OpenShareRequestJSON(
             secretId: secretId.uuidString,
             recipientKey: recipientKey.base64URLEncoded,
             label: label,
             secretCreatedAt: _iso8601.string(from: secretCreatedAt),
-            requestType: requestType.rawValue,
+            transactionType: transactionType.rawValue,
             shareId: shareId?.uuidString,
             ciphertext: ciphertext?.base64EncodedString(),
             k: k,
@@ -37,9 +37,9 @@ final class DeposplitApiAdapter: ShareRelay {
         return try JSONDecoder().decode(ShareRequestJSON.self, from: data).toDomain()
     }
 
-    func listShareRequests(role: Role, requestType: ShareRequestType?, state: ShareRequestState?) async throws -> [ShareRequest] {
+    func listShareRequests(role: Role, transactionType: ShareTransactionType?, state: ShareRequestState?) async throws -> [ShareRequest] {
         var query = "?role=\(role.rawValue)"
-        if let t = requestType { query += "&type=\(t.rawValue)" }
+        if let t = transactionType { query += "&type=\(t.rawValue)" }
         if let s = state { query += "&state=\(s.rawValue)" }
         let data = try await execute("GET", path: "/share-requests\(query)")
         return try JSONDecoder().decode([ShareRequestJSON].self, from: data).map { $0.toDomain() }
@@ -128,7 +128,7 @@ final class DeposplitApiAdapter: ShareRelay {
         let recipientKey: String
         let label: String
         let secretCreatedAt: String
-        let requestType: String
+        let transactionType: String
         let shareId: String?
         let ciphertext: String?
         let k: Int?
@@ -149,7 +149,7 @@ final class DeposplitApiAdapter: ShareRelay {
         let recipientKey: String
         let label: String
         let secretCreatedAt: String
-        let requestType: String
+        let transactionType: String
         let state: String
         let shareId: String?
         let requestedAt: String
@@ -168,7 +168,7 @@ final class DeposplitApiAdapter: ShareRelay {
                 recipientKey: Data(base64URLEncoded: recipientKey) ?? Data(),
                 label: label,
                 secretCreatedAt: parseISO8601(secretCreatedAt),
-                requestType: ShareRequestType(rawValue: requestType) ?? .retrieve,
+                transactionType: ShareTransactionType(rawValue: transactionType) ?? .retrieval,
                 state: ShareRequestState(rawValue: state) ?? .pending,
                 shareId: shareId.flatMap { UUID(uuidString: $0) },
                 requestedAt: parseISO8601(requestedAt),

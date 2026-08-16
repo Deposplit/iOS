@@ -20,7 +20,7 @@ import CryptoKit
 // Private key seed: bytes 0x00..0x1f. Not a real identity — a fixed, reproducible fixture.
 private let privateKeySeed = Data((0..<32).map { UInt8($0) })
 private let expectedPublicKeyBase64Url = "A6EHv_POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg"
-private let expectedSignatureBase64Url = "0B6IPdj4W_Nusz0CWKznDI6o0LYUASyzRUNNsO_tPFHhy3RaQFz1FVR7c9LVEYnafuzMYia6t6ATS1UXsepEBQ"
+private let expectedSignatureBase64Url = "49sMax0jpKfyXdIIiwi6xeKKyK5MZwGOur9I499SXiTneVBYc5Juv215DTDcHhpphU2YGZpqMYRZKNFVILw7AA"
 
 private let fixtureSecretId = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
 private let fixtureRecipientKey = Data(repeating: 0x02, count: 32)
@@ -51,11 +51,11 @@ private func base64URLEncode(_ data: Data) -> String {
 
 @Test func forOpenProducesTheFixedCanonicalBytes() {
     let canon = PayloadCanonical.forOpen(
-        secretId: fixtureSecretId, requestType: .pickUp, recipientKey: fixtureRecipientKey,
+        secretId: fixtureSecretId, transactionType: .deposit, recipientKey: fixtureRecipientKey,
         label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, shareId: nil, ciphertext: fixtureCiphertext,
         k: fixtureK, n: fixtureN
     )
-    let expected = "11111111-1111-1111-1111-111111111111\npick_up\nAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI\ncross-platform test vector\n1767225600000\n\nAQIDBAU=\n2\n3"
+    let expected = "11111111-1111-1111-1111-111111111111\ndeposit\nAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI\ncross-platform test vector\n1767225600000\n\nAQIDBAU=\n2\n3"
     #expect(String(data: canon, encoding: .utf8) == expected)
 }
 
@@ -67,7 +67,7 @@ private func base64URLEncode(_ data: Data) -> String {
 // (c) this test confirms CryptoKit's public key derivation matches and its own signatures verify.
 @Test func signingWithTheFixedSeedDerivesTheExpectedPublicKeyAndProducesAVerifiableSignature() throws {
     let canon = PayloadCanonical.forOpen(
-        secretId: fixtureSecretId, requestType: .pickUp, recipientKey: fixtureRecipientKey,
+        secretId: fixtureSecretId, transactionType: .deposit, recipientKey: fixtureRecipientKey,
         label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, shareId: nil, ciphertext: fixtureCiphertext,
         k: fixtureK, n: fixtureN
     )
@@ -80,7 +80,7 @@ private func base64URLEncode(_ data: Data) -> String {
 
 @Test func theFixedSignatureVerifiesAgainstTheFixedPublicKey() throws {
     let canon = PayloadCanonical.forOpen(
-        secretId: fixtureSecretId, requestType: .pickUp, recipientKey: fixtureRecipientKey,
+        secretId: fixtureSecretId, transactionType: .deposit, recipientKey: fixtureRecipientKey,
         label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, shareId: nil, ciphertext: fixtureCiphertext,
         k: fixtureK, n: fixtureN
     )

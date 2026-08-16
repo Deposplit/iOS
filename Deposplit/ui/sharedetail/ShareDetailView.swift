@@ -17,15 +17,15 @@ struct ShareDetailView: View {
             }
 
             Section("Requests") {
-                RequestRow(label: "Retrieve",
-                           state: viewModel.requestState(for: .retrieve),
+                RequestRow(label: "Retrieval",
+                           state: viewModel.requestState(for: .retrieval),
                            isActing: viewModel.isActing) {
-                    Task { await viewModel.openRequest(type: .retrieve) }
+                    Task { await viewModel.openRequest(type: .retrieval) }
                 }
-                RequestRow(label: "Delete",
-                           state: viewModel.requestState(for: .delete),
+                RequestRow(label: "Removal",
+                           state: viewModel.requestState(for: .removal),
                            isActing: viewModel.isActing) {
-                    Task { await viewModel.openRequest(type: .delete) }
+                    Task { await viewModel.openRequest(type: .removal) }
                 }
             }
 

@@ -18,7 +18,7 @@ import Foundation
 /// lowercased — forgetting this would silently break cross-platform signature verification.
 public enum PayloadCanonical {
 
-    private static func wire(_ type: ShareRequestType) -> String { type.rawValue }
+    private static func wire(_ type: ShareTransactionType) -> String { type.rawValue }
 
     /// Signed by the sender when opening a share request (`senderSignature`).
     ///
@@ -26,7 +26,7 @@ public enum PayloadCanonical {
     /// order — and this construction's cross-platform byte-vector test — undisturbed.
     public static func forOpen(
         secretId: UUID,
-        requestType: ShareRequestType,
+        transactionType: ShareTransactionType,
         recipientKey: Data,
         label: String,
         secretCreatedAt: Date,
@@ -38,7 +38,7 @@ public enum PayloadCanonical {
         let epochMs = Int64(secretCreatedAt.timeIntervalSince1970 * 1000)
         let parts = [
             secretId.uuidString.lowercased(),
-            wire(requestType),
+            wire(transactionType),
             recipientKey.base64URLEncodedForSigning,
             label,
             String(epochMs),

@@ -2,9 +2,9 @@ import hexagon
 import Foundation
 
 struct HolderStatus: Identifiable {
-    let shareId: UUID           // ShareMetadata.id (the PickUp request id)
+    let shareId: UUID           // ShareMetadata.id (the Deposit request id)
     let contactId: UUID
-    let retrieveRequest: ShareRequest?
+    let retrievalRequest: ShareRequest?
     var id: UUID { shareId }
 }
 
@@ -104,10 +104,10 @@ final class HomeViewModel {
         return secrets.map { secret in
             let shares = bySecret[secret.id] ?? []
             let holders = shares.map { share -> HolderStatus in
-                let latestRetrieve = allRequests
-                    .filter { $0.shareId == share.id && $0.requestType == .retrieve }
+                let latestRetrieval = allRequests
+                    .filter { $0.shareId == share.id && $0.transactionType == .retrieval }
                     .max { $0.requestedAt < $1.requestedAt }
-                return HolderStatus(shareId: share.id, contactId: share.contactId, retrieveRequest: latestRetrieve)
+                return HolderStatus(shareId: share.id, contactId: share.contactId, retrievalRequest: latestRetrieval)
             }
             return SecretGroup(secret: secret, holders: holders)
         }

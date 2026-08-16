@@ -64,13 +64,13 @@ iOS/
 │       │   ├── IdentityService.swift      Identity + ShareEncryption impl — CryptoKit only, no Security/UserDefaults
 │       │   ├── ShareEncryption.swift      intra-hexagon interface: encrypt, decrypt — implemented by IdentityService, used by ShareService
 │       │   ├── ShareService.swift         ShareManagement impl — calls ShareRelay + ShareEncryption + ShareRepository + ShareMetadataRepository + SecretRepository + ContactRepository;
-│       │   │                              deposit() writes ShareMetadata + a Secret to local store (incl. k/n on the pick_up); listDistributed()/listSecrets() read from local store;
+│       │   │                              deposit() writes ShareMetadata + a Secret to local store (incl. k/n on the deposit); listDistributed()/listSecrets() read from local store;
 │       │   │                              syncDistributed() syncs field updates from relay (never deletes), then reconcileDiscarding() cleans up DISCARDING
-│       │   │                              secrets whose holder deletes were approved; syncInbox() also calls processRecoveryMetadata() (item 8, private —
-│       │   │                              consumes approved recoveryMetadata pushes verified against a known contact, rebuilding Secret/ShareMetadata);
-│       │   │                              respond()'s retrieve/delete paths match the holder's HeldShare by secretId, not the sender's local shareId (item 8);
+│       │   │                              secrets whose holder removals were approved; syncInbox() also calls processRecoveryMetadata() (item 8, private —
+│       │   │                              consumes approved inventory pushes verified against a known contact, rebuilding Secret/ShareMetadata);
+│       │   │                              respond()'s retrieval/removal paths match the holder's HeldShare by secretId, not the sender's local shareId (item 8);
 │       │   │                              reconstruct() is a pure read (item 11 — no teardown); discardSecret() flips a Secret to DISCARDING and fans out
-│       │   │                              delete requests; forceForgetSecret() is the local-only escape hatch; pushRecoveryMetadata(contactId) opens a
+│       │   │                              removal requests; forceForgetSecret() is the local-only escape hatch; pushRecoveryMetadata(contactId) opens a
 │       │   │                              recoveryMetadata push for every HeldShare held from that contact (item 8)
 │       │   ├── ContactService.swift       ContactManagement impl — validates + delegates to ContactRepository; defines ContactError;
 │       │   │                              updateContact requires a fresh verificationLevel whenever either key changes (item 8)
@@ -82,7 +82,7 @@ iOS/
 │           ├── HeldShare.swift            HeldShare struct (incl. k/n — item 8, reported back to the owner during recovery)
 │           ├── Secret.swift               Secret struct (id, label, k, n, secretCreatedAt, state) + SecretState enum (active/discarding) —
 │           │                              sender-side per-secret aggregate, see CLAUDE.md item 11; Codable
-│           └── Share.swift               Role, ShareRequestType (incl. .recoveryMetadata — item 8, self-approved, no consent phase),
+│           └── Share.swift               Role, ShareTransactionType (incl. .inventory — item 8, self-approved, no consent phase),
 │                                          ShareRequestState, ShareMetadata (id/secretId/contactId only — label/secretCreatedAt live on
 │                                          Secret; Codable), ShareRequest (incl. k/n)
 ├── Deposplit.xcodeproj/
@@ -212,7 +212,7 @@ public protocol ShareRelay {
     func listShares(role: Role, counterpartyKey: Data?) throws -> [ShareMetadata]
     func pickUpShare(shareId: UUID) throws -> Data
     func deleteShare(shareId: UUID) throws
-    func openShareRequest(shareId: UUID, type: ShareRequestType) throws -> ShareRequest
+    func openShareRequest(shareId: UUID, type: ShareTransactionType) throws -> ShareRequest
     func listShareRequests(role: Role, state: ShareRequestState?) throws -> [ShareRequest]
     func getShareRequest(requestId: UUID) throws -> ShareRequest
     func respondToShareRequest(requestId: UUID, approved: Bool, ciphertext: Data?) throws -> ShareRequest
@@ -230,7 +230,7 @@ public protocol ShareManagement {
     func listDistributed() throws -> [ShareMetadata]
     func listSentRequests() throws -> [ShareRequest]
     func requestAll(secretId: UUID) throws
-    func openRequest(shareId: UUID, type: ShareRequestType) throws -> ShareRequest
+    func openRequest(shareId: UUID, type: ShareTransactionType) throws -> ShareRequest
     func reconstruct(secretId: UUID) throws -> Data
 
     // Recipient

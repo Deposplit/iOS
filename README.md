@@ -150,7 +150,7 @@ iOS/
 │       │   │                              ShareRepository + ShareMetadataRepository + SecretRepository + ContactRepository;
 │       │   │                              deposit() writes ShareMetadata + a Secret to local store (incl. k/n); listDistributed()/listSecrets()
 │       │   │                              read from local store; reconstruct() is a pure read (item 11); discardSecret()/
-│       │   │                              forceForgetSecret() are the teardown primitives; syncInbox() auto-approves pending PickUp requests
+│       │   │                              forceForgetSecret() are the teardown primitives; syncInbox() auto-approves pending Deposit requests
 │       │   │                              then calls processRecoveryMetadata() (item 8); pushRecoveryMetadata(contactId) is the holder-side push
 │       │   ├── ContactService.swift       ContactManagement impl — validates + delegates to
 │       │   │                              ContactRepository; defines ContactError; updateContact requires a fresh
@@ -163,7 +163,7 @@ iOS/
 │           ├── HeldShare.swift            HeldShare struct (incl. k/n — item 8)
 │           ├── Secret.swift               Secret struct (id, label, k, n, secretCreatedAt, state) + SecretState —
 │           │                              sender-side per-secret aggregate, see CLAUDE.md item 11; Codable
-│           └── Share.swift               Role, ShareRequestType (incl. .recoveryMetadata — item 8), ShareRequestState,
+│           └── Share.swift               Role, ShareTransactionType (incl. .inventory — item 8), ShareRequestState,
 │                                          ShareMetadata (id/secretId/contactId only; Codable), ShareRequest (incl. k/n)
 ├── Deposplit.xcodeproj/
 ├── Deposplit/                        ← app target (adapters + UI); PBXFileSystemSynchronizedRootGroup
@@ -361,23 +361,23 @@ You need **three simulator instances** to exercise the full social flow with a 2
 | 7 | Sim-A | Add Bob and Carol as contacts (manual entry or QR) |
 | 8 | Sim-A | **+** (top right) → enter a label (e.g. "test secret") and a secret, toggle Bob and Carol on, threshold = 2 → **Deposit** |
 | 9 | Sim-A | **Distributed** tab → two entries appear (one per share/recipient, same `secretId`) |
-| 10 | Sim-B | **Their Secret Shares** tab → Bob's inbox shows Alice's PickUp request → app auto-approves it, decrypts the share, and stores it as plaintext locally; relay clears the ciphertext |
-| 11 | Sim-C | **Their Secret Shares** tab → Carol's inbox shows Alice's PickUp request → app auto-approves the same way |
-| 12 | Sim-A | Tap the Bob entry → **Open request** (Retrieve) |
-| 13 | Sim-A | Tap the Carol entry → **Open request** (Retrieve) |
-| 14 | Sim-B | **Requests** tab → a Retrieve request from Alice → tap **Approve** |
-| 15 | Sim-C | **Requests** tab → a Retrieve request from Alice → tap **Approve** |
+| 10 | Sim-B | **Their Secret Shares** tab → Bob's inbox shows Alice's Deposit request → app auto-approves it, decrypts the share, and stores it as plaintext locally; relay clears the ciphertext |
+| 11 | Sim-C | **Their Secret Shares** tab → Carol's inbox shows Alice's Deposit request → app auto-approves the same way |
+| 12 | Sim-A | Tap the Bob entry → **Open request** (Retrieval) |
+| 13 | Sim-A | Tap the Carol entry → **Open request** (Retrieval) |
+| 14 | Sim-B | **Requests** tab → a Retrieval request from Alice → tap **Approve** |
+| 15 | Sim-C | **Requests** tab → a Retrieval request from Alice → tap **Approve** |
 | 16 | Sim-A | Either Distributed entry → **Reconstruct secret…** button appears (both approved) → secret is displayed |
 
 The threshold logic (`combine`) is tested in the unit tests; this flow validates the full path including encryption, transport, and decryption.
 
 ### Flow 2 — Deny and re-request
 
-After step 12 above: Bob taps **Deny** → on Alice's side the Retrieve row shows "Denied" and a **Re-open** button → Alice re-opens the request → Bob approves.
+After step 12 above: Bob taps **Deny** → on Alice's side the Retrieval row shows "Denied" and a **Re-open** button → Alice re-opens the request → Bob approves.
 
 ### Flow 3 — Sender-initiated deletion
 
-Alice taps **Open request** (Delete) on one of her Distributed shares → Bob's Requests tab shows a Delete request → Bob approves → Bob's PickUp row is deleted (cascade-deleting any related Retrieve/Delete rows) → the share disappears from Bob's Held tab.
+Alice taps **Open request** (Removal) on one of her Distributed shares → Bob's Requests tab shows a Removal request → Bob approves → Bob's Deposit row is deleted (cascade-deleting any related Retrieval/Removal rows) → the share disappears from Bob's Held tab.
 
 ### Flow 4 — Recipient-initiated deletion
 
@@ -389,7 +389,7 @@ Kill the Web app/service (`Ctrl-C`) → pull-to-refresh or tap the ↺ button on
 
 ### Flow 6 — Cross-platform (iOS + Android)
 
-Run Alice on an iOS Simulator and Bob on an Android emulator simultaneously. They connect to the same `sbt run` Web app/service. Alice deposits a share for Bob; Bob (on Android) sees it in the Held tab. Bob opens a Retrieve request; Alice (on iOS) reconstructs. This validates the cross-platform E2EE compatibility: CryptoKit (iOS) and BouncyCastle (Android) produce identical X25519+HKDF+ChaCha20-Poly1305 wire bytes.
+Run Alice on an iOS Simulator and Bob on an Android emulator simultaneously. They connect to the same `sbt run` Web app/service. Alice deposits a share for Bob; Bob (on Android) sees it in the Held tab. Bob opens a Retrieval request; Alice (on iOS) reconstructs. This validates the cross-platform E2EE compatibility: CryptoKit (iOS) and BouncyCastle (Android) produce identical X25519+HKDF+ChaCha20-Poly1305 wire bytes.
 
 ### Key edge cases to verify
 

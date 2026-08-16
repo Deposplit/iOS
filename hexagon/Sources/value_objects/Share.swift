@@ -4,11 +4,16 @@ public enum Role: String {
     case sender, recipient
 }
 
-public enum ShareRequestType: String {
-    case pickUp = "pick_up", retrieve, delete
+/// The kind of thing that happened (or is being asked to happen) to a share, phrased as a
+/// neutral transaction noun rather than either party's verb — see deposplit.com/CLAUDE.md
+/// "Cross-cutting implementation chores" for why: naming from a single named actor's point of
+/// view (Alice's, or Bob's) breaks down because the actor genuinely alternates — Alice always
+/// opens deposit/retrieval/removal, but the *holder* opens inventory (holder → owner).
+public enum ShareTransactionType: String {
+    case deposit, retrieval, removal
     // A holder-initiated metadata-only push during identity recovery — not consent-gated, unlike
     // the other three. See deposplit.com/CLAUDE.md "What is next" item 8.
-    case recoveryMetadata = "recovery_metadata"
+    case inventory
 }
 
 public enum ShareRequestState: String {
@@ -20,7 +25,7 @@ public enum ShareRequestState: String {
 /// `secretCreatedAt` — see deposplit.com/CLAUDE.md "What is next" item 11.
 public struct ShareMetadata: Identifiable, Equatable, Hashable, Codable {
     public func hash(into hasher: inout Hasher) { hasher.combine(id) }
-    public let id: UUID           // PickUp request ID
+    public let id: UUID           // Deposit request ID
     public let secretId: UUID
     // The holder's stable local contact id — not their Ed25519 key — so this record survives a
     // holder key rotation/recovery (see deposplit.com/CLAUDE.md "What is next" item 7).
@@ -40,13 +45,13 @@ public struct ShareRequest: Identifiable, Equatable {
     public let recipientKey: Data
     public let label: String
     public let secretCreatedAt: Date
-    public let requestType: ShareRequestType
+    public let transactionType: ShareTransactionType
     public let state: ShareRequestState
     public let shareId: UUID?
     public let requestedAt: Date
     public let respondedAt: Date?
     public let ciphertext: Data?
-    // SSS threshold/share-count — populated for pickUp/recoveryMetadata, nil for retrieve/delete.
+    // SSS threshold/share-count — populated for deposit/inventory, nil for retrieval/removal.
     // See deposplit.com/CLAUDE.md "What is next" items 8 and 11.
     public let k: Int?
     public let n: Int?
@@ -58,7 +63,7 @@ public struct ShareRequest: Identifiable, Equatable {
     public init(
         id: UUID, secretId: UUID, senderKey: Data, recipientKey: Data,
         label: String, secretCreatedAt: Date,
-        requestType: ShareRequestType, state: ShareRequestState,
+        transactionType: ShareTransactionType, state: ShareRequestState,
         shareId: UUID?, requestedAt: Date, respondedAt: Date?, ciphertext: Data?,
         k: Int? = nil, n: Int? = nil,
         senderSignature: Data, recipientSignature: Data?
@@ -69,7 +74,7 @@ public struct ShareRequest: Identifiable, Equatable {
         self.recipientKey = recipientKey
         self.label = label
         self.secretCreatedAt = secretCreatedAt
-        self.requestType = requestType
+        self.transactionType = transactionType
         self.state = state
         self.shareId = shareId
         self.requestedAt = requestedAt
