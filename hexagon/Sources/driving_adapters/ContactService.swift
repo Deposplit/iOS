@@ -81,11 +81,31 @@ public final class ContactService: ContactManagement {
             verificationLevel: verificationLevel ?? existing.verificationLevel,
             verifiedAt: verificationLevel != nil ? Date() : existing.verifiedAt,
             addedAt: existing.addedAt,
-            relayBaseUrl: existing.relayBaseUrl
+            relayBaseUrl: existing.relayBaseUrl,
+            revokedEdKeys: existing.revokedEdKeys,
+            keyChangedAt: changingKeys ? Date() : existing.keyChangedAt
         ))
     }
 
     public func deleteContact(contactId: UUID) throws {
         contactRepository.delete(contactId: contactId)
+    }
+
+    public func markKeyCompromised(contactId: UUID, edPublicKey: Data?) throws {
+        guard let existing = contactRepository.getById(contactId) else { throw ContactError.contactNotFound }
+        let flagged = edPublicKey ?? existing.edPublicKey
+        guard !existing.revokedEdKeys.contains(flagged) else { return }
+        contactRepository.save(Contact(
+            id: existing.id,
+            pseudonym: existing.pseudonym,
+            edPublicKey: existing.edPublicKey,
+            xPublicKey: existing.xPublicKey,
+            verificationLevel: existing.verificationLevel,
+            verifiedAt: existing.verifiedAt,
+            addedAt: existing.addedAt,
+            relayBaseUrl: existing.relayBaseUrl,
+            revokedEdKeys: existing.revokedEdKeys + [flagged],
+            keyChangedAt: existing.keyChangedAt
+        ))
     }
 }

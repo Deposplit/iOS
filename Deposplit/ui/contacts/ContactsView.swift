@@ -17,6 +17,7 @@ struct ContactsView: View {
     @State private var showAddContact = false
     @State private var showQrScanner = false
     @State private var relinkTarget: Contact?
+    @State private var compromiseTarget: Contact?
     @Environment(\.dismiss) private var dismiss
 
     private let contactManagement: any ContactManagement
@@ -48,6 +49,11 @@ struct ContactsView: View {
                                             .background(contact.verificationLevel.badgeColor.opacity(0.15), in: Capsule())
                                             .foregroundStyle(contact.verificationLevel.badgeColor)
                                     }
+                                    if !contact.revokedEdKeys.isEmpty {
+                                        Image(systemName: "exclamationmark.shield.fill")
+                                            .foregroundStyle(.red)
+                                            .font(.caption)
+                                    }
                                 }
                                 Text(contact.edPublicKey.base64URLEncoded.prefix(16) + "…")
                                     .font(.caption)
@@ -58,6 +64,11 @@ struct ContactsView: View {
                                     relinkTarget = contact
                                 } label: {
                                     Label("Relink (Key Changed)", systemImage: "arrow.triangle.2.circlepath")
+                                }
+                                Button(role: .destructive) {
+                                    compromiseTarget = contact
+                                } label: {
+                                    Label("Mark Key Compromised", systemImage: "exclamationmark.shield")
                                 }
                             }
                         }
@@ -97,6 +108,19 @@ struct ContactsView: View {
             }
             .sheet(item: $relinkTarget, onDismiss: { viewModel.load() }) { contact in
                 RelinkContactView(contact: contact, contactManagement: contactManagement, shareManagement: shareManagement)
+            }
+            .confirmationDialog(
+                "Mark this contact's current key as compromised?",
+                isPresented: Binding(get: { compromiseTarget != nil }, set: { if !$0 { compromiseTarget = nil } }),
+                titleVisibility: .visible
+            ) {
+                Button("Mark Compromised", role: .destructive) {
+                    if let contact = compromiseTarget { viewModel.markKeyCompromised(contact) }
+                    compromiseTarget = nil
+                }
+                Button("Cancel", role: .cancel) { compromiseTarget = nil }
+            } message: {
+                Text("Only do this if you have an out-of-band reason to believe \(compromiseTarget?.pseudonym ?? "this contact")'s key was stolen. Deposplit will refuse to auto-accept any future key rotation claiming continuity from it — you'll need to verify them fresh, in person or over a trusted channel, to reconnect.")
             }
         }
     }

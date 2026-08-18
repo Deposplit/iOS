@@ -27,6 +27,7 @@ public final class ShareService: ShareManagement {
     private let secretRepository: any SecretRepository
     private let contactRepository: any ContactRepository
     private let contactManagement: any ContactManagement
+    private let keyConflictRepository: any KeyConflictRepository
     private let identity: any Identity
 
     public init(
@@ -37,6 +38,7 @@ public final class ShareService: ShareManagement {
         secretRepository: any SecretRepository,
         contactRepository: any ContactRepository,
         contactManagement: any ContactManagement,
+        keyConflictRepository: any KeyConflictRepository,
         identity: any Identity
     ) {
         self.relayResolver = relayResolver
@@ -46,6 +48,7 @@ public final class ShareService: ShareManagement {
         self.secretRepository = secretRepository
         self.contactRepository = contactRepository
         self.contactManagement = contactManagement
+        self.keyConflictRepository = keyConflictRepository
         self.identity = identity
     }
 
@@ -372,11 +375,32 @@ public final class ShareService: ShareManagement {
                 guard let contact = contactRepository.getByEdKey(notice.oldEd25519Key) else { continue }
                 let canon = PayloadCanonical.forRotation(recipientKey: notice.recipientKey, newEd25519Key: notice.newEd25519Key, newX25519Key: notice.newX25519Key)
                 guard identity.verify(canon, signature: notice.signature, publicKey: notice.oldEd25519Key) else { continue }
+                // Item 10 — a stolen key can't revoke itself, but a locally-flagged one blocks
+                // auto-accept here: capture the offer as a conflict for manual resolution instead
+                // of trusting a signature the attacker is fully capable of producing. Captured
+                // locally *before* deleting the relay row — the relay is best-effort and may GC
+                // the notice before anyone looks, but this KeyConflict record won't.
+                guard !contact.revokedEdKeys.contains(notice.oldEd25519Key) else {
+                    try? keyConflictRepository.save(KeyConflict(
+                        id: UUID(), contactId: contact.id, oldEd25519Key: notice.oldEd25519Key,
+                        newEd25519Key: notice.newEd25519Key, newX25519Key: notice.newX25519Key, detectedAt: Date()
+                    ))
+                    try? await relay.deleteRotation(id: notice.id)
+                    continue
+                }
                 let downgraded = min(contact.verificationLevel, .low)
                 try? contactManagement.updateContact(contactId: contact.id, edPublicKey: notice.newEd25519Key, xPublicKey: notice.newX25519Key, verificationLevel: downgraded)
                 try? await relay.deleteRotation(id: notice.id)
             }
         }
+    }
+
+    public func listKeyConflicts() throws -> [KeyConflict] {
+        try keyConflictRepository.getAll()
+    }
+
+    public func dismissKeyConflict(id: UUID) throws {
+        try keyConflictRepository.delete(id: id)
     }
 
     /// Item 9, sending side (client primitive only — see `ShareManagement.pushRotation`). Signs

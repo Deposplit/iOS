@@ -49,12 +49,26 @@ public struct Contact: Identifiable, Equatable, Sendable, Codable {
     /// BYOR override — nil means "use the device's configured default relay". A pinned snapshot
     /// at contact-add time, not a live pointer, same TOFU trust model as the public keys.
     public let relayBaseUrl: String?
+    /// Item 10 — historical Ed25519 keys locally flagged compromised via `ContactManagement
+    /// .markKeyCompromised`, out-of-band. A signed rotation notice claiming continuity from any
+    /// key in this set is refused auto-accept (see `ShareManagement`'s rotation-processing) —
+    /// revocation is socially anchored, so only a fresh human-verified relink can move the
+    /// contact forward once a key lands here. Never cleared automatically.
+    public let revokedEdKeys: [Data]
+    /// Item 10 — when `edPublicKey` (or `xPublicKey`) last changed via `updateContact`, whether
+    /// through a human-verified relink (item 8) or an auto-accepted rotation (item 9). `nil`
+    /// until the first key change. Surfaced on the retrieve-approval screen as "this requester's
+    /// key changed N days ago" — the attack signature item 10 hardens against is key change
+    /// followed by a quick retrieval request.
+    public let keyChangedAt: Date?
 
     public init(
         id: UUID, pseudonym: String,
         edPublicKey: Data, xPublicKey: Data,
         verificationLevel: VerificationLevel, verifiedAt: Date?, addedAt: Date,
-        relayBaseUrl: String? = nil
+        relayBaseUrl: String? = nil,
+        revokedEdKeys: [Data] = [],
+        keyChangedAt: Date? = nil
     ) {
         self.id = id
         self.pseudonym = pseudonym
@@ -64,5 +78,7 @@ public struct Contact: Identifiable, Equatable, Sendable, Codable {
         self.verifiedAt = verifiedAt
         self.addedAt = addedAt
         self.relayBaseUrl = relayBaseUrl
+        self.revokedEdKeys = revokedEdKeys
+        self.keyChangedAt = keyChangedAt
     }
 }

@@ -40,4 +40,14 @@ public protocol ShareManagement {
     // 9's scope-split note — so callers supply the new keys directly; this method is exercised
     // by tests today, not yet by any UI action.
     func pushRotation(contactId: UUID, newEd25519Key: Data, newX25519Key: Data) async throws
+
+    // Item 10 — stolen-key revocation. A rotation notice whose old key is locally flagged
+    // compromised (`ContactManagement.markKeyCompromised`) is never auto-accepted; instead it's
+    // captured as a `KeyConflict` for manual resolution — see `KeyConflict` for why this is a
+    // durable local record, not something re-derived from the relay on demand.
+    func listKeyConflicts() throws -> [KeyConflict]
+    /// Dismisses a conflict once the user has resolved it out-of-band (either as a false alarm,
+    /// or by performing a fresh human-verified relink separately). Local-only — the underlying
+    /// relay notice was already deleted at detection time.
+    func dismissKeyConflict(id: UUID) throws
 }

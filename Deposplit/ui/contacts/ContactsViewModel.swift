@@ -21,4 +21,13 @@ final class ContactsViewModel {
         toDelete.forEach { try? contactManagement.deleteContact(contactId: $0.id) }
         contacts = (try? contactManagement.listContacts()) ?? []
     }
+
+    /// Item 10 — flags this contact's *current* key as compromised, out-of-band-triggered (the
+    /// user has some independent reason to believe it). From this point, any signed rotation
+    /// notice claiming continuity from that key is refused auto-accept; only a fresh
+    /// human-verified relink can move the contact forward.
+    func markKeyCompromised(_ contact: Contact) {
+        try? contactManagement.markKeyCompromised(contactId: contact.id, edPublicKey: nil)
+        load()
+    }
 }

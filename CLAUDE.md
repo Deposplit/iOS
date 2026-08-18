@@ -47,9 +47,12 @@ iOS/
 │       │   ├── ShareManagement.swift      use-case interface: deposit, listSecrets, listDistributed (reads local store), syncDistributed,
 │       │   │                              reconstruct (pure read, enforces real k), discardSecret, forceForgetSecret, syncInbox, listHeld (reads local store), respond, …
 │       │   │                              pushRecoveryMetadata (item 8, holder side); pushRotation (item 9, client primitive only — no
-│       │   │                              "regenerate my own identity" UI trigger exists yet, see deposplit.com/TODO.md item 9's scope-split note)
+│       │   │                              "regenerate my own identity" UI trigger exists yet, see deposplit.com/TODO.md item 9's scope-split note);
+│       │   │                              listKeyConflicts, dismissKeyConflict (item 10, local-only, no relay involvement)
 │       │   ├── ContactManagement.swift    listContacts, addManually, addFromQr, updateContact (item 8 — contact-update-in-place,
-│       │   │                              key change forces a fresh verificationLevel), deleteContact
+│       │   │                              key change forces a fresh verificationLevel), deleteContact, markKeyCompromised (item 10 —
+│       │   │                              flags an Ed25519 key into the contact's revokedEdKeys history; defaults to the contact's
+│       │   │                              current key when no explicit key is given)
 │       │   └── CatalogManagement.swift    exportCatalog, importCatalog — optional non-secret catalog backup (item 8)
 │       ├── driven_ports/
 │       │   ├── IdentityStore.swift        isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
@@ -57,6 +60,9 @@ iOS/
 │       │   ├── ShareRepository.swift      getAll, getPlaintextShare (keyed on secretId, not the pickup relay-row id — item 8), save, delete
 │       │   ├── SecretRepository.swift     getAll, save, delete — local store of sender-side Secret aggregates (item 11)
 │       │   ├── ShareMetadataRepository.swift  getAll, save, delete — local store of distributed ShareMetadata
+│       │   ├── KeyConflictRepository.swift  getAll, save, delete — local store of item 10's KeyConflict records; the durable copy a
+│       │   │                              detected conflict is captured into before its relay notice is deleted, since the relay may
+│       │   │                              lose its state at any time and must never be relied on to keep the alert alive
 │       │   ├── ShareRelay.swift           openShareRequest (incl. k/n — item 8), listShareRequests, getShareRequest,
 │       │   │                              respondToShareRequest, deleteShareRequest, deleteShareRequests, withdrawShareRequests
 │       │   │                              (item 9 — best-effort tombstone, not a hard delete), pushRotation/listRotations/deleteRotation
@@ -80,14 +86,27 @@ iOS/
 │       │   │                              auto-verifying an incoming rotation notice against a known contact's trusted old key, downgrading the
 │       │   │                              verification level to min(old, .low) per item 10's unifying rule; deleteHeldShare/deleteAllHeldFromSender
 │       │   │                              best-effort withdraw via the sender's relay before deleting locally (item 9); syncDistributed() drops the
-│       │   │                              local ShareMetadata pointer and deletes the relay row when it observes a .withdrawn deposit row
+│       │   │                              local ShareMetadata pointer and deletes the relay row when it observes a .withdrawn deposit row;
+│       │   │                              processRotations() (item 10) now checks the notice's oldEd25519Key against the contact's
+│       │   │                              revokedEdKeys *before* the downgrade/auto-accept branch — on a match it saves a KeyConflict via
+│       │   │                              the new KeyConflictRepository dependency, deletes the relay notice, and skips updateContact
+│       │   │                              entirely (never auto-resolved); listKeyConflicts/dismissKeyConflict (item 10) delegate directly
+│       │   │                              to KeyConflictRepository, local-only, no relay involvement
 │       │   ├── ContactService.swift       ContactManagement impl — validates + delegates to ContactRepository; defines ContactError;
-│       │   │                              updateContact requires a fresh verificationLevel whenever either key changes (item 8)
+│       │   │                              updateContact requires a fresh verificationLevel whenever either key changes (item 8) and now
+│       │   │                              also carries revokedEdKeys forward and stamps keyChangedAt when a key actually changes (item 10);
+│       │   │                              markKeyCompromised (item 10) is idempotent — a no-op if the key is already flagged
 │       │   └── CatalogService.swift       CatalogManagement impl — exportCatalog/importCatalog (upsert-if-absent-by-id), item 8
 │       └── value_objects/
 │           ├── AuthError.swift            Error enum for auth failures
 │           ├── Catalog.swift              Catalog struct (contacts, secrets, shareMetadata) — item 8's optional backup; Codable
-│           ├── Contact.swift              Contact struct + VerificationLevel enum; Codable (for Catalog export/import)
+│           ├── Contact.swift              Contact struct + VerificationLevel enum; Codable (for Catalog export/import); gained
+│           │                              revokedEdKeys: [Data] (item 10 — historical set, not a single flag, so a later legitimate
+│           │                              relink to a genuinely new key is never blocked) and keyChangedAt: Date? (item 10 — stamped
+│           │                              by updateContact on any key change, surfaced as "key changed N days ago" on retrieve-approval)
+│           ├── KeyConflict.swift          KeyConflict struct (item 10) — id, contactId, oldEd25519Key, newEd25519Key, newX25519Key,
+│           │                              detectedAt; captured the instant a rotation notice's old key is found in revokedEdKeys,
+│           │                              durable and local, never re-derived from the relay
 │           ├── HeldShare.swift            HeldShare struct (incl. k/n — item 8, reported back to the owner during recovery)
 │           ├── Secret.swift               Secret struct (id, label, k, n, secretCreatedAt, state) + SecretState enum (active/discarding) —
 │           │                              sender-side per-secret aggregate, see CLAUDE.md item 11; Codable
@@ -108,7 +127,12 @@ iOS/
 │   │   │                              POST/GET /key-rotations + DELETE /key-rotations/{id} (item 9)
 │   │   └── DeposplitRelayResolver.swift  Implements ShareRelayResolver — memoizes one DeposplitApiAdapter per resolved base URL
 │   ├── contacts/
-│   │   └── LocalContactRepository.swift  JSON file in Documents/contacts.json
+│   │   ├── LocalContactRepository.swift  JSON file in Documents/contacts.json; ContactJSON gained non-optional revokedEdKeys: [String]
+│   │   │                              (base64url) and keyChangedAt: String? (item 10 — no optional/fallback decode shim, since
+│   │   │                              Deposplit is pre-launch and local stores are wiped, not migrated)
+│   │   └── LocalKeyConflictRepository.swift  JSON file in Documents/key_conflicts.json (item 10) — structurally identical to
+│   │                                  LocalShareMetadataRepository.swift: in-memory cache, KeyConflictJSON wire DTO, base64url keys,
+│   │                                  ISO-8601 timestamps
 │   ├── settings/
 │   │   └── UserDefaultsRelaySettings.swift  Implements RelaySettings — UserDefaults-backed default relay
 │   ├── shares/
@@ -124,14 +148,24 @@ iOS/
 │       │   ├── HomeViewModel.swift   two-phase load: Phase 1 reads from device storage (always succeeds); Phase 2 syncs relay (sets syncWarning on failure);
 │       │   │                        SecretGroup (wraps a Secret + its HolderStatus list) + SecretHealth (graduated n_live-vs-k badge, item 11);
 │       │   │                        requestAll/discardSecret/forceForgetSecret via ShareManagement
-│       │   ├── RequestsViewModel.swift  listPendingRequests + respond via ShareManagement; contact lookup via ContactManagement
+│       │   ├── RequestsViewModel.swift  listPendingRequests + respond via ShareManagement; contact lookup via ContactManagement; gained
+│       │   │                        keyConflicts: [KeyConflict] (loaded in load()), keyChangedDaysAgo(for:) (item 10 — gated to
+│       │   │                        .retrieval requests only, per the "key change → quick retrieval" attack signature),
+│       │   │                        contactName(for conflict:), dismissConflict(_:)
 │       │   ├── DistributedTab.swift  Per-secret grouped cards (item 11) → tapping a holder navigates to ShareDetailView via a ShareDetailTarget
 │       │   │                        (secret + share); health badge, "Request Retrieval (all)", discard/force-forget actions; shows syncWarning banner
 │       │   ├── HeldTab.swift         Read-only list of held shares; takes [Contact] for name resolution; shows syncWarning banner
-│       │   └── RecipientRequestsTab.swift  Approve/deny incoming requests
+│       │   └── RecipientRequestsTab.swift  Approve/deny incoming requests; sectioned list — a conditional "Key Conflicts" section
+│       │                              (KeyConflictCard, item 10 — "Possible impersonation attempt," Dismiss only, steers to the
+│       │                              existing Relink flow rather than any new "Accept" action, never auto-resolved) above "Pending
+│       │                              Requests"; RequestCard shows an orange "key changed N days ago" Label when keyChangedDaysAgo is set
 │       ├── contacts/
-│       │   ├── ContactsViewModel.swift  listContacts + deleteContact via ContactManagement
-│       │   ├── ContactsView.swift    List + delete + add via QR or manual entry; per-row "Relink (Key Changed)" context-menu action (item 8)
+│       │   ├── ContactsViewModel.swift  listContacts + deleteContact via ContactManagement; markKeyCompromised(_:) (item 10) calls
+│       │   │                        contactManagement.markKeyCompromised(contactId:edPublicKey: nil) then reloads
+│       │   ├── ContactsView.swift    List + delete + add via QR or manual entry; per-row "Relink (Key Changed)" context-menu action (item 8);
+│       │   │                        a red exclamationmark.shield.fill badge when !contact.revokedEdKeys.isEmpty, a destructive
+│       │   │                        "Mark Key Compromised" context-menu action, and a confirmationDialog explaining the consequence
+│       │   │                        before flagging (item 10)
 │       │   ├── AddContactViewModel.swift  addManually via ContactManagement
 │       │   ├── AddContactView.swift
 │       │   └── RelinkContactView.swift + RelinkContactViewModel.swift  (item 8) Scans a re-presented QR code, calls
