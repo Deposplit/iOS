@@ -1,11 +1,42 @@
 import hexagon
 import Foundation
 
+/// Item 12's three-bucket freshness model — see `CustodyHeartbeatTuning` for the underlying
+/// windows and deposplit.com/CLAUDE.md "What is next" item 12 for the rationale.
+enum FreshnessBucket {
+    /// Proof-of-custody (heartbeat, pickup, or retrieve approval) observed within
+    /// `CustodyHeartbeatTuning.lossThreshold`. Counts toward `n_live`.
+    case confirmed
+    /// The holder sent a signed opt-out notice — never a loss alarm, shown as a standing
+    /// advisory instead. Does not count toward `n_live`.
+    case unmonitored
+    /// Expected proof-of-custody hasn't arrived within the loss threshold (or never has).
+    /// Drops out of `n_live` — reversible the moment a fresh heartbeat/approval is observed.
+    case silentOverdue
+}
+
 struct HolderStatus: Identifiable {
     let shareId: UUID           // ShareMetadata.id (the Deposit request id)
     let contactId: UUID
     let retrievalRequest: ShareRequest?
+    let lastConfirmedAt: Date?
+    let heartbeatOptedOutAt: Date?
     var id: UUID { shareId }
+
+    var freshnessBucket: FreshnessBucket {
+        if heartbeatOptedOutAt != nil { return .unmonitored }
+        if let lastConfirmedAt, Date().timeIntervalSince(lastConfirmedAt) <= CustodyHeartbeatTuning.lossThreshold {
+            return .confirmed
+        }
+        return .silentOverdue
+    }
+
+    /// Item 12's early nudge — surfaced before a holder actually drops out of `n_live`, while
+    /// still comfortably `.confirmed`.
+    var isGettingStale: Bool {
+        guard freshnessBucket == .confirmed, let lastConfirmedAt else { return false }
+        return Date().timeIntervalSince(lastConfirmedAt) > CustodyHeartbeatTuning.staleWarningThreshold
+    }
 }
 
 enum SecretHealth {
@@ -20,18 +51,20 @@ struct SecretGroup: Identifiable {
     let holders: [HolderStatus]
     var id: UUID { secret.id }
 
-    /// `n_live` here is a pre-item-9/12 proxy: the count of holders this device currently still
-    /// tracks a `ShareMetadata` row for. Item 12 later refines this into a freshness-gated count;
-    /// item 11 only introduces the count-vs-`k` comparison itself.
+    /// Item 12 — `n_live` is now the freshness-gated `.confirmed` count, not a raw
+    /// `ShareMetadata`-row count: an `.unmonitored` holder never alarms, and a `.silentOverdue`
+    /// one drops out (reversibly) instead of being counted as still-live.
     var health: SecretHealth {
         guard secret.state == .active else { return .discarding }
-        let nLive = holders.count
+        let nLive = holders.filter { $0.freshnessBucket == .confirmed }.count
         let k = secret.k
         if nLive < k { return .lost }
         if nLive == k { return .critical }
         if nLive == k + 1 { return .caution }
         return .healthy
     }
+
+    var unmonitoredCount: Int { holders.filter { $0.freshnessBucket == .unmonitored }.count }
 }
 
 @Observable
@@ -45,9 +78,11 @@ final class HomeViewModel {
     var requestingAllIds: Set<UUID> = []
 
     private let shareManagement: any ShareManagement
+    private let contactManagement: any ContactManagement
 
-    init(shareManagement: any ShareManagement) {
+    init(shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
         self.shareManagement = shareManagement
+        self.contactManagement = contactManagement
     }
 
     func load() async {
@@ -59,7 +94,8 @@ final class HomeViewModel {
         do {
             let secrets = try shareManagement.listSecrets()
             let distributed = try shareManagement.listDistributed()
-            groupedSecrets = Self.buildGroups(secrets: secrets, distributed: distributed, allRequests: [])
+            let contacts = (try? contactManagement.listContacts()) ?? []
+            groupedSecrets = Self.buildGroups(secrets: secrets, distributed: distributed, allRequests: [], contacts: contacts)
             heldShares = try shareManagement.listHeld()
         } catch {
             self.error = error.localizedDescription
@@ -75,7 +111,8 @@ final class HomeViewModel {
             let allRequests = try await shareManagement.listSentRequests()
             let secrets = try shareManagement.listSecrets()
             let distributed = try shareManagement.listDistributed()
-            groupedSecrets = Self.buildGroups(secrets: secrets, distributed: distributed, allRequests: allRequests)
+            let contacts = (try? contactManagement.listContacts()) ?? []
+            groupedSecrets = Self.buildGroups(secrets: secrets, distributed: distributed, allRequests: allRequests, contacts: contacts)
             heldShares = try shareManagement.listHeld()
         } catch {
             syncWarning = true
@@ -99,15 +136,19 @@ final class HomeViewModel {
         await load()
     }
 
-    private static func buildGroups(secrets: [Secret], distributed: [ShareMetadata], allRequests: [ShareRequest]) -> [SecretGroup] {
+    private static func buildGroups(secrets: [Secret], distributed: [ShareMetadata], allRequests: [ShareRequest], contacts: [Contact]) -> [SecretGroup] {
         let bySecret = Dictionary(grouping: distributed, by: { $0.secretId })
+        let contactsById = Dictionary(uniqueKeysWithValues: contacts.map { ($0.id, $0) })
         return secrets.map { secret in
             let shares = bySecret[secret.id] ?? []
             let holders = shares.map { share -> HolderStatus in
                 let latestRetrieval = allRequests
                     .filter { $0.shareId == share.id && $0.transactionType == .retrieval }
                     .max { $0.requestedAt < $1.requestedAt }
-                return HolderStatus(shareId: share.id, contactId: share.contactId, retrievalRequest: latestRetrieval)
+                return HolderStatus(
+                    shareId: share.id, contactId: share.contactId, retrievalRequest: latestRetrieval,
+                    lastConfirmedAt: share.lastConfirmedAt, heartbeatOptedOutAt: contactsById[share.contactId]?.heartbeatOptedOutAt
+                )
             }
             return SecretGroup(secret: secret, holders: holders)
         }

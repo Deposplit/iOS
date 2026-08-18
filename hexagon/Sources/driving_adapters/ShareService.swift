@@ -28,6 +28,7 @@ public final class ShareService: ShareManagement {
     private let contactRepository: any ContactRepository
     private let contactManagement: any ContactManagement
     private let keyConflictRepository: any KeyConflictRepository
+    private let retainedDepositRepository: any RetainedDepositRepository
     private let identity: any Identity
 
     public init(
@@ -39,6 +40,7 @@ public final class ShareService: ShareManagement {
         contactRepository: any ContactRepository,
         contactManagement: any ContactManagement,
         keyConflictRepository: any KeyConflictRepository,
+        retainedDepositRepository: any RetainedDepositRepository,
         identity: any Identity
     ) {
         self.relayResolver = relayResolver
@@ -49,6 +51,7 @@ public final class ShareService: ShareManagement {
         self.contactRepository = contactRepository
         self.contactManagement = contactManagement
         self.keyConflictRepository = keyConflictRepository
+        self.retainedDepositRepository = retainedDepositRepository
         self.identity = identity
     }
 
@@ -132,6 +135,10 @@ public final class ShareService: ShareManagement {
                 senderSignature: senderSignature
             )
             try? shareMetadataRepository.save(ShareMetadata(id: req.id, secretId: secretId, contactId: contact.id))
+            // Item 12 — retained until this holder's pickup is confirmed (relay-observed or
+            // heartbeat-attested), then discarded. Safe to retain: this blob is encrypted to the
+            // holder's X25519 key, so this device cannot decrypt it itself.
+            try? retainedDepositRepository.save(RetainedDepositBlob(id: req.id, secretId: secretId, contactId: contact.id, label: label, secretCreatedAt: createdAt, ciphertext: ciphertext, k: threshold, n: contacts.count))
         }
         try? secretRepository.save(Secret(id: secretId, label: label, k: threshold, n: contacts.count, secretCreatedAt: createdAt, state: .active))
     }
@@ -145,6 +152,7 @@ public final class ShareService: ShareManagement {
     }
 
     public func syncDistributed() async throws {
+        let existingMetadata = (try? shareMetadataRepository.getAll()) ?? []
         for relay in allRelays() {
             let reqs = (try? await relay.listShareRequests(role: .sender, transactionType: .deposit, state: nil)) ?? []
             for req in reqs {
@@ -161,10 +169,35 @@ public final class ShareService: ShareManagement {
                 // A row for a holder we no longer have a contact record for can't be re-anchored
                 // to a contactId — skip rather than drop the holder's identity on the floor.
                 guard let contact = contactRepository.getByEdKey(req.recipientKey) else { continue }
-                try? shareMetadataRepository.save(ShareMetadata(id: req.id, secretId: req.secretId, contactId: contact.id))
+                let priorConfirmedAt = existingMetadata.first(where: { $0.id == req.id })?.lastConfirmedAt
+                if req.state == .approved, isRetentionStillPending(req.id) {
+                    // Item 12 — first-observed pickup confirmation (relay-observed channel): a
+                    // one-time transition, not "still approved therefore still fresh" — an
+                    // unchanging Approved row on a later poll must not keep bumping freshness, or
+                    // a long-dead holder would look perpetually confirmed. The retained blob's
+                    // continued existence is exactly the "not yet confirmed by any channel"
+                    // marker, so its presence is what gates the stamp.
+                    try? shareMetadataRepository.save(ShareMetadata(id: req.id, secretId: req.secretId, contactId: contact.id, lastConfirmedAt: Date()))
+                    try? retainedDepositRepository.delete(id: req.id)
+                } else {
+                    try? shareMetadataRepository.save(ShareMetadata(id: req.id, secretId: req.secretId, contactId: contact.id, lastConfirmedAt: priorConfirmedAt))
+                }
+            }
+            // Item 12 — a retrieve approval is also proof-of-custody. Polled here purely for that
+            // freshness side effect; the functional read path for these rows is reconstruct()/
+            // listSentRequests(), unchanged.
+            let retrievals = (try? await relay.listShareRequests(role: .sender, transactionType: .retrieval, state: .approved)) ?? []
+            for req in retrievals {
+                guard let shareId = req.shareId, let meta = existingMetadata.first(where: { $0.id == shareId }) else { continue }
+                try? shareMetadataRepository.save(ShareMetadata(id: meta.id, secretId: meta.secretId, contactId: meta.contactId, lastConfirmedAt: Date()))
             }
         }
         await reconcileDiscarding()
+        await processHeartbeats()
+    }
+
+    private func isRetentionStillPending(_ depositId: UUID) -> Bool {
+        ((try? retainedDepositRepository.getAll()) ?? []).contains(where: { $0.id == depositId })
     }
 
     /// For every `.discarding` `Secret`, checks whether each remaining holder's fanned-out
@@ -359,6 +392,94 @@ public final class ShareService: ShareManagement {
         }
         await processRecoveryMetadata()
         await processRotations()
+        await emitHeartbeats()
+    }
+
+    /// Item 12, holder side — opportunistically piggybacks this same inbox poll: for each
+    /// distinct sender this device currently holds at least one share from, pushes one coalesced
+    /// heartbeat (or opt-out notice) once the per-sender emission interval has elapsed. Each push
+    /// is independently best-effort so one unreachable BYOR relay doesn't block heartbeating
+    /// other senders. `lastHeartbeatSentAt` only advances on a *successful* push, so a transient
+    /// failure retries on the very next poll rather than waiting out the full interval again.
+    private func emitHeartbeats() async {
+        let held = shareRepository.getAll()
+        let senderIds = Set(held.map(\.contactId))
+        let now = Date()
+        for contactId in senderIds {
+            guard let contact = contactRepository.getById(contactId) else { continue }
+            let dueSince = contact.lastHeartbeatSentAt.map { now.timeIntervalSince($0) } ?? .infinity
+            guard dueSince >= CustodyHeartbeatTuning.emissionInterval else { continue }
+            let secretIds = contact.heartbeatEmissionOptedOut ? [] : held.filter { $0.contactId == contactId }.map(\.secretId)
+            let canon = PayloadCanonical.forHeartbeat(ownerKey: contact.edPublicKey, secretIds: secretIds, optedOut: contact.heartbeatEmissionOptedOut)
+            guard let signature = try? identity.sign(canon) else { continue }
+            do {
+                try await relay(for: contact).pushHeartbeat(ownerKey: contact.edPublicKey, secretIds: secretIds, optedOut: contact.heartbeatEmissionOptedOut, signature: signature)
+            } catch {
+                continue
+            }
+            contactRepository.save(Contact(
+                id: contact.id, pseudonym: contact.pseudonym, edPublicKey: contact.edPublicKey, xPublicKey: contact.xPublicKey,
+                verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
+                relayBaseUrl: contact.relayBaseUrl, revokedEdKeys: contact.revokedEdKeys, keyChangedAt: contact.keyChangedAt,
+                heartbeatOptedOutAt: contact.heartbeatOptedOutAt, lastHeartbeatSentAt: now, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut
+            ))
+        }
+    }
+
+    /// Item 12, owner side — auto-verifies each holder's latest heartbeat (or opt-out notice)
+    /// against a known contact's trusted key, then updates local freshness/opt-out state. Never
+    /// deletes a heartbeat row — see `CustodyHeartbeat` for why it's a standing status, not a
+    /// one-shot delivery. Unknown senders and forged signatures are silently skipped, same
+    /// posture as `processRotations()`.
+    private func processHeartbeats() async {
+        let myKey = identity.edPublicKey
+        let existingMetadata = (try? shareMetadataRepository.getAll()) ?? []
+        for relay in allRelays() {
+            let notices = (try? await relay.listHeartbeats()) ?? []
+            for notice in notices {
+                guard let contact = contactRepository.getByEdKey(notice.holderKey) else { continue }
+                let canon = PayloadCanonical.forHeartbeat(ownerKey: myKey, secretIds: notice.secretIds, optedOut: notice.optedOut)
+                guard identity.verify(canon, signature: notice.signature, publicKey: notice.holderKey) else { continue }
+                if notice.optedOut {
+                    contactRepository.save(Contact(
+                        id: contact.id, pseudonym: contact.pseudonym, edPublicKey: contact.edPublicKey, xPublicKey: contact.xPublicKey,
+                        verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
+                        relayBaseUrl: contact.relayBaseUrl, revokedEdKeys: contact.revokedEdKeys, keyChangedAt: contact.keyChangedAt,
+                        heartbeatOptedOutAt: notice.createdAt, lastHeartbeatSentAt: contact.lastHeartbeatSentAt, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut
+                    ))
+                    continue
+                }
+                if contact.heartbeatOptedOutAt != nil {
+                    contactRepository.save(Contact(
+                        id: contact.id, pseudonym: contact.pseudonym, edPublicKey: contact.edPublicKey, xPublicKey: contact.xPublicKey,
+                        verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
+                        relayBaseUrl: contact.relayBaseUrl, revokedEdKeys: contact.revokedEdKeys, keyChangedAt: contact.keyChangedAt,
+                        heartbeatOptedOutAt: nil, lastHeartbeatSentAt: contact.lastHeartbeatSentAt, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut
+                    ))
+                }
+                for secretId in notice.secretIds {
+                    guard let meta = existingMetadata.first(where: { $0.secretId == secretId && $0.contactId == contact.id }) else { continue }
+                    try? shareMetadataRepository.save(ShareMetadata(id: meta.id, secretId: meta.secretId, contactId: meta.contactId, lastConfirmedAt: notice.createdAt))
+                    if isRetentionStillPending(meta.id) {
+                        try? retainedDepositRepository.delete(id: meta.id)
+                    }
+                }
+            }
+        }
+    }
+
+    public func setHeartbeatEmissionOptedOut(contactId: UUID, optedOut: Bool) throws {
+        guard let contact = contactRepository.getById(contactId) else {
+            throw ShareServiceError.contactNotFound
+        }
+        contactRepository.save(Contact(
+            id: contact.id, pseudonym: contact.pseudonym, edPublicKey: contact.edPublicKey, xPublicKey: contact.xPublicKey,
+            verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
+            relayBaseUrl: contact.relayBaseUrl, revokedEdKeys: contact.revokedEdKeys, keyChangedAt: contact.keyChangedAt,
+            // Reset so the changed preference reaches the contact on the very next poll rather
+            // than waiting out the emission interval.
+            heartbeatOptedOutAt: contact.heartbeatOptedOutAt, lastHeartbeatSentAt: nil, heartbeatEmissionOptedOut: optedOut
+        ))
     }
 
     /// Item 9, receiving side — auto-verifies a signed rotation notice against the trusted old

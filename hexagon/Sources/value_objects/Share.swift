@@ -33,11 +33,17 @@ public struct ShareMetadata: Identifiable, Equatable, Hashable, Codable {
     // The holder's stable local contact id — not their Ed25519 key — so this record survives a
     // holder key rotation/recovery (see deposplit.com/CLAUDE.md "What is next" item 7).
     public let contactId: UUID
+    // Item 12 — last proof-of-custody observed for this holder: a relay-observed pickup/retrieve
+    // approval, or a processed heartbeat, whichever is most recent. `nil` until the first such
+    // observation (e.g. right after deposit(), before the holder has picked up). Drives the
+    // freshness-bucket health model — see `CustodyHeartbeatTuning`.
+    public let lastConfirmedAt: Date?
 
-    public init(id: UUID, secretId: UUID, contactId: UUID) {
+    public init(id: UUID, secretId: UUID, contactId: UUID, lastConfirmedAt: Date? = nil) {
         self.id = id
         self.secretId = secretId
         self.contactId = contactId
+        self.lastConfirmedAt = lastConfirmedAt
     }
 }
 

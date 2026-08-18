@@ -103,7 +103,24 @@ private struct SecretGroupRow: View {
                         onHolderTap(holder)
                     } label: {
                         HStack {
-                            Text(contactName(holder.contactId))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(contactName(holder.contactId))
+                                // Item 12 — early nudge, surfaced before the holder actually
+                                // drops out of n_live.
+                                if holder.isGettingStale {
+                                    Label("Getting stale", systemImage: "clock.badge.exclamationmark")
+                                        .font(.caption2)
+                                        .foregroundStyle(.yellow)
+                                } else if holder.freshnessBucket == .unmonitored {
+                                    Label("Unmonitored by choice", systemImage: "eye.slash")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                } else if holder.freshnessBucket == .silentOverdue {
+                                    Label("Silent — possible loss", systemImage: "exclamationmark.triangle")
+                                        .font(.caption2)
+                                        .foregroundStyle(.orange)
+                                }
+                            }
                             Spacer()
                             if let state = holder.retrievalRequest?.state {
                                 Text(state.label).font(.caption).foregroundStyle(.secondary)

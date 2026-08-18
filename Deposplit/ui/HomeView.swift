@@ -24,7 +24,7 @@ struct HomeView: View {
         self.contactManagement = contactManagement
         self.catalogManagement = catalogManagement
         self.relaySettings = relaySettings
-        _homeViewModel = State(initialValue: HomeViewModel(shareManagement: shareManagement))
+        _homeViewModel = State(initialValue: HomeViewModel(shareManagement: shareManagement, contactManagement: contactManagement))
         _requestsViewModel = State(initialValue: RequestsViewModel(
             shareManagement: shareManagement,
             contactManagement: contactManagement

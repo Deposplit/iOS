@@ -88,3 +88,34 @@ private func base64URLEncode(_ data: Data) -> String {
     let signature = base64URLDecode(expectedSignatureBase64Url)
     #expect(publicKey.isValidSignature(signature, for: canon))
 }
+
+// ---------------------------------------------------------------------------
+// forHeartbeat (item 12) — same cross-platform-interop purpose as forOpen above, using the same
+// fixed private key seed. Identical fixture checked into
+// deposplit.com/hexagons/relay/src/test/scala/value_objects/PayloadCanonicalVectorTests.scala.
+// (forRotation's vector was never added here when item 9 shipped — a pre-existing gap, not
+// touched by this item.)
+// ---------------------------------------------------------------------------
+
+private let fixtureHeartbeatOwnerKey = Data(repeating: 0x06, count: 32)
+// Deliberately out of sorted order in the fixture to prove forHeartbeat sorts before joining — a
+// naive pass-through would silently disagree with a platform that assembled the list differently.
+private let fixtureHeartbeatSecretIds = [
+    UUID(uuidString: "33333333-3333-3333-3333-333333333333")!,
+    UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
+    UUID(uuidString: "22222222-2222-2222-2222-222222222222")!,
+]
+private let expectedHeartbeatSignatureBase64Url = "w6fmGn4t7y2RSNakPBzi57H40u5kJI6CZAhEGdzLBOwZd__jabsge2tEmIpczMqEd3ODpNUJ72Ww2KEe8LYQCw"
+
+@Test func forHeartbeatProducesTheFixedCanonicalBytesSortedRegardlessOfInputOrder() {
+    let canon = PayloadCanonical.forHeartbeat(ownerKey: fixtureHeartbeatOwnerKey, secretIds: fixtureHeartbeatSecretIds, optedOut: false)
+    let expected = "BgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgY\n11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222,33333333-3333-3333-3333-333333333333\nfalse"
+    #expect(String(data: canon, encoding: .utf8) == expected)
+}
+
+@Test func theFixedHeartbeatSignatureVerifiesAgainstTheFixedPublicKey() throws {
+    let canon = PayloadCanonical.forHeartbeat(ownerKey: fixtureHeartbeatOwnerKey, secretIds: fixtureHeartbeatSecretIds, optedOut: false)
+    let publicKey = try Curve25519.Signing.PublicKey(rawRepresentation: base64URLDecode(expectedPublicKeyBase64Url))
+    let signature = base64URLDecode(expectedHeartbeatSignatureBase64Url)
+    #expect(publicKey.isValidSignature(signature, for: canon))
+}

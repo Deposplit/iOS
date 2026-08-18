@@ -50,4 +50,11 @@ public protocol ShareManagement {
     /// or by performing a fresh human-verified relink separately). Local-only — the underlying
     /// relay notice was already deleted at detection time.
     func dismissKeyConflict(id: UUID) throws
+
+    // Item 12 — holder role. This device's own choice to stop (or resume) heartbeating
+    // `contactId` (who is the owner in that relationship). Updates the local preference only —
+    // the opportunistic `syncInbox()` emission loop is what actually reaches the contact, on its
+    // normal per-sender cadence; this resets that contact's `lastHeartbeatSentAt` so the change
+    // reaches them on the very next poll rather than waiting out the interval.
+    func setHeartbeatEmissionOptedOut(contactId: UUID, optedOut: Bool) throws
 }

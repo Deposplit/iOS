@@ -72,6 +72,20 @@ public enum PayloadCanonical {
         ]
         return Data(parts.joined(separator: "\n").utf8)
     }
+
+    /// Signed by the holder when pushing a custodial-heartbeat push (item 12), i.e. by the caller
+    /// who becomes `CustodyHeartbeat.holderKey`. `secretIds` is sorted (lowercase UUID string)
+    /// before joining so the signed bytes are independent of list-construction order on either
+    /// side. The same construction covers the opt-out notice (`optedOut = true`, `secretIds`
+    /// typically empty) — mechanically the same signed row, just a different meaning to the reader.
+    public static func forHeartbeat(ownerKey: Data, secretIds: [UUID], optedOut: Bool) -> Data {
+        let parts = [
+            ownerKey.base64URLEncodedForSigning,
+            secretIds.map { $0.uuidString.lowercased() }.sorted().joined(separator: ","),
+            optedOut ? "true" : "false",
+        ]
+        return Data(parts.joined(separator: "\n").utf8)
+    }
 }
 
 /// Local, hexagon-scoped base64url encoding — the app-layer `Data.base64URLEncoded` extension

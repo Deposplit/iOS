@@ -39,6 +39,9 @@ final class LocalShareMetadataRepository: ShareMetadataRepository {
         let id: String
         let secretId: String
         let contactId: String
+        // Item 12 — no optional/fallback decode shim: Deposplit is pre-launch, local stores are
+        // wiped, not migrated.
+        let lastConfirmedAt: String?
     }
 
     private func load() throws -> [ShareMetadata] {
@@ -48,15 +51,21 @@ final class LocalShareMetadataRepository: ShareMetadataRepository {
             guard let id = UUID(uuidString: json.id),
                   let secretId = UUID(uuidString: json.secretId),
                   let contactId = UUID(uuidString: json.contactId) else { return nil }
-            return ShareMetadata(id: id, secretId: secretId, contactId: contactId)
+            let lastConfirmedAt = json.lastConfirmedAt.flatMap { Self.isoFormatter.date(from: $0) }
+            return ShareMetadata(id: id, secretId: secretId, contactId: contactId, lastConfirmedAt: lastConfirmedAt)
         }
     }
 
     private func persist(_ shares: [ShareMetadata]) throws {
         let items = shares.map { s in
-            ShareMetadataJSON(id: s.id.uuidString, secretId: s.secretId.uuidString, contactId: s.contactId.uuidString)
+            ShareMetadataJSON(
+                id: s.id.uuidString, secretId: s.secretId.uuidString, contactId: s.contactId.uuidString,
+                lastConfirmedAt: s.lastConfirmedAt.map { Self.isoFormatter.string(from: $0) }
+            )
         }
         let data = try JSONEncoder().encode(items)
         try data.write(to: fileURL, options: .atomic)
     }
+
+    private static let isoFormatter = ISO8601DateFormatter()
 }

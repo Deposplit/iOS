@@ -61,6 +61,22 @@ public struct Contact: Identifiable, Equatable, Sendable, Codable {
     /// key changed N days ago" — the attack signature item 10 hardens against is key change
     /// followed by a quick retrieval request.
     public let keyChangedAt: Date?
+    /// Item 12, owner role — this contact (as a holder of one of my secrets) sent a signed
+    /// opt-out notice at this time: "my silence from here on is not a loss signal." `nil` means
+    /// either never opted out, or opted back in (cleared on the next non-opted-out heartbeat).
+    /// Durable and local — captured the instant the notice is observed, since the relay may lose
+    /// its state at any time and must never be relied on to keep this alert alive.
+    public let heartbeatOptedOutAt: Date?
+    /// Item 12, holder role — when this device last pushed a custodial heartbeat *to* this
+    /// contact (who is the owner in that relationship). Drives `ShareService`'s opportunistic
+    /// per-sender emission cadence; reset to `nil` by `setHeartbeatEmissionOptedOut` so a toggled
+    /// preference reaches the contact on the very next poll rather than waiting out the interval.
+    public let lastHeartbeatSentAt: Date?
+    /// Item 12, holder role — this device's own choice to stop heartbeating this contact (who is
+    /// the owner in that relationship). Defaults to `false` (heartbeating is opt-out, not
+    /// opt-in). When `true`, `ShareService`'s emission loop still visits this contact on its
+    /// normal cadence but sends a signed opt-out notice instead of a normal heartbeat.
+    public let heartbeatEmissionOptedOut: Bool
 
     public init(
         id: UUID, pseudonym: String,
@@ -68,7 +84,10 @@ public struct Contact: Identifiable, Equatable, Sendable, Codable {
         verificationLevel: VerificationLevel, verifiedAt: Date?, addedAt: Date,
         relayBaseUrl: String? = nil,
         revokedEdKeys: [Data] = [],
-        keyChangedAt: Date? = nil
+        keyChangedAt: Date? = nil,
+        heartbeatOptedOutAt: Date? = nil,
+        lastHeartbeatSentAt: Date? = nil,
+        heartbeatEmissionOptedOut: Bool = false
     ) {
         self.id = id
         self.pseudonym = pseudonym
@@ -80,5 +99,8 @@ public struct Contact: Identifiable, Equatable, Sendable, Codable {
         self.relayBaseUrl = relayBaseUrl
         self.revokedEdKeys = revokedEdKeys
         self.keyChangedAt = keyChangedAt
+        self.heartbeatOptedOutAt = heartbeatOptedOutAt
+        self.lastHeartbeatSentAt = lastHeartbeatSentAt
+        self.heartbeatEmissionOptedOut = heartbeatEmissionOptedOut
     }
 }

@@ -26,7 +26,7 @@ struct ContactsView: View {
     init(contactManagement: any ContactManagement, shareManagement: any ShareManagement) {
         self.contactManagement = contactManagement
         self.shareManagement = shareManagement
-        _viewModel = State(initialValue: ContactsViewModel(contactManagement: contactManagement))
+        _viewModel = State(initialValue: ContactsViewModel(contactManagement: contactManagement, shareManagement: shareManagement))
     }
 
     var body: some View {
@@ -54,6 +54,11 @@ struct ContactsView: View {
                                             .foregroundStyle(.red)
                                             .font(.caption)
                                     }
+                                    if contact.heartbeatEmissionOptedOut {
+                                        Image(systemName: "heart.slash")
+                                            .foregroundStyle(.secondary)
+                                            .font(.caption)
+                                    }
                                 }
                                 Text(contact.edPublicKey.base64URLEncoded.prefix(16) + "…")
                                     .font(.caption)
@@ -69,6 +74,16 @@ struct ContactsView: View {
                                     compromiseTarget = contact
                                 } label: {
                                     Label("Mark Key Compromised", systemImage: "exclamationmark.shield")
+                                }
+                                // Item 12 — low-stakes and reversible, no confirmation dialog.
+                                Button {
+                                    viewModel.toggleHeartbeatEmission(contact)
+                                } label: {
+                                    if contact.heartbeatEmissionOptedOut {
+                                        Label("Resume Heartbeats", systemImage: "heart.fill")
+                                    } else {
+                                        Label("Pause Heartbeats", systemImage: "heart.slash")
+                                    }
                                 }
                             }
                         }

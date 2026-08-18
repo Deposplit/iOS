@@ -7,9 +7,11 @@ final class ContactsViewModel {
     var contacts: [Contact] = []
 
     private let contactManagement: any ContactManagement
+    private let shareManagement: any ShareManagement
 
-    init(contactManagement: any ContactManagement) {
+    init(contactManagement: any ContactManagement, shareManagement: any ShareManagement) {
         self.contactManagement = contactManagement
+        self.shareManagement = shareManagement
     }
 
     func load() {
@@ -28,6 +30,14 @@ final class ContactsViewModel {
     /// human-verified relink can move the contact forward.
     func markKeyCompromised(_ contact: Contact) {
         try? contactManagement.markKeyCompromised(contactId: contact.id, edPublicKey: nil)
+        load()
+    }
+
+    /// Item 12 — this device's own choice to stop (or resume) heartbeating `contact` (who is the
+    /// owner of shares this device holds from them). Low-stakes and reversible, unlike marking a
+    /// key compromised — no confirmation needed.
+    func toggleHeartbeatEmission(_ contact: Contact) {
+        try? shareManagement.setHeartbeatEmissionOptedOut(contactId: contact.id, optedOut: !contact.heartbeatEmissionOptedOut)
         load()
     }
 }

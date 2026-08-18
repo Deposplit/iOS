@@ -54,6 +54,11 @@ final class LocalContactRepository: ContactRepository {
         let relayBaseUrl: String?
         let revokedEdKeys: [String]
         let keyChangedAt: String?
+        // Item 12 — no optional/fallback decode shim: Deposplit is pre-launch, local stores are
+        // wiped, not migrated.
+        let heartbeatOptedOutAt: String?
+        let lastHeartbeatSentAt: String?
+        let heartbeatEmissionOptedOut: Bool
     }
 
     private func load() throws -> [Contact] {
@@ -74,7 +79,10 @@ final class LocalContactRepository: ContactRepository {
                 addedAt: addedAt,
                 relayBaseUrl: json.relayBaseUrl,
                 revokedEdKeys: json.revokedEdKeys.compactMap { Data(base64URLEncoded: $0) },
-                keyChangedAt: json.keyChangedAt?.parseISO8601()
+                keyChangedAt: json.keyChangedAt?.parseISO8601(),
+                heartbeatOptedOutAt: json.heartbeatOptedOutAt?.parseISO8601(),
+                lastHeartbeatSentAt: json.lastHeartbeatSentAt?.parseISO8601(),
+                heartbeatEmissionOptedOut: json.heartbeatEmissionOptedOut
             )
         }
     }
@@ -91,7 +99,10 @@ final class LocalContactRepository: ContactRepository {
                 addedAt: _localISO8601.string(from: c.addedAt),
                 relayBaseUrl: c.relayBaseUrl,
                 revokedEdKeys: c.revokedEdKeys.map { $0.base64URLEncoded },
-                keyChangedAt: c.keyChangedAt.map { _localISO8601.string(from: $0) }
+                keyChangedAt: c.keyChangedAt.map { _localISO8601.string(from: $0) },
+                heartbeatOptedOutAt: c.heartbeatOptedOutAt.map { _localISO8601.string(from: $0) },
+                lastHeartbeatSentAt: c.lastHeartbeatSentAt.map { _localISO8601.string(from: $0) },
+                heartbeatEmissionOptedOut: c.heartbeatEmissionOptedOut
             )
         }
         let data = try JSONEncoder().encode(items)

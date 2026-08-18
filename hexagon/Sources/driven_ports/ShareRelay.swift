@@ -28,4 +28,14 @@ public protocol ShareRelay {
     func listRotations() async throws -> [KeyRotation]
     /// Deletes a rotation notice once consumed.
     func deleteRotation(id: UUID) async throws
+
+    // Item 12's signed custodial-heartbeat push — same "grouped onto this protocol" reasoning as
+    // the rotation push above: one physical relay, one BYOR routing scheme.
+
+    /// Pushes (upserts) a signed heartbeat for one owner, replacing any previous heartbeat this
+    /// device sent to that owner. `signature` must verify against the caller's own current
+    /// Ed25519 key (the relay's `holderKey`) over `PayloadCanonical.forHeartbeat`.
+    func pushHeartbeat(ownerKey: Data, secretIds: [UUID], optedOut: Bool, signature: Data) async throws
+    /// The latest heartbeat (or opt-out) from each holder addressed to this device.
+    func listHeartbeats() async throws -> [CustodyHeartbeat]
 }

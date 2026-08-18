@@ -101,6 +101,21 @@ final class DeposplitApiAdapter: ShareRelay {
         _ = try await execute("DELETE", path: "/key-rotations/\(id)")
     }
 
+    func pushHeartbeat(ownerKey: Data, secretIds: [UUID], optedOut: Bool, signature: Data) async throws {
+        let body = PushHeartbeatJSON(
+            ownerKey: ownerKey.base64URLEncoded,
+            secretIds: secretIds.map { $0.uuidString },
+            optedOut: optedOut,
+            signature: signature.base64URLEncoded
+        )
+        _ = try await execute("POST", path: "/custody-heartbeats", body: body)
+    }
+
+    func listHeartbeats() async throws -> [CustodyHeartbeat] {
+        let data = try await execute("GET", path: "/custody-heartbeats")
+        return try JSONDecoder().decode([CustodyHeartbeatJSON].self, from: data).map { $0.toDomain() }
+    }
+
     // MARK: - HTTP
 
     private func execute<Body: Encodable>(_ method: String, path: String, body: Body) async throws -> Data {
@@ -232,6 +247,35 @@ final class DeposplitApiAdapter: ShareRelay {
                 recipientKey: Data(base64URLEncoded: recipientKey) ?? Data(),
                 newEd25519Key: Data(base64URLEncoded: newEd25519Key) ?? Data(),
                 newX25519Key: Data(base64URLEncoded: newX25519Key) ?? Data(),
+                signature: Data(base64URLEncoded: signature) ?? Data(),
+                createdAt: parseISO8601(createdAt)
+            )
+        }
+    }
+
+    private struct PushHeartbeatJSON: Encodable {
+        let ownerKey: String
+        let secretIds: [String]
+        let optedOut: Bool
+        let signature: String
+    }
+
+    private struct CustodyHeartbeatJSON: Decodable {
+        let id: String
+        let holderKey: String
+        let ownerKey: String
+        let secretIds: [String]
+        let optedOut: Bool
+        let signature: String
+        let createdAt: String
+
+        func toDomain() -> CustodyHeartbeat {
+            CustodyHeartbeat(
+                id: UUID(uuidString: id) ?? UUID(),
+                holderKey: Data(base64URLEncoded: holderKey) ?? Data(),
+                ownerKey: Data(base64URLEncoded: ownerKey) ?? Data(),
+                secretIds: secretIds.compactMap { UUID(uuidString: $0) },
+                optedOut: optedOut,
                 signature: Data(base64URLEncoded: signature) ?? Data(),
                 createdAt: parseISO8601(createdAt)
             )
