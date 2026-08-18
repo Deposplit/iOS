@@ -101,6 +101,9 @@ private struct RequestRow: View {
         case .pending: .orange
         case .approved: .green
         case .denied: .red
+        // Deposit-only (item 9) — a syncDistributed() poll removes the local pointer for a
+        // withdrawn deposit as soon as it's observed, so this rarely reaches the UI in practice.
+        case .withdrawn: .gray
         }
     }
 }
@@ -111,6 +114,7 @@ private extension ShareRequestState {
         case .pending: "Pending"
         case .approved: "Approved"
         case .denied: "Denied"
+        case .withdrawn: "Withdrawn"
         }
     }
 }

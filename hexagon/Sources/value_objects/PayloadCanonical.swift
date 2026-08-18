@@ -59,6 +59,19 @@ public enum PayloadCanonical {
         ]
         return Data(parts.joined(separator: "\n").utf8)
     }
+
+    /// Signed by the old key when pushing a rotation notice (item 9), i.e. by the caller who
+    /// becomes `KeyRotation.oldEd25519Key`. Proves continuity of key control — only someone
+    /// holding the old private key can produce this signature, which is what lets the recipient
+    /// auto-verify and auto-accept the rotation without a fresh human re-verification.
+    public static func forRotation(recipientKey: Data, newEd25519Key: Data, newX25519Key: Data) -> Data {
+        let parts = [
+            recipientKey.base64URLEncodedForSigning,
+            newEd25519Key.base64URLEncodedForSigning,
+            newX25519Key.base64URLEncodedForSigning,
+        ]
+        return Data(parts.joined(separator: "\n").utf8)
+    }
 }
 
 /// Local, hexagon-scoped base64url encoding — the app-layer `Data.base64URLEncoded` extension

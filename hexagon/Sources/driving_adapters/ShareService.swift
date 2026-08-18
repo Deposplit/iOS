@@ -26,6 +26,7 @@ public final class ShareService: ShareManagement {
     private let shareMetadataRepository: any ShareMetadataRepository
     private let secretRepository: any SecretRepository
     private let contactRepository: any ContactRepository
+    private let contactManagement: any ContactManagement
     private let identity: any Identity
 
     public init(
@@ -35,6 +36,7 @@ public final class ShareService: ShareManagement {
         shareMetadataRepository: any ShareMetadataRepository,
         secretRepository: any SecretRepository,
         contactRepository: any ContactRepository,
+        contactManagement: any ContactManagement,
         identity: any Identity
     ) {
         self.relayResolver = relayResolver
@@ -43,6 +45,7 @@ public final class ShareService: ShareManagement {
         self.shareMetadataRepository = shareMetadataRepository
         self.secretRepository = secretRepository
         self.contactRepository = contactRepository
+        self.contactManagement = contactManagement
         self.identity = identity
     }
 
@@ -142,6 +145,16 @@ public final class ShareService: ShareManagement {
         for relay in allRelays() {
             let reqs = (try? await relay.listShareRequests(role: .sender, transactionType: .deposit, state: nil)) ?? []
             for req in reqs {
+                if req.state == .withdrawn {
+                    // Best-effort tombstone (item 9): the holder unilaterally stopped holding
+                    // this share. Drop the local pointer so the health count reflects it, then
+                    // clean up the relay row — it has served its purpose and needn't linger. Row
+                    // *absence* is never itself a signal; only an *observed* withdrawn state
+                    // counts, and we've just observed it.
+                    try? shareMetadataRepository.delete(shareId: req.id)
+                    try? await relay.deleteShareRequest(requestId: req.id)
+                    continue
+                }
                 // A row for a holder we no longer have a contact record for can't be re-anchored
                 // to a contactId — skip rather than drop the holder's identity on the floor.
                 guard let contact = contactRepository.getByEdKey(req.recipientKey) else { continue }
@@ -342,6 +355,40 @@ public final class ShareService: ShareManagement {
             }
         }
         await processRecoveryMetadata()
+        await processRotations()
+    }
+
+    /// Item 9, receiving side — auto-verifies a signed rotation notice against the trusted old
+    /// key already on file for a known contact, downgrades the verification level to at most
+    /// `.low` per item 10's unifying rule (a signed rotation proves continuity of key control,
+    /// not a fresh personhood check, so it can never carry a higher level forward), and updates
+    /// the contact record in place, preserving `contactId`. Unknown senders and
+    /// forged/mismatched signatures are silently skipped — a stranger's notice must never mutate
+    /// a real contact.
+    private func processRotations() async {
+        for relay in allRelays() {
+            let notices = (try? await relay.listRotations()) ?? []
+            for notice in notices {
+                guard let contact = contactRepository.getByEdKey(notice.oldEd25519Key) else { continue }
+                let canon = PayloadCanonical.forRotation(recipientKey: notice.recipientKey, newEd25519Key: notice.newEd25519Key, newX25519Key: notice.newX25519Key)
+                guard identity.verify(canon, signature: notice.signature, publicKey: notice.oldEd25519Key) else { continue }
+                let downgraded = min(contact.verificationLevel, .low)
+                try? contactManagement.updateContact(contactId: contact.id, edPublicKey: notice.newEd25519Key, xPublicKey: notice.newX25519Key, verificationLevel: downgraded)
+                try? await relay.deleteRotation(id: notice.id)
+            }
+        }
+    }
+
+    /// Item 9, sending side (client primitive only — see `ShareManagement.pushRotation`). Signs
+    /// the new keys with the device's *current* identity, which becomes `oldEd25519Key` on the
+    /// wire, proving continuity of key control to the recipient.
+    public func pushRotation(contactId: UUID, newEd25519Key: Data, newX25519Key: Data) async throws {
+        guard let contact = contactRepository.getById(contactId) else {
+            throw ShareServiceError.contactNotFound
+        }
+        let canon = PayloadCanonical.forRotation(recipientKey: contact.edPublicKey, newEd25519Key: newEd25519Key, newX25519Key: newX25519Key)
+        let signature = try identity.sign(canon)
+        try await relay(for: contact).pushRotation(recipientKey: contact.edPublicKey, newEd25519Key: newEd25519Key, newX25519Key: newX25519Key, signature: signature)
     }
 
     /// Identity recovery (item 8) — sender/owner side. Consumes pending `recoveryMetadata` pushes
@@ -436,11 +483,24 @@ public final class ShareService: ShareManagement {
         }
     }
 
+    /// Unilateral, no approval needed — but as of item 9 not purely silent: best-effort notifies
+    /// the sender via a withdraw tombstone before the local record is dropped, so a courtesy
+    /// notice is attempted even if this method throws or the network call fails. The relay call
+    /// is fire-and-forget; local deletion always proceeds regardless of its outcome.
     public func deleteHeldShare(shareId: UUID) async throws {
+        if let share = shareRepository.getAll().first(where: { $0.id == shareId }),
+           let senderContact = contactRepository.getById(share.contactId) {
+            try? await relay(for: senderContact).withdrawShareRequests(senderKey: nil, secretId: share.secretId)
+        }
         shareRepository.delete(shareId: shareId)
     }
 
+    /// Same best-effort withdraw-tombstone courtesy as `deleteHeldShare`, but scoped to every
+    /// share from `contactId` in one relay call (`senderKey`) rather than one per secretId.
     public func deleteAllHeldFromSender(contactId: UUID) async throws {
+        if let senderContact = contactRepository.getById(contactId) {
+            try? await relay(for: senderContact).withdrawShareRequests(senderKey: senderContact.edPublicKey, secretId: nil)
+        }
         for share in shareRepository.getAll() where share.contactId == contactId {
             shareRepository.delete(shareId: share.id)
         }

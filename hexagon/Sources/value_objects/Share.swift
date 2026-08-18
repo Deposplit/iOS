@@ -18,6 +18,9 @@ public enum ShareTransactionType: String {
 
 public enum ShareRequestState: String {
     case pending, approved, denied
+    /// Deposit-only (item 9): the recipient unilaterally stopped holding the share. A best-effort
+    /// tombstone, not authoritative — see `ShareRelay.withdrawShareRequests`.
+    case withdrawn
 }
 
 /// Per-share record on the sender's device — one per holder of a `Secret`. Normalized to

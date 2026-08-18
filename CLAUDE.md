@@ -46,7 +46,8 @@ iOS/
 │       │   ├── Identity.swift             isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign
 │       │   ├── ShareManagement.swift      use-case interface: deposit, listSecrets, listDistributed (reads local store), syncDistributed,
 │       │   │                              reconstruct (pure read, enforces real k), discardSecret, forceForgetSecret, syncInbox, listHeld (reads local store), respond, …
-│       │   │                              pushRecoveryMetadata (item 8, holder side)
+│       │   │                              pushRecoveryMetadata (item 8, holder side); pushRotation (item 9, client primitive only — no
+│       │   │                              "regenerate my own identity" UI trigger exists yet, see deposplit.com/TODO.md item 9's scope-split note)
 │       │   ├── ContactManagement.swift    listContacts, addManually, addFromQr, updateContact (item 8 — contact-update-in-place,
 │       │   │                              key change forces a fresh verificationLevel), deleteContact
 │       │   └── CatalogManagement.swift    exportCatalog, importCatalog — optional non-secret catalog backup (item 8)
@@ -57,7 +58,10 @@ iOS/
 │       │   ├── SecretRepository.swift     getAll, save, delete — local store of sender-side Secret aggregates (item 11)
 │       │   ├── ShareMetadataRepository.swift  getAll, save, delete — local store of distributed ShareMetadata
 │       │   ├── ShareRelay.swift           openShareRequest (incl. k/n — item 8), listShareRequests, getShareRequest,
-│       │   │                              respondToShareRequest, deleteShareRequest, deleteShareRequests
+│       │   │                              respondToShareRequest, deleteShareRequest, deleteShareRequests, withdrawShareRequests
+│       │   │                              (item 9 — best-effort tombstone, not a hard delete), pushRotation/listRotations/deleteRotation
+│       │   │                              (item 9's signed rotate(K_old→K_new) push — grouped onto this port rather than a separate
+│       │   │                              one since it's the same physical relay + BYOR routing; see KeyRotation.swift)
 │       │   ├── ShareRelayResolver.swift   resolve(relayBaseUrl: String?): any ShareRelay — BYOR factory/cache; nil resolves to the device's default relay
 │       │   └── RelaySettings.swift        defaultRelayBaseURL, setDefaultRelayBaseURL — device's runtime-configurable default relay
 │       ├── services/
@@ -71,7 +75,12 @@ iOS/
 │       │   │                              respond()'s retrieval/removal paths match the holder's HeldShare by secretId, not the sender's local shareId (item 8);
 │       │   │                              reconstruct() is a pure read (item 11 — no teardown); discardSecret() flips a Secret to DISCARDING and fans out
 │       │   │                              removal requests; forceForgetSecret() is the local-only escape hatch; pushRecoveryMetadata(contactId) opens a
-│       │   │                              recoveryMetadata push for every HeldShare held from that contact (item 8)
+│       │   │                              recoveryMetadata push for every HeldShare held from that contact (item 8); takes a new ContactManagement
+│       │   │                              dependency (item 9) so processRotations() (private, called from syncInbox) can call updateContact after
+│       │   │                              auto-verifying an incoming rotation notice against a known contact's trusted old key, downgrading the
+│       │   │                              verification level to min(old, .low) per item 10's unifying rule; deleteHeldShare/deleteAllHeldFromSender
+│       │   │                              best-effort withdraw via the sender's relay before deleting locally (item 9); syncDistributed() drops the
+│       │   │                              local ShareMetadata pointer and deletes the relay row when it observes a .withdrawn deposit row
 │       │   ├── ContactService.swift       ContactManagement impl — validates + delegates to ContactRepository; defines ContactError;
 │       │   │                              updateContact requires a fresh verificationLevel whenever either key changes (item 8)
 │       │   └── CatalogService.swift       CatalogManagement impl — exportCatalog/importCatalog (upsert-if-absent-by-id), item 8
@@ -82,9 +91,11 @@ iOS/
 │           ├── HeldShare.swift            HeldShare struct (incl. k/n — item 8, reported back to the owner during recovery)
 │           ├── Secret.swift               Secret struct (id, label, k, n, secretCreatedAt, state) + SecretState enum (active/discarding) —
 │           │                              sender-side per-secret aggregate, see CLAUDE.md item 11; Codable
+│           ├── KeyRotation.swift          KeyRotation struct (item 9) — a signed rotate(K_old→K_new) notice addressed to this device;
+│           │                              not a ShareRequest (no secretId, no consent phase)
 │           └── Share.swift               Role, ShareTransactionType (incl. .inventory — item 8, self-approved, no consent phase),
-│                                          ShareRequestState, ShareMetadata (id/secretId/contactId only — label/secretCreatedAt live on
-│                                          Secret; Codable), ShareRequest (incl. k/n)
+│                                          ShareRequestState (incl. .withdrawn — item 9, deposit-only best-effort tombstone), ShareMetadata
+│                                          (id/secretId/contactId only — label/secretCreatedAt live on Secret; Codable), ShareRequest (incl. k/n)
 ├── Deposplit.xcodeproj/
 ├── Deposplit/                        ← app target (adapters + UI); PBXFileSystemSynchronizedRootGroup
 │   ├── DeposplitApp.swift            @main entry point + RootView (routes to SignInView or HomeView); wires
@@ -93,7 +104,8 @@ iOS/
 │   │   └── KeychainIdentityStore.swift  IdentityStore adapter — Security framework + UserDefaults
 │   ├── api/
 │   │   ├── DeposplitApiAdapter.swift  HTTP adapter — implements ShareRelay; URLSession + Ed25519 request signing (via Identity) + SHA-256 body hash;
-│   │   │                              all /share-requests operations (incl. k/n — item 8)
+│   │   │                              all /share-requests operations (incl. k/n — item 8); POST /share-requests/withdraw and
+│   │   │                              POST/GET /key-rotations + DELETE /key-rotations/{id} (item 9)
 │   │   └── DeposplitRelayResolver.swift  Implements ShareRelayResolver — memoizes one DeposplitApiAdapter per resolved base URL
 │   ├── contacts/
 │   │   └── LocalContactRepository.swift  JSON file in Documents/contacts.json

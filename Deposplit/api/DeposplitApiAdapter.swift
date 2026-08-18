@@ -73,6 +73,34 @@ final class DeposplitApiAdapter: ShareRelay {
         _ = try await execute("DELETE", path: "/share-requests\(query)")
     }
 
+    func withdrawShareRequests(senderKey: Data?, secretId: UUID?) async throws {
+        var query = ""
+        var parts: [String] = []
+        if let key = senderKey { parts.append("senderKey=\(key.base64URLEncoded)") }
+        if let id = secretId { parts.append("secretId=\(id)") }
+        if !parts.isEmpty { query = "?" + parts.joined(separator: "&") }
+        _ = try await execute("POST", path: "/share-requests/withdraw\(query)")
+    }
+
+    func pushRotation(recipientKey: Data, newEd25519Key: Data, newX25519Key: Data, signature: Data) async throws {
+        let body = PushRotationJSON(
+            recipientKey: recipientKey.base64URLEncoded,
+            newEd25519Key: newEd25519Key.base64URLEncoded,
+            newX25519Key: newX25519Key.base64URLEncoded,
+            signature: signature.base64URLEncoded
+        )
+        _ = try await execute("POST", path: "/key-rotations", body: body)
+    }
+
+    func listRotations() async throws -> [KeyRotation] {
+        let data = try await execute("GET", path: "/key-rotations")
+        return try JSONDecoder().decode([KeyRotationJSON].self, from: data).map { $0.toDomain() }
+    }
+
+    func deleteRotation(id: UUID) async throws {
+        _ = try await execute("DELETE", path: "/key-rotations/\(id)")
+    }
+
     // MARK: - HTTP
 
     private func execute<Body: Encodable>(_ method: String, path: String, body: Body) async throws -> Data {
@@ -177,6 +205,35 @@ final class DeposplitApiAdapter: ShareRelay {
                 k: k, n: n,
                 senderSignature: Data(base64URLEncoded: senderSignature) ?? Data(),
                 recipientSignature: recipientSignature.flatMap { Data(base64URLEncoded: $0) }
+            )
+        }
+    }
+
+    private struct PushRotationJSON: Encodable {
+        let recipientKey: String
+        let newEd25519Key: String
+        let newX25519Key: String
+        let signature: String
+    }
+
+    private struct KeyRotationJSON: Decodable {
+        let id: String
+        let oldEd25519Key: String
+        let recipientKey: String
+        let newEd25519Key: String
+        let newX25519Key: String
+        let signature: String
+        let createdAt: String
+
+        func toDomain() -> KeyRotation {
+            KeyRotation(
+                id: UUID(uuidString: id) ?? UUID(),
+                oldEd25519Key: Data(base64URLEncoded: oldEd25519Key) ?? Data(),
+                recipientKey: Data(base64URLEncoded: recipientKey) ?? Data(),
+                newEd25519Key: Data(base64URLEncoded: newEd25519Key) ?? Data(),
+                newX25519Key: Data(base64URLEncoded: newX25519Key) ?? Data(),
+                signature: Data(base64URLEncoded: signature) ?? Data(),
+                createdAt: parseISO8601(createdAt)
             )
         }
     }
