@@ -17,6 +17,7 @@ struct DistributedTab: View {
     let onRequestAll: (UUID) -> Void
     let onDiscard: (UUID) -> Void
     let onForceForget: (UUID) -> Void
+    let onRepair: (Secret) -> Void
 
     @State private var expandedSecretId: UUID?
     @State private var pendingDiscard: SecretGroup?
@@ -41,7 +42,8 @@ struct DistributedTab: View {
                             },
                             onRequestAll: { onRequestAll(group.id) },
                             onDiscard: { pendingDiscard = group },
-                            onForceForget: { onForceForget(group.id) }
+                            onForceForget: { onForceForget(group.id) },
+                            onRepair: { onRepair(group.secret) }
                         )
                     }
                 }
@@ -76,6 +78,7 @@ private struct SecretGroupRow: View {
     let onRequestAll: () -> Void
     let onDiscard: () -> Void
     let onForceForget: () -> Void
+    let onRepair: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -144,6 +147,13 @@ private struct SecretGroupRow: View {
                     .disabled(isRequestingAll || group.secret.state == .discarding)
                     .buttonStyle(.bordered)
                     .font(.caption)
+
+                    if group.health == .caution || group.health == .critical {
+                        Button("Repair", action: onRepair)
+                            .buttonStyle(.bordered)
+                            .font(.caption)
+                            .tint(group.health == .critical ? .orange : nil)
+                    }
 
                     Spacer()
 

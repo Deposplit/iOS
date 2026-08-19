@@ -4,6 +4,16 @@ import Foundation
 @Observable
 final class DepositViewModel {
 
+    /// Seeds the form's initial state — used by the Repair flow to pre-fill a reconstructed
+    /// secret's label/value/holders/threshold into an otherwise-ordinary deposit. All fields
+    /// stay editable afterward; this only affects the starting values.
+    struct Prefill {
+        let label: String
+        let secretText: String
+        let selectedContacts: Set<UUID>
+        let threshold: Int
+    }
+
     var label = ""
     var secretText = ""
     var selectedContacts: Set<UUID> = []
@@ -15,9 +25,15 @@ final class DepositViewModel {
     private let shareManagement: any ShareManagement
     private let contactManagement: any ContactManagement
 
-    init(shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
+    init(shareManagement: any ShareManagement, contactManagement: any ContactManagement, prefill: Prefill? = nil) {
         self.shareManagement = shareManagement
         self.contactManagement = contactManagement
+        if let prefill {
+            self.label = prefill.label
+            self.secretText = prefill.secretText
+            self.selectedContacts = prefill.selectedContacts
+            self.threshold = prefill.threshold
+        }
     }
 
     var allContacts: [Contact] { (try? contactManagement.listContacts()) ?? [] }

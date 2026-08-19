@@ -153,7 +153,8 @@ iOS/
 │       │   │                        .retrieval requests only, per the "key change → quick retrieval" attack signature),
 │       │   │                        contactName(for conflict:), dismissConflict(_:)
 │       │   ├── DistributedTab.swift  Per-secret grouped cards (item 11) → tapping a holder navigates to ShareDetailView via a ShareDetailTarget
-│       │   │                        (secret + share); health badge, "Request Retrieval (all)", discard/force-forget actions; shows syncWarning banner
+│       │   │                        (secret + share); health badge, "Request Retrieval (all)", discard/force-forget actions, a
+│       │   │                        "Repair" action (item 9, shown only at .caution/.critical health) → RepairView; shows syncWarning banner
 │       │   ├── HeldTab.swift         Read-only list of held shares; takes [Contact] for name resolution; shows syncWarning banner
 │       │   └── RecipientRequestsTab.swift  Approve/deny incoming requests; sectioned list — a conditional "Key Conflicts" section
 │       │                              (KeyConflictCard, item 10 — "Possible impersonation attempt," Dismiss only, steers to the
@@ -173,12 +174,28 @@ iOS/
 │       │                              from QrScanView, which always mints a *new* contact
 │       ├── deposit/
 │       │   ├── DepositViewModel.swift  deposit via ShareManagement; listContacts via ContactManagement; splitTimeWarnings
-│       │   │                        (item 11's three non-blocking soft-warning axes, computed from k/n before deposit)
-│       │   └── DepositView.swift     confirmationDialog surfaces splitTimeWarnings before an actual deposit if any apply
+│       │   │                        (item 11's three non-blocking soft-warning axes, computed from k/n before deposit); gained
+│       │   │                        an optional Prefill (label/secretText/selectedContacts/threshold) init param (item 9) used
+│       │   │                        by the Repair flow to seed a reconstructed secret's re-deposit form
+│       │   └── DepositView.swift     confirmationDialog surfaces splitTimeWarnings before an actual deposit if any apply; the
+│       │                        form body is factored into DepositFormContent (item 9) so RepairView can embed the identical
+│       │                        validated form as its own wizard step instead of duplicating it — DepositView itself is now a
+│       │                        thin NavigationStack+toolbar wrapper around it
 │       ├── sharedetail/
 │       │   ├── ShareDetailViewModel.swift  Takes a ShareDetailTarget (Secret + ShareMetadata); open RETRIEVE/DELETE requests;
 │       │   │                        reconstruct via ShareManagement (ready-threshold now reads Secret.k); contact lookup via ContactManagement
 │       │   └── ShareDetailView.swift
+│       ├── repair/  (item 9 — reconstruct-and-re-split "Repair" flow, deposplit.com/CLAUDE.md "What is next" item 9)
+│       │   ├── RepairViewModel.swift  One screen, internal wizard state (Phase: gathering/reconstructing/redeposit/
+│       │   │                        confirmDiscard/done) composing three already-existing primitives — requestAll/reconstruct
+│       │   │                        (ShareManagement), and (via an embedded DepositViewModel(prefill:)) deposit, then
+│       │   │                        discardSecret. The reconstructed plaintext lives only in the transient DepositViewModel
+│       │   │                        this constructs for the redeposit phase, dropped immediately on deposit success — never
+│       │   │                        persisted, never serialized into a navigation route. discardSecret is called at most once
+│       │   │                        per flow (confirmed non-idempotent — see ShareService.discardSecret).
+│       │   └── RepairView.swift     Entry point is a "Repair" button on DistributedTab's secret row, shown only when
+│       │                        SecretGroup.health is .caution or .critical; presented as a .sheet(item:) from HomeView,
+│       │                        mirroring DepositView's own presentation
 │       ├── qr/
 │       │   ├── QrPayload.swift       {"v":1,"pseudonym":"…","ed":"…","x":"…"} encode/decode
 │       │   ├── QrDisplayViewModel.swift  CoreImage QR generation (synchronous, MainActor-safe)

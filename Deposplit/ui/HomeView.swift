@@ -17,6 +17,7 @@ struct HomeView: View {
     @State private var showDeposit = false
     @State private var showSettings = false
     @State private var selectedShareTarget: ShareDetailTarget?
+    @State private var repairSecret: Secret?
 
     init(auth: any Identity, shareManagement: any ShareManagement, contactManagement: any ContactManagement, catalogManagement: any CatalogManagement, relaySettings: any RelaySettings) {
         self.auth = auth
@@ -120,6 +121,16 @@ struct HomeView: View {
         }) {
             DepositView(shareManagement: shareManagement, contactManagement: contactManagement)
         }
+        .sheet(item: $repairSecret, onDismiss: {
+            Task { await homeViewModel.load() }
+        }) { secret in
+            RepairView(
+                secret: secret,
+                shareManagement: shareManagement,
+                contactManagement: contactManagement,
+                onFinished: { repairSecret = nil }
+            )
+        }
         .task {
             await reload()
         }
@@ -158,7 +169,8 @@ struct HomeView: View {
                     onTapHolder: { selectedShareTarget = $0 },
                     onRequestAll: { secretId in Task { await homeViewModel.requestAll(secretId: secretId) } },
                     onDiscard: { secretId in Task { await homeViewModel.discardSecret(secretId) } },
-                    onForceForget: { secretId in Task { await homeViewModel.forceForgetSecret(secretId) } }
+                    onForceForget: { secretId in Task { await homeViewModel.forceForgetSecret(secretId) } },
+                    onRepair: { secret in repairSecret = secret }
                 )
             }
         }
