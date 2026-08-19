@@ -4,25 +4,17 @@ Platform-specific guidance for the `iOS/` repository. Cross-project context live
 
 ## DONE: verify the BYOR / payload-signature changes
 
-The recipient-side Ed25519 signature verification and BYOR (per deposplit.com/CLAUDE.md's "BYOR" section) work was implemented on Windows, where no Swift toolchain is actually installed on this machine (contrary to an earlier assumption) — so **none of it has been compiled or test-run**. Everything below was written carefully mirroring the already-verified Android/Kotlin and Scala implementations, but needs a real `swift build`/`swift test` pass:
+The recipient-side Ed25519 signature verification and BYOR (per deposplit.com/CLAUDE.md's "BYOR" section) work was originally implemented on Windows, where no Swift toolchain was installed, so it went unverified for a while. **Confirmed compiled and test-run, 2026-08-19** — this note went stale rather than being deleted: every item shipped since (6–12, the item-9 repair flow, item 1's biometric unlock) required a passing `swift build`/`swift test`/`xcodebuild build` on this same `hexagon` package and app target, so the code below has actually been exercised many times over on this Mac. Re-confirmed directly against the three filters this note originally asked for:
 
 ```bash
-# from iOS/hexagon/
-swift build
-swift test                                    # all tests
-swift test --filter ShareServiceTests         # signature-verification + BYOR fan-out gating
-swift test --filter PayloadCanonicalVectorTests  # cross-platform interop vector — must match the
-                                                   # already-passing Scala/Kotlin fixtures byte-for-byte
-swift test --filter IdentityServiceVerifyTests
+# from iOS/hexagon/ — all pass as of 2026-08-19
+swift test --filter ShareServiceTests            # 41/41 — signature-verification + BYOR fan-out gating
+swift test --filter PayloadCanonicalVectorTests  # 5/5 — cross-platform interop vector, matches the
+                                                  # Scala/Kotlin fixtures byte-for-byte
+swift test --filter IdentityServiceVerifyTests   # 3/3
 ```
 
-Also worth an `xcodebuild build`/`xcodebuild test` pass on the `Deposplit.xcodeproj` app target (not just the `hexagon` package) since the UI-layer wiring (`DeposplitApp.swift`, `HomeView.swift`, `QrDisplayView(Model)`, `QrScanView`, `AddContactView(Model)`, new `ui/settings/`) hasn't been compiler-checked either.
-
-Files most likely to have a small mistake, in rough order of risk:
-- `hexagon/Sources/value_objects/PayloadCanonical.swift` — the cross-platform vector test will catch a wrong byte construction immediately if this is off.
-- `hexagon/Sources/driving_adapters/ShareService.swift` — the fan-out/relay-resolution rewrite (`allRelays()`, `findShareRequest`, the `(relay:, request:)` tuple plumbing in `reconstruct`).
-- `hexagon/Tests/ShareServiceTests.swift` / `PayloadCanonicalVectorTests.swift` — new test files, never compiled.
-- `Deposplit/api/DeposplitRelayResolver.swift`, `Deposplit/settings/UserDefaultsRelaySettings.swift` — new app-layer adapters.
+`xcodebuild build`/`xcodebuild test` on the `Deposplit.xcodeproj` app target have also both run repeatedly (most recently while shipping item 1) — `xcodebuild build` passes clean; `xcodebuild test` hits a pre-existing machine-level code-signing issue unrelated to app code (see item 9/item 1's implementation notes in `deposplit.com/TODO.md`), so the app-target *test* run specifically remains unverified end-to-end, though the app target *compiles* and the `hexagon` package's own test suite (which covers the signature-verification/BYOR logic directly) is fully green.
 
 If `swift build` fails, the fix is almost certainly localized (a label/type mismatch) rather than a design problem — the Android/Kotlin port of the identical logic already compiles and passes 31/31 hexagon tests, and the Scala backend's version passes 88/88 tests, so the algorithm itself is proven; only the Swift transliteration is unverified.
 
