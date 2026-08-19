@@ -81,10 +81,13 @@ struct RepairView: View {
                 .disabled(viewModel.isActing)
 
                 if viewModel.readyToReconstruct {
-                    Button("Reconstruct") {
-                        Task { await viewModel.reconstruct() }
+                    BiometricGatedButton(
+                        label: "Reconstruct",
+                        reason: String(localized: "Authenticate to reconstruct your secret"),
+                        isDisabled: viewModel.isActing
+                    ) {
+                        await viewModel.reconstruct()
                     }
-                    .disabled(viewModel.isActing)
                 }
             }
             if let error = viewModel.error {

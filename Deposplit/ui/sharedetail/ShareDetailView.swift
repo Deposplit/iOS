@@ -34,10 +34,11 @@ struct ShareDetailView: View {
                 case .unavailable(let reason):
                     Text(reason).foregroundStyle(.secondary).font(.caption)
                 case .ready:
-                    Button("Reconstruct secret…") {
-                        Task {
-                            _ = await viewModel.reconstruct()
-                        }
+                    BiometricGatedButton(
+                        label: "Reconstruct secret…",
+                        reason: String(localized: "Authenticate to reconstruct your secret")
+                    ) {
+                        _ = await viewModel.reconstruct()
                     }
                 case .reconstructed(let secret):
                     VStack(alignment: .leading, spacing: 8) {

@@ -184,7 +184,8 @@ iOS/
 │       ├── sharedetail/
 │       │   ├── ShareDetailViewModel.swift  Takes a ShareDetailTarget (Secret + ShareMetadata); open RETRIEVE/DELETE requests;
 │       │   │                        reconstruct via ShareManagement (ready-threshold now reads Secret.k); contact lookup via ContactManagement
-│       │   └── ShareDetailView.swift
+│       │   └── ShareDetailView.swift  Reconstruct button is a BiometricGatedButton (item 1) — Face ID/Touch ID required before
+│       │                        viewModel.reconstruct() runs
 │       ├── repair/  (item 9 — reconstruct-and-re-split "Repair" flow, deposplit.com/CLAUDE.md "What is next" item 9)
 │       │   ├── RepairViewModel.swift  One screen, internal wizard state (Phase: gathering/reconstructing/redeposit/
 │       │   │                        confirmDiscard/done) composing three already-existing primitives — requestAll/reconstruct
@@ -195,7 +196,13 @@ iOS/
 │       │   │                        per flow (confirmed non-idempotent — see ShareService.discardSecret).
 │       │   └── RepairView.swift     Entry point is a "Repair" button on DistributedTab's secret row, shown only when
 │       │                        SecretGroup.health is .caution or .critical; presented as a .sheet(item:) from HomeView,
-│       │                        mirroring DepositView's own presentation
+│       │                        mirroring DepositView's own presentation. Reconstruct button is also a BiometricGatedButton
+│       │                        (item 1) — shipped ungated initially, gated once item 1 landed
+│       ├── biometric/  (item 1 — Face ID/Touch ID gate for secret reconstruction)
+│       │   ├── BiometricGate.swift  AuthAvailability/AuthResult + biometricAvailability()/authenticate(reason:) — pure
+│       │   │                        Foundation/LocalAuthentication, no SwiftUI import, mirroring Android's BiometricGate.kt shape
+│       │   └── BiometricGatedButton.swift  Reusable SwiftUI view: renders the button when available, or an explanatory
+│       │                        message when not (no hardware / not enrolled / unavailable) — shared by ShareDetailView and RepairView
 │       ├── qr/
 │       │   ├── QrPayload.swift       {"v":1,"pseudonym":"…","ed":"…","x":"…"} encode/decode
 │       │   ├── QrDisplayViewModel.swift  CoreImage QR generation (synchronous, MainActor-safe)
@@ -666,28 +673,26 @@ if homeViewModel.syncWarning {
 
 ---
 
-## TODO: Biometric unlock for secret reconstruction
+## DONE: Biometric unlock for secret reconstruction (item 1, 2026-08-19)
 
-The Android app gates `viewModel.reconstruct()` behind `BiometricPrompt`. The iOS `ShareDetailView` currently calls `viewModel.reconstruct()` directly without any authentication gate.
+The Android app gates `viewModel.reconstruct()` behind `BiometricPrompt`; iOS's `ShareDetailView` previously called `viewModel.reconstruct()` directly with no authentication gate, and item 9's `RepairView` had been shipped the same way, deliberately, pending this item.
 
-Add biometric authentication using `LocalAuthentication`:
+New `ui/biometric/BiometricGate.swift` — pure `Foundation`/`LocalAuthentication`, no SwiftUI import, mirroring the shape (not the exact API) of Android's `ui/biometric/BiometricGate.kt`:
 
 ```swift
-import LocalAuthentication
+enum AuthAvailability { case available, noneEnrolled, noHardware, unavailable(String) }
+enum AuthResult { case succeeded, failed(String) }
 
-let context = LAContext()
-var error: NSError?
-guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) else {
-    // show explanatory message (no hardware / not enrolled)
-    return
-}
-context.evaluatePolicy(
-    .deviceOwnerAuthenticationWithBiometrics,
-    localizedReason: String(localized: "Authenticate to reconstruct your secret")
-) { success, authError in
-    guard success else { return }
-    Task { @MainActor in await viewModel.reconstruct() }
-}
+func biometricAvailability() -> AuthAvailability { /* LAContext().canEvaluatePolicy(...) */ }
+func authenticate(reason: String) async -> AuthResult { /* LAContext().evaluatePolicy(...) async throws */ }
 ```
 
-Gate it behind a `SKIP_BIOMETRIC` build flag (like Android does via `BuildConfig`) so it can be bypassed on simulators during development.
+Used the Swift-concurrency-native `evaluatePolicy(_:localizedReason:) async throws -> Bool` overload directly rather than the completion-handler one sketched in the original TODO — no manual `Task { @MainActor in ... }` bridging needed. `LAContext.canEvaluatePolicy` needs no host `Activity`-equivalent reference (unlike Android's `BiometricManager.from(context)`), so nothing here depends on the calling view.
+
+New `ui/biometric/BiometricGatedButton.swift` — a reusable SwiftUI view wrapping a label/reason/`onAuthenticated` closure: renders the button when `.available`, or an explanatory message (mirroring Android's per-case copy) when not, so `ShareDetailView` and `RepairView` both gate their reconstruct button through the identical component rather than duplicating the switch-over-availability logic Android's two call sites do independently.
+
+**Deliberately no `SKIP_BIOMETRIC`-equivalent build flag**, unlike Android — Xcode Simulator has first-class built-in Face ID/Touch ID enrollment simulation (Features → Face ID/Touch ID → Enrolled, then Device → Face ID → Matching/Non-matching Face) covering the same "test without real biometric hardware" need without an app-code bypass switch; a simulator left without enrolled biometrics just shows the unavailable-state message, same as a real device would.
+
+`INFOPLIST_KEY_NSFaceIDUsageDescription` added to both build configurations in `project.pbxproj` (Face ID requires an Info.plist usage description; Touch ID does not) — same `GENERATE_INFOPLIST_FILE`/`INFOPLIST_KEY_*` mechanism the existing `NSCameraUsageDescription` entry already uses.
+
+`xcodebuild build` succeeds; `swift test` (hexagon, unaffected) 73/73. `xcodebuild test` against a local simulator hits a pre-existing machine-level code-signing issue (unsigned `DeposplitTests.xctest` dylib) unrelated to this change, so the app-target test run itself remains unverified end-to-end on this machine.
