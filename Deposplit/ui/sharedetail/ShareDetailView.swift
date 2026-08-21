@@ -40,7 +40,7 @@ struct ShareDetailView: View {
                     ) {
                         _ = await viewModel.reconstruct()
                     }
-                case .reconstructed(let secret):
+                case .reconstructed(let secret, let integrity):
                     VStack(alignment: .leading, spacing: 8) {
                         Text(secret)
                             .font(.system(.body, design: .monospaced))
@@ -49,6 +49,7 @@ struct ShareDetailView: View {
                             UIPasteboard.general.string = secret
                         }
                         .font(.caption)
+                        ReconstructionAdvisoryView(integrity: integrity, contactName: viewModel.contactName)
                     }
                 case .failed(let msg):
                     Text("Error: \(msg)").foregroundStyle(.red).font(.caption)

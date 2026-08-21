@@ -151,3 +151,102 @@ import Testing
         try combine(shares: [[0x01, 0x05], [0x02, 0x05]])
     }
 }
+
+// -------------------------------------------------------------------------
+// combineWithIntegrity() — item 13 (reconstruction integrity via over-determination)
+// -------------------------------------------------------------------------
+
+/// Corrupts every secret byte of a share (leaving its x-coordinate intact), simulating a
+/// tampered/forged/bit-flipped holder response — wrong as a whole, not selectively per-byte.
+private func tamper(_ share: [UInt8]) -> [UInt8] {
+    var tampered = share
+    for i in 0..<(tampered.count - 1) {
+        tampered[i] = tampered[i] &+ 1
+    }
+    return tampered
+}
+
+@Test func combineWithIntegrityAtExactlyThresholdHasNoMargin() throws {
+    let secret: [UInt8] = Array("no margin here".utf8)
+    let shares = try split(secret: secret, shares: 4, threshold: 4)
+    let result = try combineWithIntegrity(shares: shares, threshold: 4)
+    #expect(result.secret == secret)
+    #expect(result.hasIntegrityMargin == false)
+    #expect(result.excludedIndices.isEmpty)
+}
+
+@Test func combineWithIntegrityWithSurplusAllConsistentIsConfirmed() throws {
+    let secret: [UInt8] = Array("all agree".utf8)
+    let shares = try split(secret: secret, shares: 5, threshold: 4)
+    let result = try combineWithIntegrity(shares: shares, threshold: 4)
+    #expect(result.secret == secret)
+    #expect(result.hasIntegrityMargin == true)
+    #expect(result.excludedIndices.isEmpty)
+}
+
+@Test func combineWithIntegrityAtMargin1WithOneBadShareDetectsButCannotCorrect() throws {
+    // threshold+1 collected, one bad: can only *detect* a problem exists (CLAUDE.md item 13),
+    // never identify which side is at fault — must throw rather than guess.
+    let secret: [UInt8] = Array("margin one".utf8)
+    var shares = try split(secret: secret, shares: 5, threshold: 4)
+    shares[0] = tamper(shares[0])
+    do {
+        _ = try combineWithIntegrity(shares: shares, threshold: 4)
+        Issue.record("expected reconstructionIntegrityFailed to be thrown")
+    } catch let ShamirError.reconstructionIntegrityFailed(largestConsistentGroup, totalShares) {
+        #expect(totalShares == 5)
+        #expect(largestConsistentGroup == 4)
+    }
+}
+
+@Test func combineWithIntegrityAtMargin2WithOneBadShareExcludesItAndReconstructs() throws {
+    let secret: [UInt8] = Array("margin two corrects one bad share".utf8)
+    var shares = try split(secret: secret, shares: 6, threshold: 4)
+    shares[2] = tamper(shares[2])
+    let result = try combineWithIntegrity(shares: shares, threshold: 4)
+    #expect(result.secret == secret)
+    #expect(result.hasIntegrityMargin == true)
+    #expect(result.excludedIndices == [2])
+}
+
+@Test func combineWithIntegrityAtMargin3WithTwoBadSharesExceedsCorrectableBound() throws {
+    // ⌊margin/2⌋ = ⌊3/2⌋ = 1 correctable — two simultaneous bad shares exceed it, so this must
+    // refuse to guess rather than silently pick a spurious "majority".
+    let secret: [UInt8] = Array("margin three cannot correct two bad".utf8)
+    var shares = try split(secret: secret, shares: 7, threshold: 4)
+    shares[1] = tamper(shares[1])
+    shares[5] = tamper(shares[5])
+    do {
+        _ = try combineWithIntegrity(shares: shares, threshold: 4)
+        Issue.record("expected reconstructionIntegrityFailed to be thrown")
+    } catch let ShamirError.reconstructionIntegrityFailed(largestConsistentGroup, totalShares) {
+        #expect(totalShares == 7)
+        #expect(largestConsistentGroup < 6) // would need >=6 to be accepted at this margin
+    }
+}
+
+@Test func combineWithIntegrityAtMargin4WithTwoBadSharesExcludesBothAndReconstructs() throws {
+    let secret: [UInt8] = Array("margin four corrects two bad shares".utf8)
+    var shares = try split(secret: secret, shares: 8, threshold: 4)
+    shares[0] = tamper(shares[0])
+    shares[7] = tamper(shares[7])
+    let result = try combineWithIntegrity(shares: shares, threshold: 4)
+    #expect(result.secret == secret)
+    #expect(result.hasIntegrityMargin == true)
+    #expect(result.excludedIndices == [0, 7])
+}
+
+@Test func combineWithIntegrityValidatesLikeCombine() {
+    #expect(throws: ShamirError.tooFewCombineShares) {
+        try combineWithIntegrity(shares: [[0x01, 0x02]], threshold: 2)
+    }
+    #expect(throws: ShamirError.sharesTooShort) {
+        try combineWithIntegrity(shares: [[0x01], [0x02]], threshold: 2)
+    }
+    #expect(throws: ShamirError.unequalShareLengths) {
+        try combineWithIntegrity(shares: [[0x01, 0x02], [0x01, 0x02, 0x03]], threshold: 2)
+    }
+    #expect(throws: ShamirError.duplicateXCoordinate) {
+        try combineWithIntegrity(shares: [[0x01, 0x05], [0x02, 0x05], [0x03, 0x05]], threshold: 2)
+    }
+}

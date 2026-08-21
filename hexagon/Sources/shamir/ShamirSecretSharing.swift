@@ -127,6 +127,10 @@ public enum ShamirError: Error, Equatable {
     case sharesTooShort
     case unequalShareLengths
     case duplicateXCoordinate
+    /// Item 13 — more shares were collected than `threshold`, but no size-`threshold` subset
+    /// could be found whose agreement with the rest clears the Reed–Solomon unique-decoding-radius
+    /// bound (`⌊(collected - threshold) / 2⌋` correctable bad shares). Never silently guesses.
+    case reconstructionIntegrityFailed(largestConsistentGroup: Int, totalShares: Int)
 }
 
 /// Splits `secret` into `shares` shares, requiring `threshold` of them to reconstruct.
@@ -194,4 +198,129 @@ public func combine(shares: [[UInt8]]) throws -> [UInt8] {
     }
 
     return secret
+}
+
+/// Result of `combineWithIntegrity`. `hasIntegrityMargin` is `false` only when exactly `threshold`
+/// shares were supplied (nothing to cross-check against — item 13's "reconstructed without
+/// integrity margin" case). `excludedIndices` are positions in the input `shares` array identified
+/// as inconsistent with the rest and excluded from reconstruction; empty when every share agreed.
+public struct IntegrityCombineResult {
+    public let secret: [UInt8]
+    public let excludedIndices: Set<Int>
+    public let hasIntegrityMargin: Bool
+}
+
+// Safety valve against pathological C(m, threshold) blow-up for unrealistically large fan-outs —
+// `n` is already soft-capped in practice by an app-level operational-burden warning at split time,
+// so this is a generous, documented scope limit rather than a fully general polynomial-time
+// Reed-Solomon decoder (Berlekamp-Welch). Comfortably covers e.g. threshold=6, collected=14
+// (C(14,6) = 3,003).
+private let maxIntegrityCombinationsTried = 5000
+
+/// Reconstructs from more than `threshold` shares by finding the largest mutually-consistent
+/// subset and using it — classic Shamir has no built-in integrity, so passing extra shares to
+/// plain `combine` would silently mix in a bad one and produce a wrong secret with no error
+/// signal. See deposplit.com/CLAUDE.md item 13.
+///
+/// Algorithm: bounded-exhaustive maximum-agreement decoding. Every size-`threshold` subset of
+/// `shares` is a "hypothesis"; for each, the implied secret is interpolated and every one of the
+/// `shares.count` inputs is checked against it at *every* byte position (a corrupted or forged
+/// share is wrong as a whole, not selectively per-byte). The hypothesis with the largest
+/// agreeing set wins. This is accepted only if it clears the Reed–Solomon unique-decoding-radius
+/// bound (`agreeing.count >= shares.count - ⌊(shares.count - threshold) / 2⌋`) — a hard
+/// mathematical guarantee (two distinct degree-`<threshold` polynomials can agree on at most
+/// `threshold - 1` points), not a heuristic, so whenever this succeeds the result is provably the
+/// unique correct answer, not a guess.
+///
+/// - Throws: `ShamirError.reconstructionIntegrityFailed` if no subset clears that bound — this
+///   correctly *detects* a problem without guessing which share is at fault when the margin is
+///   too thin to correct it (e.g. exactly `threshold + 1` shares with one bad one), and correctly
+///   refuses to pick a spurious "majority" when more shares are bad than the margin can tolerate.
+public func combineWithIntegrity(shares: [[UInt8]], threshold: Int) throws -> IntegrityCombineResult {
+    guard shares.count >= 2 && shares.count <= 255 else { throw ShamirError.tooFewCombineShares }
+    guard threshold >= 2 && threshold <= 255 else { throw ShamirError.thresholdOutOfRange }
+    guard shares.count >= threshold else { throw ShamirError.sharesLessThanThreshold }
+    let shareLength = shares[0].count
+    guard shareLength >= 2 else { throw ShamirError.sharesTooShort }
+    guard shares.allSatisfy({ $0.count == shareLength }) else { throw ShamirError.unequalShareLengths }
+
+    let secretLength = shareLength - 1
+    let m = shares.count
+    var xSamples = [UInt8](repeating: 0, count: m)
+    var seen = Set<UInt8>()
+    for (i, share) in shares.enumerated() {
+        let x = share[shareLength - 1]
+        guard seen.insert(x).inserted else { throw ShamirError.duplicateXCoordinate }
+        xSamples[i] = x
+    }
+
+    if m == threshold {
+        return IntegrityCombineResult(secret: try combine(shares: shares), excludedIndices: [], hasIntegrityMargin: false)
+    }
+
+    // Reconstructs from a threshold-sized hypothesis (indices into `shares`), then returns which
+    // of the full `m` shares agree with it at every byte position.
+    func evaluateHypothesis(_ hypothesis: [Int]) -> (secret: [UInt8], agreeing: Set<Int>) {
+        let hypoX = hypothesis.map { xSamples[$0] }
+        var secret = [UInt8](repeating: 0, count: secretLength)
+        var ySamples = [UInt8](repeating: 0, count: threshold)
+        for byteIndex in 0..<secretLength {
+            for t in 0..<threshold { ySamples[t] = shares[hypothesis[t]][byteIndex] }
+            secret[byteIndex] = interpolatePolynomial(xSamples: hypoX, ySamples: ySamples, x: 0)
+        }
+        var agreeing = Set(hypothesis)
+        for j in 0..<m where !agreeing.contains(j) {
+            var matches = true
+            for byteIndex in 0..<secretLength {
+                for t in 0..<threshold { ySamples[t] = shares[hypothesis[t]][byteIndex] }
+                let predicted = interpolatePolynomial(xSamples: hypoX, ySamples: ySamples, x: xSamples[j])
+                if predicted != shares[j][byteIndex] {
+                    matches = false
+                    break
+                }
+            }
+            if matches { agreeing.insert(j) }
+        }
+        return (secret, agreeing)
+    }
+
+    let excess = m - threshold
+    let correctable = excess / 2
+    let acceptThreshold = m - correctable
+
+    var bestSecret: [UInt8]?
+    var bestAgreeing: Set<Int> = []
+    var combo = Array(0..<threshold)
+    var tried = 0
+    while true {
+        let (secret, agreeing) = evaluateHypothesis(combo)
+        tried += 1
+        if agreeing.count > bestAgreeing.count {
+            bestSecret = secret
+            bestAgreeing = agreeing
+            if bestAgreeing.count == m { break } // unanimous — nothing can beat this
+        }
+        if tried >= maxIntegrityCombinationsTried { break }
+        guard let next = nextCombination(combo, n: m) else { break }
+        combo = next
+    }
+
+    guard let secret = bestSecret, bestAgreeing.count >= acceptThreshold else {
+        throw ShamirError.reconstructionIntegrityFailed(largestConsistentGroup: bestAgreeing.count, totalShares: m)
+    }
+    let excludedIndices = Set(0..<m).subtracting(bestAgreeing)
+    return IntegrityCombineResult(secret: secret, excludedIndices: excludedIndices, hasIntegrityMargin: true)
+}
+
+// Standard lexicographic "next combination" of size k from n elements (0-based indices); nil once
+// the last combination has been produced.
+private func nextCombination(_ combo: [Int], n: Int) -> [Int]? {
+    let k = combo.count
+    var next = combo
+    var i = k - 1
+    while i >= 0 && next[i] == n - k + i { i -= 1 }
+    guard i >= 0 else { return nil }
+    next[i] += 1
+    for j in (i + 1)..<k { next[j] = next[j - 1] + 1 }
+    return next
 }

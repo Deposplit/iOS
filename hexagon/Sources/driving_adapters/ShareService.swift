@@ -238,6 +238,17 @@ public final class ShareService: ShareManagement {
         return all.filter { $0.transactionType != .deposit }
     }
 
+    // Item 13 — a holder is worth prioritizing for a fresh retrieval ask when item 12's own
+    // "still counts toward n_live" freshness rule already trusts them: an unexpired
+    // proof-of-custody and no standing opt-out. Recomputed here (not shared with the UI layer's
+    // own FreshnessBucket, which serves display, not targeting) — a small, deliberate duplication
+    // of a threshold check rather than restructuring already-shipped item-12 UI code.
+    private func isConfirmed(_ meta: ShareMetadata) -> Bool {
+        guard let contact = contactRepository.getById(meta.contactId), contact.heartbeatOptedOutAt == nil,
+            let lastConfirmedAt = meta.lastConfirmedAt else { return false }
+        return Date().timeIntervalSince(lastConfirmedAt) <= CustodyHeartbeatTuning.lossThreshold
+    }
+
     public func requestAll(secretId: UUID) async throws {
         guard let secret = (try? secretRepository.getAll())?.first(where: { $0.id == secretId }) else { return }
         let deposited = (try? shareMetadataRepository.getAll()) ?? []
@@ -246,7 +257,13 @@ public final class ShareService: ShareManagement {
         for relay in allRelays() {
             existing += (try? await relay.listShareRequests(role: .sender, transactionType: .retrieval, state: nil)) ?? []
         }
-        for meta in forSecret {
+        // Item 13 — fan out to the health-informed fresh set first; widen to everyone only when
+        // there aren't enough confirmed holders to reach k. A retrieval request exists solely to
+        // feed an eventual reconstruct(), so this targeting applies here rather than as a
+        // separate method.
+        let confirmed = forSecret.filter(isConfirmed)
+        let targets = confirmed.count >= secret.k ? confirmed : forSecret
+        for meta in targets {
             guard let contact = contactRepository.getById(meta.contactId) else { continue }
             // Matched on secretId, not the local shareId — a recovered ShareMetadata's id is a
             // freshly generated local UUID with no relay-row counterpart. See item 8.
@@ -303,7 +320,7 @@ public final class ShareService: ShareManagement {
     /// Pure read (item 11): collects and decrypts `k` approved retrieval shares, but never tears
     /// down local `ShareMetadata` or relay rows. Use `discardSecret` for teardown — reconstruct is
     /// now a *step* toward a possible re-split, not an implicit "I'm done with this" signal.
-    public func reconstruct(secretId: UUID) async throws -> Data {
+    public func reconstruct(secretId: UUID) async throws -> ReconstructionResult {
         guard let secret = (try? secretRepository.getAll())?.first(where: { $0.id == secretId }) else {
             throw ShareServiceError.secretNotFound
         }
@@ -320,16 +337,30 @@ public final class ShareService: ShareManagement {
         guard approved.count >= secret.k else {
             throw ShareServiceError.notEnoughApprovedShares(have: approved.count, need: secret.k)
         }
-        let decryptedShares: [[UInt8]] = try approved.map { pair in
+        // Item 13 — each decrypted share is kept paired with its originating contact so an
+        // excluded index (from combineWithIntegrity) reports back as a suspect contact, not a
+        // meaningless array position.
+        var decryptedShares: [[UInt8]] = []
+        var contactIds: [UUID] = []
+        for pair in approved {
             let ct = pair.request.ciphertext!
             guard let contact = contactRepository.getByEdKey(pair.request.recipientKey) else {
                 throw ShareServiceError.contactNotFound
             }
             let plaintext = try encryption.decrypt(ct, recipientXPublicKey: contact.xPublicKey)
-            return Array(plaintext)
+            decryptedShares.append(Array(plaintext))
+            contactIds.append(contact.id)
         }
-        let secretBytes = try combine(shares: decryptedShares)
-        return Data(secretBytes)
+        let result = try combineWithIntegrity(shares: decryptedShares, threshold: secret.k)
+        let integrity: ReconstructionIntegrity
+        if !result.hasIntegrityMargin {
+            integrity = .noMargin
+        } else if result.excludedIndices.isEmpty {
+            integrity = .confirmed
+        } else {
+            integrity = .excludedSuspects(excludedContactIds: Set(result.excludedIndices.map { contactIds[$0] }))
+        }
+        return ReconstructionResult(secret: Data(result.secret), integrity: integrity)
     }
 
     /// Fans out a sender-initiated `removal` to every known holder of `secretId` and flips the

@@ -4,7 +4,7 @@ import Foundation
 enum ReconstructState {
     case unavailable(String)
     case ready
-    case reconstructed(String)
+    case reconstructed(String, integrity: ReconstructionIntegrity)
     case failed(String)
 }
 
@@ -36,6 +36,10 @@ final class ShareDetailViewModel {
             ?? String(localized: "Unknown contact")
     }
 
+    func contactName(_ id: UUID) -> String {
+        allContacts.first(where: { $0.id == id })?.pseudonym ?? String(localized: "Unknown contact")
+    }
+
     func load() async {
         isLoading = true
         error = nil
@@ -63,11 +67,16 @@ final class ShareDetailViewModel {
 
     func reconstruct() async -> String? {
         do {
-            let secretData = try await shareManagement.reconstruct(secretId: share.secretId)
-            let secretText = String(bytes: Array(secretData), encoding: .utf8)
-                ?? secretData.base64EncodedString()
-            reconstructState = .reconstructed(secretText)
+            let result = try await shareManagement.reconstruct(secretId: share.secretId)
+            let secretText = String(bytes: Array(result.secret), encoding: .utf8)
+                ?? result.secret.base64EncodedString()
+            reconstructState = .reconstructed(secretText, integrity: result.integrity)
             return secretText
+        } catch let ShamirError.reconstructionIntegrityFailed(largestConsistentGroup, totalShares) {
+            reconstructState = .failed(String(
+                localized: "Reconstruction integrity check failed: no trustworthy majority found among \(totalShares) collected shares (largest consistent group was only \(largestConsistentGroup))."
+            ))
+            return nil
         } catch {
             reconstructState = .failed(error.localizedDescription)
             return nil

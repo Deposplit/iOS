@@ -29,9 +29,15 @@ struct RepairView: View {
                     }
             case .redeposit:
                 if let depositViewModel = viewModel.depositViewModel {
-                    DepositFormContent(viewModel: depositViewModel, title: "Repair — Re-deposit") {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { dismiss() }
+                    VStack(spacing: 0) {
+                        if let integrity = viewModel.reconstructionIntegrity {
+                            ReconstructionAdvisoryView(integrity: integrity, contactName: viewModel.contactName)
+                                .padding()
+                        }
+                        DepositFormContent(viewModel: depositViewModel, title: "Repair — Re-deposit") {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("Cancel") { dismiss() }
+                            }
                         }
                     }
                     .onChange(of: depositViewModel.depositedSuccessfully) { _, success in

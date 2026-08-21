@@ -33,11 +33,14 @@ iOS/
 │   ├── Package.swift                 swift-tools-version: 6.0; platforms: iOS 26.4; path: "Sources"
 │   └── Sources/
 │       ├── shamir/
-│       │   └── ShamirSecretSharing.swift  SSS split/combine over GF(2⁸); ShamirError
+│       │   └── ShamirSecretSharing.swift  SSS split/combine over GF(2⁸); ShamirError; combineWithIntegrity + IntegrityCombineResult
+│       │                              (item 13 — bounded-exhaustive maximum-agreement decoding to detect/exclude a bad share among a
+│       │                              surplus beyond threshold, via the Reed–Solomon unique-decoding-radius bound)
 │       ├── driving_ports/
 │       │   ├── Identity.swift             isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign
 │       │   ├── ShareManagement.swift      use-case interface: deposit, listSecrets, listDistributed (reads local store), syncDistributed,
-│       │   │                              reconstruct (pure read, enforces real k), discardSecret, forceForgetSecret, syncInbox, listHeld (reads local store), respond, …
+│       │   │                              reconstruct (pure read, enforces real k, returns ReconstructionResult — item 13's integrity
+│       │   │                              cross-check on any surplus beyond k), discardSecret, forceForgetSecret, syncInbox, listHeld (reads local store), respond, …
 │       │   │                              pushRecoveryMetadata (item 8, holder side); pushRotation (item 9, client primitive only — no
 │       │   │                              "regenerate my own identity" UI trigger exists yet, see deposplit.com/TODO.md item 9's scope-split note);
 │       │   │                              listKeyConflicts, dismissKeyConflict (item 10, local-only, no relay involvement)
@@ -71,7 +74,10 @@ iOS/
 │       │   │                              secrets whose holder removals were approved; syncInbox() also calls processRecoveryMetadata() (item 8, private —
 │       │   │                              consumes approved inventory pushes verified against a known contact, rebuilding Secret/ShareMetadata);
 │       │   │                              respond()'s retrieval/removal paths match the holder's HeldShare by secretId, not the sender's local shareId (item 8);
-│       │   │                              reconstruct() is a pure read (item 11 — no teardown); discardSecret() flips a Secret to DISCARDING and fans out
+│       │   │                              reconstruct() is a pure read (item 11 — no teardown) that now calls combineWithIntegrity and maps
+│       │   │                              its result to ReconstructionResult (item 13); requestAll() targets item 12's Confirmed freshness
+│       │   │                              bucket first via a private isConfirmed helper, widening to every holder only when fewer than k are
+│       │   │                              confirmed (item 13); discardSecret() flips a Secret to DISCARDING and fans out
 │       │   │                              removal requests; forceForgetSecret() is the local-only escape hatch; pushRecoveryMetadata(contactId) opens a
 │       │   │                              recoveryMetadata push for every HeldShare held from that contact (item 8); takes a new ContactManagement
 │       │   │                              dependency (item 9) so processRotations() (private, called from syncInbox) can call updateContact after
@@ -102,6 +108,8 @@ iOS/
 │           ├── HeldShare.swift            HeldShare struct (incl. k/n — item 8, reported back to the owner during recovery)
 │           ├── Secret.swift               Secret struct (id, label, k, n, secretCreatedAt, state) + SecretState enum (active/discarding) —
 │           │                              sender-side per-secret aggregate, see CLAUDE.md item 11; Codable
+│           ├── ReconstructionResult.swift  ReconstructionResult (secret, integrity) + ReconstructionIntegrity enum (item 13 —
+│           │                              .noMargin/.confirmed/.excludedSuspects(excludedContactIds)) — reconstruct()'s return type
 │           ├── KeyRotation.swift          KeyRotation struct (item 9) — a signed rotate(K_old→K_new) notice addressed to this device;
 │           │                              not a ShareRequest (no secretId, no consent phase)
 │           └── Share.swift               Role, ShareTransactionType (incl. .inventory — item 8, self-approved, no consent phase),
@@ -175,9 +183,11 @@ iOS/
 │       │                        thin NavigationStack+toolbar wrapper around it
 │       ├── sharedetail/
 │       │   ├── ShareDetailViewModel.swift  Takes a ShareDetailTarget (Secret + ShareMetadata); open RETRIEVE/DELETE requests;
-│       │   │                        reconstruct via ShareManagement (ready-threshold now reads Secret.k); contact lookup via ContactManagement
+│       │   │                        reconstruct via ShareManagement (ready-threshold now reads Secret.k); contact lookup via ContactManagement;
+│       │   │                        ReconstructState.reconstructed carries a ReconstructionIntegrity (item 13); catches
+│       │   │                        ShamirError.reconstructionIntegrityFailed for a distinct error message
 │       │   └── ShareDetailView.swift  Reconstruct button is a BiometricGatedButton (item 1) — Face ID/Touch ID required before
-│       │                        viewModel.reconstruct() runs
+│       │                        viewModel.reconstruct() runs; renders a ReconstructionAdvisory (item 13) under the reconstructed secret
 │       ├── repair/  (item 9 — reconstruct-and-re-split "Repair" flow, deposplit.com/CLAUDE.md "What is next" item 9)
 │       │   ├── RepairViewModel.swift  One screen, internal wizard state (Phase: gathering/reconstructing/redeposit/
 │       │   │                        confirmDiscard/done) composing three already-existing primitives — requestAll/reconstruct
@@ -185,16 +195,21 @@ iOS/
 │       │   │                        discardSecret. The reconstructed plaintext lives only in the transient DepositViewModel
 │       │   │                        this constructs for the redeposit phase, dropped immediately on deposit success — never
 │       │   │                        persisted, never serialized into a navigation route. discardSecret is called at most once
-│       │   │                        per flow (confirmed non-idempotent — see ShareService.discardSecret).
+│       │   │                        per flow (confirmed non-idempotent — see ShareService.discardSecret). Gained
+│       │   │                        reconstructionIntegrity + contactName(_:) (item 13)
 │       │   └── RepairView.swift     Entry point is a "Repair" button on DistributedTab's secret row, shown only when
 │       │                        SecretGroup.health is .caution or .critical; presented as a .sheet(item:) from HomeView,
 │       │                        mirroring DepositView's own presentation. Reconstruct button is also a BiometricGatedButton
-│       │                        (item 1) — shipped ungated initially, gated once item 1 landed
+│       │                        (item 1) — shipped ungated initially, gated once item 1 landed; renders a ReconstructionAdvisory
+│       │                        (item 13) above the re-deposit form once reconstruct succeeds
 │       ├── biometric/  (item 1 — Face ID/Touch ID gate for secret reconstruction)
 │       │   ├── BiometricGate.swift  AuthAvailability/AuthResult + biometricAvailability()/authenticate(reason:) — pure
 │       │   │                        Foundation/LocalAuthentication, no SwiftUI import, mirroring Android's BiometricGate.kt shape
 │       │   └── BiometricGatedButton.swift  Reusable SwiftUI view: renders the button when available, or an explanatory
 │       │                        message when not (no hardware / not enrolled / unavailable) — shared by ShareDetailView and RepairView
+│       ├── reconstruction/  (item 13 — reconstruction-integrity advisory, shared by ShareDetailView and RepairView)
+│       │   └── ReconstructionAdvisoryView.swift  Renders ReconstructionIntegrity's three cases as a one-line badge
+│       │                        (info/checkmark/warning) — takes a contactName(UUID) -> String closure to resolve ExcludedSuspects' names
 │       ├── qr/
 │       │   ├── QrPayload.swift       {"v":1,"pseudonym":"…","ed":"…","x":"…"} encode/decode
 │       │   ├── QrDisplayViewModel.swift  CoreImage QR generation (synchronous, MainActor-safe)

@@ -35,11 +35,14 @@ final class RepairViewModel {
     var holderStatuses: [HolderRetrievalStatus] = []
     var approvedCount = 0
     var depositedHolderCount = 0
+    /// Item 13's integrity cross-check result, set once `reconstruct()` succeeds.
+    var reconstructionIntegrity: ReconstructionIntegrity?
 
     /// The prefilled re-deposit form for the `.redeposit` phase — constructed (with the freshly
     /// reconstructed plaintext) only when entering that phase, and dropped the moment the new
     /// deposit succeeds, since nothing needs the plaintext copy after that.
     private(set) var depositViewModel: DepositViewModel?
+    private var allContacts: [Contact] = []
 
     init(secret: Secret, shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
         self.secret = secret
@@ -49,6 +52,10 @@ final class RepairViewModel {
 
     var readyToReconstruct: Bool { approvedCount >= secret.k }
 
+    func contactName(_ id: UUID) -> String {
+        allContacts.first(where: { $0.id == id })?.pseudonym ?? String(localized: "Unknown contact")
+    }
+
     func load() async {
         isLoading = true
         error = nil
@@ -56,6 +63,7 @@ final class RepairViewModel {
         do {
             let distributed = try shareManagement.listDistributed().filter { $0.secretId == secret.id }
             let contacts = (try? contactManagement.listContacts()) ?? []
+            allContacts = contacts
             let requests = try await shareManagement.listSentRequests().filter { $0.secretId == secret.id }
             holderStatuses = distributed.map { share in
                 let contact = contacts.first(where: { $0.id == share.contactId })
@@ -92,8 +100,9 @@ final class RepairViewModel {
         isActing = true
         defer { isActing = false }
         do {
-            let secretData = try await shareManagement.reconstruct(secretId: secret.id)
-            let secretText = String(bytes: Array(secretData), encoding: .utf8) ?? secretData.base64EncodedString()
+            let result = try await shareManagement.reconstruct(secretId: secret.id)
+            let secretText = String(bytes: Array(result.secret), encoding: .utf8) ?? result.secret.base64EncodedString()
+            reconstructionIntegrity = result.integrity
             let currentHolderIds = Set(holderStatuses.map { $0.contactId })
             depositViewModel = DepositViewModel(
                 shareManagement: shareManagement,
@@ -106,6 +115,11 @@ final class RepairViewModel {
                 )
             )
             phase = .redeposit
+        } catch let ShamirError.reconstructionIntegrityFailed(largestConsistentGroup, totalShares) {
+            self.error = String(
+                localized: "Reconstruction integrity check failed: no trustworthy majority found among \(totalShares) collected shares (largest consistent group was only \(largestConsistentGroup))."
+            )
+            phase = .gathering
         } catch {
             self.error = error.localizedDescription
             phase = .gathering

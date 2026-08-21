@@ -9,9 +9,11 @@ public protocol ShareManagement {
     func listSentRequests() async throws -> [ShareRequest]
     func requestAll(secretId: UUID) async throws
     func openRequest(shareId: UUID, type: ShareTransactionType) async throws -> ShareRequest
-    /// Pure read — collects `k` approved retrieval shares and decrypts them. Never tears down
-    /// local `ShareMetadata` or relay rows; use `discardSecret` for that. See item 11.
-    func reconstruct(secretId: UUID) async throws -> Data
+    /// Pure read — collects approved retrieval shares (possibly more than `k`, item 13) and
+    /// decrypts them. Never tears down local `ShareMetadata` or relay rows; use `discardSecret`
+    /// for that. See item 11. Cross-checks any surplus beyond `k` for consistency (item 13) —
+    /// throws rather than returning a guessed secret if the surplus can't be reconciled.
+    func reconstruct(secretId: UUID) async throws -> ReconstructionResult
     /// Fans out a sender-initiated `removal` request to every known holder of `secretId` and
     /// flips the `Secret` to `.discarding` immediately (before any holder responds).
     func discardSecret(secretId: UUID) async throws

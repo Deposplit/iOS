@@ -1055,3 +1055,173 @@ private func makeSignedHeartbeat(holderKey: Data, ownerKey: Data, signer: TestKe
         try svc.setHeartbeatEmissionOptedOut(contactId: UUID(), optedOut: true)
     }
 }
+
+// MARK: - Reconstruction integrity + fan-out targeting (item 13)
+
+/// A holder contact with its own real keypair — reconstruct() tests need several distinct
+/// holders (unlike most of this file's single-contact fixtures), each independently able to
+/// produce a validly-signed `recipientSignature` on its own retrieval response.
+private struct HolderFixture {
+    let keys: TestKeyPair
+    let contact: Contact
+}
+
+private func makeHolderFixture(pseudonym: String) -> HolderFixture {
+    let keys = TestKeyPair()
+    let contact = Contact(
+        id: UUID(), pseudonym: pseudonym, edPublicKey: keys.publicKey,
+        xPublicKey: Data(repeating: 0x09, count: 32),
+        verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date()
+    )
+    return HolderFixture(keys: keys, contact: contact)
+}
+
+/// An already-`.approved` retrieval response row, signed by the holder — mirrors what
+/// `respond()` would have produced. `ciphertext` is used as-is by `NoOpShareEncryption`, so
+/// passing a real `split()` share here makes it stand in directly as the "decrypted" plaintext.
+private func makeApprovedRetrievalRow(secretId: UUID, holder: HolderFixture, ciphertext: Data) throws -> ShareRequest {
+    let id = UUID()
+    let canon = PayloadCanonical.forRespond(requestId: id, approved: true, ciphertext: ciphertext)
+    let sig = try holder.keys.sign(canon)
+    return ShareRequest(
+        id: id, secretId: secretId, senderKey: Data(), recipientKey: holder.contact.edPublicKey, label: "s",
+        secretCreatedAt: Date(), transactionType: .retrieval, state: .approved, shareId: UUID(),
+        requestedAt: Date(), respondedAt: Date(), ciphertext: ciphertext, k: nil, n: nil,
+        senderSignature: Data(), recipientSignature: sig
+    )
+}
+
+@Test func reconstructWithExactlyKApprovedSharesHasNoIntegrityMargin() async throws {
+    let relay = FakeShareRelay()
+    let holders = (0..<4).map { makeHolderFixture(pseudonym: "holder\($0)") }
+    let (svc, _, _, secretRepo, _, _) = try makeServiceForRecoveryTest(relay: relay, contacts: holders.map(\.contact))
+    let secretBytes: [UInt8] = Array("no margin test secret".utf8)
+    let shares = try split(secret: secretBytes, shares: 4, threshold: 4)
+    let secretId = UUID()
+    try secretRepo.save(Secret(id: secretId, label: "s", k: 4, n: 4, secretCreatedAt: Date(), state: .active))
+    relay.pending = try zip(holders, shares).map { try makeApprovedRetrievalRow(secretId: secretId, holder: $0, ciphertext: Data($1)) }
+
+    let result = try await svc.reconstruct(secretId: secretId)
+
+    #expect(Array(result.secret) == secretBytes)
+    #expect(result.integrity == .noMargin)
+}
+
+@Test func reconstructWithSurplusAllConsistentSharesIsConfirmed() async throws {
+    let relay = FakeShareRelay()
+    let holders = (0..<5).map { makeHolderFixture(pseudonym: "holder\($0)") }
+    let (svc, _, _, secretRepo, _, _) = try makeServiceForRecoveryTest(relay: relay, contacts: holders.map(\.contact))
+    let secretBytes: [UInt8] = Array("surplus confirmed test secret".utf8)
+    let shares = try split(secret: secretBytes, shares: 5, threshold: 4)
+    let secretId = UUID()
+    try secretRepo.save(Secret(id: secretId, label: "s", k: 4, n: 5, secretCreatedAt: Date(), state: .active))
+    relay.pending = try zip(holders, shares).map { try makeApprovedRetrievalRow(secretId: secretId, holder: $0, ciphertext: Data($1)) }
+
+    let result = try await svc.reconstruct(secretId: secretId)
+
+    #expect(Array(result.secret) == secretBytes)
+    #expect(result.integrity == .confirmed)
+}
+
+@Test func reconstructExcludesATamperedShareAndStillReconstructsCorrectly() async throws {
+    let relay = FakeShareRelay()
+    let holders = (0..<6).map { makeHolderFixture(pseudonym: "holder\($0)") }
+    let (svc, _, _, secretRepo, _, _) = try makeServiceForRecoveryTest(relay: relay, contacts: holders.map(\.contact))
+    let secretBytes: [UInt8] = Array("excluded suspect test secret".utf8)
+    var shares = try split(secret: secretBytes, shares: 6, threshold: 4)
+    // Simulate a compromised/corrupted holder — every secret byte wrong, x-coordinate untouched.
+    for i in 0..<(shares[2].count - 1) { shares[2][i] = shares[2][i] &+ 1 }
+    let secretId = UUID()
+    try secretRepo.save(Secret(id: secretId, label: "s", k: 4, n: 6, secretCreatedAt: Date(), state: .active))
+    relay.pending = try zip(holders, shares).map { try makeApprovedRetrievalRow(secretId: secretId, holder: $0, ciphertext: Data($1)) }
+
+    let result = try await svc.reconstruct(secretId: secretId)
+
+    #expect(Array(result.secret) == secretBytes)
+    #expect(result.integrity == .excludedSuspects(excludedContactIds: [holders[2].contact.id]))
+}
+
+@Test func reconstructThrowsWhenTooManySharesAreInconsistentToSafelyResolve() async throws {
+    let relay = FakeShareRelay()
+    let holders = (0..<5).map { makeHolderFixture(pseudonym: "holder\($0)") }
+    let (svc, _, _, secretRepo, _, _) = try makeServiceForRecoveryTest(relay: relay, contacts: holders.map(\.contact))
+    let secretBytes: [UInt8] = Array("margin one throw test".utf8)
+    var shares = try split(secret: secretBytes, shares: 5, threshold: 4)
+    for i in 0..<(shares[0].count - 1) { shares[0][i] = shares[0][i] &+ 1 }
+    let secretId = UUID()
+    try secretRepo.save(Secret(id: secretId, label: "s", k: 4, n: 5, secretCreatedAt: Date(), state: .active))
+    relay.pending = try zip(holders, shares).map { try makeApprovedRetrievalRow(secretId: secretId, holder: $0, ciphertext: Data($1)) }
+
+    do {
+        _ = try await svc.reconstruct(secretId: secretId)
+        Issue.record("expected ShamirError.reconstructionIntegrityFailed to be thrown")
+    } catch is ShamirError {
+        // expected
+    }
+}
+
+@Test func requestAllTargetsOnlyConfirmedHoldersWhenTheyAlreadyMeetK() async throws {
+    let relay = FakeShareRelay()
+    let fresh1 = makeHolderFixture(pseudonym: "fresh1")
+    let fresh2 = makeHolderFixture(pseudonym: "fresh2")
+    let stale = makeHolderFixture(pseudonym: "stale")
+    let (svc, _, _, secretRepo, metaRepo, _) = try makeServiceForRecoveryTest(
+        relay: relay, contacts: [fresh1.contact, fresh2.contact, stale.contact]
+    )
+    let secretId = UUID()
+    try secretRepo.save(Secret(id: secretId, label: "s", k: 2, n: 3, secretCreatedAt: Date(), state: .active))
+    let now = Date()
+    try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: fresh1.contact.id, lastConfirmedAt: now))
+    try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: fresh2.contact.id, lastConfirmedAt: now))
+    try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: stale.contact.id, lastConfirmedAt: nil))
+
+    try await svc.requestAll(secretId: secretId)
+
+    let targeted = Set(relay.openedRequests.map(\.recipientKey))
+    #expect(targeted == Set([fresh1.contact.edPublicKey, fresh2.contact.edPublicKey]))
+}
+
+@Test func requestAllWidensToEveryHolderWhenFewerThanKAreConfirmed() async throws {
+    let relay = FakeShareRelay()
+    let fresh = makeHolderFixture(pseudonym: "fresh")
+    let stale1 = makeHolderFixture(pseudonym: "stale1")
+    let stale2 = makeHolderFixture(pseudonym: "stale2")
+    let (svc, _, _, secretRepo, metaRepo, _) = try makeServiceForRecoveryTest(
+        relay: relay, contacts: [fresh.contact, stale1.contact, stale2.contact]
+    )
+    let secretId = UUID()
+    try secretRepo.save(Secret(id: secretId, label: "s", k: 2, n: 3, secretCreatedAt: Date(), state: .active))
+    try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: fresh.contact.id, lastConfirmedAt: Date()))
+    try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: stale1.contact.id, lastConfirmedAt: nil))
+    try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: stale2.contact.id, lastConfirmedAt: nil))
+
+    try await svc.requestAll(secretId: secretId)
+
+    let targeted = Set(relay.openedRequests.map(\.recipientKey))
+    #expect(targeted == Set([fresh.contact.edPublicKey, stale1.contact.edPublicKey, stale2.contact.edPublicKey]))
+}
+
+@Test func requestAllTreatsAHeartbeatOptedOutHolderAsNotConfirmedEvenWithARecentTimestamp() async throws {
+    let relay = FakeShareRelay()
+    let optedOutButRecent = makeHolderFixture(pseudonym: "optedOut")
+    var optedOutContact = optedOutButRecent.contact
+    optedOutContact = Contact(
+        id: optedOutContact.id, pseudonym: optedOutContact.pseudonym, edPublicKey: optedOutContact.edPublicKey,
+        xPublicKey: optedOutContact.xPublicKey, verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date(),
+        heartbeatOptedOutAt: Date()
+    )
+    let other = makeHolderFixture(pseudonym: "other")
+    let (svc, _, _, secretRepo, metaRepo, _) = try makeServiceForRecoveryTest(
+        relay: relay, contacts: [optedOutContact, other.contact]
+    )
+    let secretId = UUID()
+    try secretRepo.save(Secret(id: secretId, label: "s", k: 2, n: 2, secretCreatedAt: Date(), state: .active))
+    try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: optedOutContact.id, lastConfirmedAt: Date()))
+    try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: other.contact.id, lastConfirmedAt: nil))
+
+    try await svc.requestAll(secretId: secretId)
+
+    // Only 1 of 2 holders is genuinely confirmed (< k=2), so targeting widens to everyone.
+    let targeted = Set(relay.openedRequests.map(\.recipientKey))
+    #expect(targeted == Set([optedOutContact.edPublicKey, other.contact.edPublicKey]))
+}
