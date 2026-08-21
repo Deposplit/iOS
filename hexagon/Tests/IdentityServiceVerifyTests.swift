@@ -60,3 +60,39 @@ private func newIdentity() throws -> IdentityService {
     let sig = try alice.sign(message)
     #expect(!bob.verify(message, signature: sig, publicKey: bob.edPublicKey))
 }
+
+// -------------------------------------------------------------------------
+// generateNewKeyPair() / activateKeyPair() — item 9's identity-regen trigger
+// -------------------------------------------------------------------------
+
+@Test func generateNewKeyPairDoesNotTouchStorage() throws {
+    let alice = try newIdentity()
+    let originalEdKey = alice.edPublicKey
+    let originalXKey = alice.xPublicKey
+    let candidate = alice.generateNewKeyPair()
+    #expect(candidate.edPublicKey != originalEdKey)
+    #expect(candidate.xPublicKey != originalXKey)
+    // Unpersisted — the live identity hasn't moved.
+    #expect(alice.edPublicKey == originalEdKey)
+    #expect(alice.xPublicKey == originalXKey)
+}
+
+@Test func activateKeyPairPersistsTheNewKeysAndPreservesThePseudonym() throws {
+    let alice = try newIdentity()
+    let candidate = alice.generateNewKeyPair()
+    try alice.activateKeyPair(candidate)
+    #expect(alice.edPublicKey == candidate.edPublicKey)
+    #expect(alice.xPublicKey == candidate.xPublicKey)
+    #expect(alice.pseudonym == "test")
+}
+
+@Test func signAfterActivateKeyPairVerifiesAgainstTheNewKeyNotTheOld() throws {
+    let alice = try newIdentity()
+    let oldEdKey = alice.edPublicKey
+    let candidate = alice.generateNewKeyPair()
+    try alice.activateKeyPair(candidate)
+    let message = Data("post-rotation message".utf8)
+    let sig = try alice.sign(message)
+    #expect(alice.verify(message, signature: sig, publicKey: candidate.edPublicKey))
+    #expect(!alice.verify(message, signature: sig, publicKey: oldEdKey))
+}

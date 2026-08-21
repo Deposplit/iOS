@@ -8,13 +8,24 @@ final class SettingsViewModel {
     var catalogExportURL: URL?
     var catalogImportMessage: String?
 
+    /// Item 9's identity-regen trigger. `contactCount` is pre-fetched so the confirmation dialog
+    /// can tell the user how many contacts will be notified before they commit.
+    private(set) var contactCount = 0
+    private(set) var isRegeneratingIdentity = false
+    var regenerateIdentityMessage: String?
+
     private let relaySettings: any RelaySettings
     private let catalogManagement: any CatalogManagement
+    private let shareManagement: any ShareManagement
+    private let contactManagement: any ContactManagement
 
-    init(relaySettings: any RelaySettings, catalogManagement: any CatalogManagement) {
+    init(relaySettings: any RelaySettings, catalogManagement: any CatalogManagement, shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
         self.relaySettings = relaySettings
         self.catalogManagement = catalogManagement
+        self.shareManagement = shareManagement
+        self.contactManagement = contactManagement
         self.relayBaseUrl = relaySettings.defaultRelayBaseURL()
+        self.contactCount = (try? contactManagement.listContacts().count) ?? 0
     }
 
     func save() {
@@ -38,6 +49,22 @@ final class SettingsViewModel {
             catalogExportURL = url
         } catch {
             catalogImportMessage = error.localizedDescription
+        }
+    }
+
+    /// Item 9's identity-regen trigger. Best-effort drains pending relay state under the *old*
+    /// identity, notifies every contact of the new key, then activates it — see
+    /// `ShareService.regenerateIdentity`'s doc comment for why the ordering matters. Any request
+    /// still pending with a counterparty at this exact moment may become unreachable afterward
+    /// (surfaced in the confirmation copy, not repeated here).
+    func regenerateIdentity() async {
+        isRegeneratingIdentity = true
+        defer { isRegeneratingIdentity = false }
+        do {
+            let result = try await shareManagement.regenerateIdentity()
+            regenerateIdentityMessage = String(localized: "Notified \(result.notifiedContacts) of \(result.totalContacts) contact(s).")
+        } catch {
+            regenerateIdentityMessage = error.localizedDescription
         }
     }
 

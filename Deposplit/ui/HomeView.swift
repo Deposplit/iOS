@@ -114,7 +114,7 @@ struct HomeView: View {
             QrDisplayView(auth: auth, relaySettings: relaySettings)
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView(relaySettings: relaySettings, catalogManagement: catalogManagement)
+            SettingsView(relaySettings: relaySettings, catalogManagement: catalogManagement, shareManagement: shareManagement, contactManagement: contactManagement)
         }
         .sheet(isPresented: $showDeposit, onDismiss: {
             Task { await homeViewModel.load() }

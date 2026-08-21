@@ -14,14 +14,38 @@ public final class IdentityService: Identity, ShareEncryption {
     public var xPublicKey: Data { identityStore.xPublicKey }
 
     public func register(pseudonym: String) throws {
-        let edKey = Curve25519.Signing.PrivateKey()
-        let xKey = Curve25519.KeyAgreement.PrivateKey()
+        let material = Self.generateKeyPairMaterial()
         try identityStore.save(
             pseudonym: pseudonym,
-            edPk: edKey.publicKey.rawRepresentation,
-            edSk: edKey.rawRepresentation,
-            xPk: xKey.publicKey.rawRepresentation,
-            xSk: xKey.rawRepresentation
+            edPk: material.edPublicKey,
+            edSk: material.edPrivateKey,
+            xPk: material.xPublicKey,
+            xSk: material.xPrivateKey
+        )
+    }
+
+    public func generateNewKeyPair() -> KeyPairMaterial {
+        Self.generateKeyPairMaterial()
+    }
+
+    public func activateKeyPair(_ keyPair: KeyPairMaterial) throws {
+        try identityStore.save(
+            pseudonym: identityStore.pseudonym,
+            edPk: keyPair.edPublicKey,
+            edSk: keyPair.edPrivateKey,
+            xPk: keyPair.xPublicKey,
+            xSk: keyPair.xPrivateKey
+        )
+    }
+
+    private static func generateKeyPairMaterial() -> KeyPairMaterial {
+        let edKey = Curve25519.Signing.PrivateKey()
+        let xKey = Curve25519.KeyAgreement.PrivateKey()
+        return KeyPairMaterial(
+            edPublicKey: edKey.publicKey.rawRepresentation,
+            edPrivateKey: edKey.rawRepresentation,
+            xPublicKey: xKey.publicKey.rawRepresentation,
+            xPrivateKey: xKey.rawRepresentation
         )
     }
 

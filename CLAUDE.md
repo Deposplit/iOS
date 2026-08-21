@@ -37,13 +37,20 @@ iOS/
 │       │                              (item 13 — bounded-exhaustive maximum-agreement decoding to detect/exclude a bad share among a
 │       │                              surplus beyond threshold, via the Reed–Solomon unique-decoding-radius bound)
 │       ├── driving_ports/
-│       │   ├── Identity.swift             isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign
+│       │   ├── Identity.swift             isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign;
+│       │   │                              generateNewKeyPair/activateKeyPair (item 9 — regenerate-identity trigger;
+│       │   │                              generateNewKeyPair is pure key generation, not persisted, so a caller can
+│       │   │                              push a rotation notice signed by the old identity before activateKeyPair
+│       │   │                              persists the new one via the existing IdentityStore.save)
 │       │   ├── ShareManagement.swift      use-case interface: deposit, listSecrets, listDistributed (reads local store), syncDistributed,
 │       │   │                              reconstruct (pure read, enforces real k, returns ReconstructionResult — item 13's integrity
 │       │   │                              cross-check on any surplus beyond k), discardSecret, forceForgetSecret, syncInbox, listHeld (reads local store), respond, …
-│       │   │                              pushRecoveryMetadata (item 8, holder side); pushRotation (item 9, client primitive only — no
-│       │   │                              "regenerate my own identity" UI trigger exists yet, see deposplit.com/TODO.md item 9's scope-split note);
-│       │   │                              listKeyConflicts, dismissKeyConflict (item 10, local-only, no relay involvement)
+│       │   │                              pushRecoveryMetadata (item 8, holder side); pushRotation (item 9, client primitive,
+│       │   │                              reused unchanged by regenerateIdentity); listKeyConflicts, dismissKeyConflict (item 10,
+│       │   │                              local-only, no relay involvement); regenerateIdentity (item 9 — the "regenerate my own
+│       │   │                              identity" trigger: best-effort drains the inbox/distributed state under the old identity,
+│       │   │                              generates new keys, pushes a signed rotation to every contact via pushRotation while still
+│       │   │                              signing as the old identity, then activates the new keys — returns RegenerateIdentityResult)
 │       │   ├── ContactManagement.swift    listContacts, addManually, addFromQr, updateContact (item 8 — contact-update-in-place,
 │       │   │                              key change forces a fresh verificationLevel), deleteContact, markKeyCompromised (item 10 —
 │       │   │                              flags an Ed25519 key into the contact's revokedEdKeys history; defaults to the contact's
@@ -66,7 +73,9 @@ iOS/
 │       │   ├── ShareRelayResolver.swift   resolve(relayBaseUrl: String?): any ShareRelay — BYOR factory/cache; nil resolves to the device's default relay
 │       │   └── RelaySettings.swift        defaultRelayBaseURL, setDefaultRelayBaseURL — device's runtime-configurable default relay
 │       ├── services/
-│       │   ├── IdentityService.swift      Identity + ShareEncryption impl — CryptoKit only, no Security/UserDefaults
+│       │   ├── IdentityService.swift      Identity + ShareEncryption impl — CryptoKit only, no Security/UserDefaults;
+│       │   │                              generateNewKeyPair/activateKeyPair (item 9) share the same private key-gen
+│       │   │                              helper register() uses, factored out for reuse
 │       │   ├── ShareEncryption.swift      intra-hexagon interface: encrypt, decrypt — implemented by IdentityService, used by ShareService
 │       │   ├── ShareService.swift         ShareManagement impl — calls ShareRelay + ShareEncryption + ShareRepository + ShareMetadataRepository + SecretRepository + ContactRepository;
 │       │   │                              deposit() writes ShareMetadata + a Secret to local store (incl. k/n on the deposit); listDistributed()/listSecrets() read from local store;
@@ -89,7 +98,11 @@ iOS/
 │       │   │                              revokedEdKeys *before* the downgrade/auto-accept branch — on a match it saves a KeyConflict via
 │       │   │                              the new KeyConflictRepository dependency, deletes the relay notice, and skips updateContact
 │       │   │                              entirely (never auto-resolved); listKeyConflicts/dismissKeyConflict (item 10) delegate directly
-│       │   │                              to KeyConflictRepository, local-only, no relay involvement
+│       │   │                              to KeyConflictRepository, local-only, no relay involvement; regenerateIdentity() (item 9)
+│       │   │                              best-effort drains (syncInbox/syncDistributed) under the old identity, generates new keys
+│       │   │                              via identity.generateNewKeyPair(), pushes a rotation to every contact via the unchanged
+│       │   │                              pushRotation (order matters — this must happen before the swap, since pushRotation signs
+│       │   │                              with whatever identity is currently persisted), then calls identity.activateKeyPair()
 │       │   ├── ContactService.swift       ContactManagement impl — validates + delegates to ContactRepository; defines ContactError;
 │       │   │                              updateContact requires a fresh verificationLevel whenever either key changes (item 8) and now
 │       │   │                              also carries revokedEdKeys forward and stamps keyChangedAt when a key actually changes (item 10);
@@ -110,6 +123,10 @@ iOS/
 │           │                              sender-side per-secret aggregate, see CLAUDE.md item 11; Codable
 │           ├── ReconstructionResult.swift  ReconstructionResult (secret, integrity) + ReconstructionIntegrity enum (item 13 —
 │           │                              .noMargin/.confirmed/.excludedSuspects(excludedContactIds)) — reconstruct()'s return type
+│           ├── KeyPairMaterial.swift      KeyPairMaterial struct (edPublicKey/edPrivateKey/xPublicKey/xPrivateKey, item 9) —
+│           │                              a freshly generated keypair not yet persisted as this device's identity
+│           ├── RegenerateIdentityResult.swift  RegenerateIdentityResult (notifiedContacts, totalContacts, item 9) —
+│           │                              regenerateIdentity()'s return type
 │           ├── KeyRotation.swift          KeyRotation struct (item 9) — a signed rotate(K_old→K_new) notice addressed to this device;
 │           │                              not a ShareRequest (no secretId, no consent phase)
 │           └── Share.swift               Role, ShareTransactionType (incl. .inventory — item 8, self-approved, no consent phase),
@@ -218,8 +235,12 @@ iOS/
 │       │                              is internal (not private) so RelinkContactView (item 8) can reuse it
 │       └── settings/
 │           ├── SettingsView.swift    Default relay editor; "Catalog Backup" section (item 8) — export via ShareLink/.fileExporter,
-│           │                        import via .fileImporter
-│           └── SettingsViewModel.swift  relaySettings + catalogManagement; prepareCatalogExport/importCatalog(from:)
+│           │                        import via .fileImporter; "Identity" section (item 9) — "Regenerate My Identity"
+│           │                        destructive button + confirmationDialog (contact count pre-fetched via
+│           │                        contactManagement.listContacts()) calling shareManagement.regenerateIdentity();
+│           │                        shows a loading state then "Notified X of Y contact(s)."
+│           └── SettingsViewModel.swift  relaySettings + catalogManagement + shareManagement + contactManagement
+│                                    (item 9); prepareCatalogExport/importCatalog(from:); regenerateIdentity()
 └── DeposplitTests/                   ← unit test target (@testable import hexagon)
     └── ShamirSecretSharingTests.swift
 ```

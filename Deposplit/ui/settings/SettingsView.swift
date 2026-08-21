@@ -5,10 +5,11 @@ import UniformTypeIdentifiers
 struct SettingsView: View {
     @State private var viewModel: SettingsViewModel
     @State private var showImporter = false
+    @State private var showRegenerateConfirmation = false
     @Environment(\.dismiss) private var dismiss
 
-    init(relaySettings: any RelaySettings, catalogManagement: any CatalogManagement) {
-        _viewModel = State(initialValue: SettingsViewModel(relaySettings: relaySettings, catalogManagement: catalogManagement))
+    init(relaySettings: any RelaySettings, catalogManagement: any CatalogManagement, shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
+        _viewModel = State(initialValue: SettingsViewModel(relaySettings: relaySettings, catalogManagement: catalogManagement, shareManagement: shareManagement, contactManagement: contactManagement))
     }
 
     var body: some View {
@@ -50,6 +51,34 @@ struct SettingsView: View {
                 } footer: {
                     Text("Contacts, verification levels, and secret metadata only — never shares or private keys.")
                 }
+                Section {
+                    Button("Regenerate My Identity", role: .destructive) {
+                        showRegenerateConfirmation = true
+                    }
+                    .disabled(viewModel.isRegeneratingIdentity)
+                    if viewModel.isRegeneratingIdentity {
+                        ProgressView()
+                    }
+                    if let message = viewModel.regenerateIdentityMessage {
+                        Text(message).font(.caption).foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("Identity")
+                } footer: {
+                    Text("Generates a brand-new keypair for this device and automatically notifies all your contacts. Requests still pending with someone else at this moment may become unreachable afterward — best to let those settle first. This cannot be undone.")
+                }
+            }
+            .confirmationDialog(
+                "Regenerate your identity?",
+                isPresented: $showRegenerateConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Regenerate", role: .destructive) {
+                    Task { await viewModel.regenerateIdentity() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This creates a new key pair and notifies \(viewModel.contactCount) contact(s). Any request currently pending with someone else may be lost.")
             }
             .fileImporter(isPresented: $showImporter, allowedContentTypes: [.json]) { result in
                 if case .success(let url) = result {

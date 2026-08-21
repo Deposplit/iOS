@@ -137,6 +137,7 @@ private final class FakeShareRelay: ShareRelay {
     var rotationsToReturn: [KeyRotation] = []
     var deletedRotationIds: [UUID] = []
     var throwOnWithdraw = false
+    var throwOnPushRotation = false
 
     func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, transactionType: ShareTransactionType, shareId: UUID?, ciphertext: Data?, k: Int?, n: Int?, senderSignature: Data) async throws -> ShareRequest {
         openedRequests.append(OpenedRequest(secretId: secretId, recipientKey: recipientKey, transactionType: transactionType, k: k, n: n))
@@ -169,7 +170,7 @@ private final class FakeShareRelay: ShareRelay {
             label: existing.label, secretCreatedAt: existing.secretCreatedAt, transactionType: existing.transactionType,
             state: approved ? .approved : .denied, shareId: existing.shareId, requestedAt: existing.requestedAt,
             respondedAt: existing.respondedAt, ciphertext: existing.ciphertext, k: existing.k, n: existing.n,
-            senderSignature: existing.senderSignature, recipientSignature: existing.recipientSignature
+            senderSignature: existing.senderSignature, recipientSignature: recipientSignature
         )
         byId[requestId] = updated
         return updated
@@ -184,6 +185,7 @@ private final class FakeShareRelay: ShareRelay {
     }
 
     func pushRotation(recipientKey: Data, newEd25519Key: Data, newX25519Key: Data, signature: Data) async throws {
+        if throwOnPushRotation { throw SimulatedOutage() }
         pushedRotations.append(PushedRotation(recipientKey: recipientKey, newEd25519Key: newEd25519Key, newX25519Key: newX25519Key, signature: signature))
     }
 
@@ -1199,6 +1201,96 @@ private func makeApprovedRetrievalRow(secretId: UUID, holder: HolderFixture, cip
 
     let targeted = Set(relay.openedRequests.map(\.recipientKey))
     #expect(targeted == Set([fresh.contact.edPublicKey, stale1.contact.edPublicKey, stale2.contact.edPublicKey]))
+}
+
+// MARK: - Identity regeneration (item 9's parked "regenerate my own identity" trigger)
+
+@Test func regenerateIdentityPushesASignedRotationToEveryContactAndActivatesTheNewKeys() async throws {
+    let relay = FakeShareRelay()
+    let charlieKeys = TestKeyPair()
+    let charlieContact = Contact(
+        id: UUID(), pseudonym: "charlie", edPublicKey: charlieKeys.publicKey,
+        xPublicKey: Data(repeating: 0x02, count: 32),
+        verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date()
+    )
+    let (svc, bob, _, _, _, _, _) = try makeService(relay: relay, contacts: [aliceContact, charlieContact])
+    let oldEdKey = bob.edPublicKey
+    let oldXKey = bob.xPublicKey
+
+    let result = try await svc.regenerateIdentity()
+
+    #expect(result.notifiedContacts == 2)
+    #expect(result.totalContacts == 2)
+    #expect(relay.pushedRotations.count == 2)
+    for pushed in relay.pushedRotations {
+        let canon = PayloadCanonical.forRotation(recipientKey: pushed.recipientKey, newEd25519Key: pushed.newEd25519Key, newX25519Key: pushed.newX25519Key)
+        // Signed by the OLD identity, proving continuity — not by the key it's rotating to.
+        #expect(bob.verify(canon, signature: pushed.signature, publicKey: oldEdKey))
+        #expect(!bob.verify(canon, signature: pushed.signature, publicKey: pushed.newEd25519Key))
+    }
+    // The new identity is now live.
+    #expect(bob.edPublicKey != oldEdKey)
+    #expect(bob.xPublicKey != oldXKey)
+}
+
+@Test func regenerateIdentityDrainsThePendingInboxUnderTheOldIdentityBeforeRotating() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, shareRepo, _, _, _, _) = try makeService(relay: relay)
+    let oldEdKey = bob.edPublicKey
+    let depositId = UUID()
+    let row = try makeSignedRow(id: depositId, senderKey: aliceKeys.publicKey, recipientKey: bob.edPublicKey, signer: aliceKeys)
+    relay.pending = [row]
+    relay.byId[depositId] = row
+
+    _ = try await svc.regenerateIdentity()
+
+    // The deposit was picked up and its recipientSignature was produced under the OLD identity —
+    // proving the drain ran (and completed) before the keys were swapped.
+    #expect(shareRepo.getAll().map(\.id) == [depositId])
+    let approved = try #require(relay.byId[depositId])
+    #expect(approved.state == .approved)
+    let sig = try #require(approved.recipientSignature)
+    let canon = PayloadCanonical.forRespond(requestId: depositId, approved: true, ciphertext: nil)
+    #expect(bob.verify(canon, signature: sig, publicKey: oldEdKey))
+}
+
+@Test func regenerateIdentityStillActivatesTheNewKeysWhenOneContactsRelayIsUnreachable() async throws {
+    let byorUrl = "http://byor.example:9000"
+    let charlieKeys = TestKeyPair()
+    let charlieContact = Contact(
+        id: UUID(), pseudonym: "charlie", edPublicKey: charlieKeys.publicKey,
+        xPublicKey: Data(repeating: 0x02, count: 32),
+        verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date(),
+        relayBaseUrl: byorUrl
+    )
+    let defaultRelay = FakeShareRelay()
+    let byorRelay = FakeShareRelay()
+    byorRelay.throwOnPushRotation = true
+    let bobIdentity = IdentityService(identityStore: InMemoryIdentityStoreForShareServiceTest())
+    try bobIdentity.register(pseudonym: "bob")
+    let contactRepo = FakeContactRepository([aliceContact, charlieContact])
+    let svc = ShareService(
+        relayResolver: TwoRelayResolver(default: defaultRelay, byorUrl: byorUrl, byor: byorRelay),
+        encryption: NoOpShareEncryption(),
+        shareRepository: FakeShareRepository(),
+        shareMetadataRepository: FakeShareMetadataRepository(),
+        secretRepository: FakeSecretRepository(),
+        contactRepository: contactRepo,
+        contactManagement: ContactService(contactRepository: contactRepo),
+        keyConflictRepository: FakeKeyConflictRepository(),
+        retainedDepositRepository: FakeRetainedDepositRepository(),
+        identity: bobIdentity
+    )
+    let oldEdKey = bobIdentity.edPublicKey
+
+    let result = try await svc.regenerateIdentity()
+
+    #expect(result.totalContacts == 2)
+    #expect(result.notifiedContacts == 1) // charlie's BYOR relay refused the push
+    #expect(defaultRelay.pushedRotations.count == 1)
+    #expect(byorRelay.pushedRotations.isEmpty)
+    // The swap still completes even though one contact couldn't be notified.
+    #expect(bobIdentity.edPublicKey != oldEdKey)
 }
 
 @Test func requestAllTreatsAHeartbeatOptedOutHolderAsNotConfirmedEvenWithARecentTimestamp() async throws {

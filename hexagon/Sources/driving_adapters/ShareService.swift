@@ -567,6 +567,31 @@ public final class ShareService: ShareManagement {
         try await relay(for: contact).pushRotation(recipientKey: contact.edPublicKey, newEd25519Key: newEd25519Key, newX25519Key: newX25519Key, signature: signature)
     }
 
+    /// Item 9's identity-regen trigger. Order matters: the drain and the rotation pushes must both
+    /// happen *before* `activateKeyPair`, since `pushRotation` (and the drain's own relay calls)
+    /// sign with whatever identity is currently persisted — that's what proves continuity from the
+    /// old key to each contact. If the app dies partway through, the old identity is still active
+    /// (nothing was persisted yet), so a retry simply regenerates and re-pushes from scratch; any
+    /// contact who received an orphaned first attempt auto-corrects on the next successful push,
+    /// per item 9's existing `K_old`-signed auto-accept rule.
+    public func regenerateIdentity() async throws -> RegenerateIdentityResult {
+        try? await syncInbox()
+        try? await syncDistributed()
+        let newKeys = identity.generateNewKeyPair()
+        let contacts = contactRepository.getAll()
+        var notified = 0
+        for contact in contacts {
+            do {
+                try await pushRotation(contactId: contact.id, newEd25519Key: newKeys.edPublicKey, newX25519Key: newKeys.xPublicKey)
+                notified += 1
+            } catch {
+                // Best-effort — see the type's doc comment; no retry mechanism.
+            }
+        }
+        try identity.activateKeyPair(newKeys)
+        return RegenerateIdentityResult(notifiedContacts: notified, totalContacts: contacts.count)
+    }
+
     /// Identity recovery (item 8) — sender/owner side. Consumes pending `recoveryMetadata` pushes
     /// addressed to this device, rebuilding `Secret`/`ShareMetadata` records from what each holder
     /// reports. A push is trusted only once its `senderSignature` verifies against a *known*
