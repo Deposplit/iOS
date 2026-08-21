@@ -16,8 +16,8 @@ struct AddContactView: View {
                     TextField("Pseudonym", text: $viewModel.pseudonym)
                         .autocorrectionDisabled()
                 }
-                Section("Verify key (base64url)") {
-                    TextField("Verify key", text: $viewModel.edKeyInput)
+                Section("Verification key (base64url)") {
+                    TextField("Verification key", text: $viewModel.edKeyInput)
                         .autocorrectionDisabled()
                         .autocapitalization(.none)
                         .font(.system(.body, design: .monospaced))

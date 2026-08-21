@@ -1,6 +1,42 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "" : {
+
+    },
+    "%@'s key changed %lld day%@ ago — verify fresh before approving" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@'s key changed %2$lld day%3$@ ago — verify fresh before approving"
+          }
+        }
+      }
+    },
+    "%@'s key changed, but their previous key is flagged compromised. This could be an attacker with the stolen key, or a false alarm. To reconnect, verify %@ fresh — in person or over a trusted channel — then use Relink from the Contacts screen. Do not accept this automatically." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@'s key changed, but their previous key is flagged compromised. This could be an attacker with the stolen key, or a false alarm. To reconnect, verify %2$@ fresh — in person or over a trusted channel — then use Relink from the Contacts screen. Do not accept this automatically."
+          }
+        }
+      }
+    },
+    "%lld of %lld is a relatively low threshold — a minority of holders could reconstruct this secret together." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld is a relatively low threshold — a minority of holders could reconstruct this secret together."
+          }
+        }
+      }
+    },
+    "A key change always requires re-choosing a verification level fresh — it can never inherit the old one." : {
+
+    },
     "Add Contact" : {
       "localizations" : {
         "de" : {
@@ -41,6 +77,9 @@
         }
       }
     },
+    "Are you sure?" : {
+
+    },
     "At least %lld holder(s) must cooperate to reconstruct the secret." : {
       "localizations" : {
         "de" : {
@@ -50,6 +89,15 @@
           }
         }
       }
+    },
+    "Authenticate to reconstruct your secret" : {
+
+    },
+    "Authentication failed." : {
+
+    },
+    "Biometric authentication is currently unavailable." : {
+
     },
     "Camera access is required to scan QR codes." : {
       "localizations" : {
@@ -81,6 +129,9 @@
         }
       }
     },
+    "Catalog Backup" : {
+
+    },
     "Choose a pseudonym" : {
       "localizations" : {
         "de" : {
@@ -90,6 +141,12 @@
           }
         }
       }
+    },
+    "Close" : {
+
+    },
+    "Confirm Relink" : {
+
     },
     "Contact not found for recipient — cannot decrypt share" : {
       "extractionState" : "stale",
@@ -112,6 +169,9 @@
         }
       }
     },
+    "Contacts, verification levels, and secret metadata only — never shares or private keys." : {
+
+    },
     "Copy" : {
       "localizations" : {
         "de" : {
@@ -122,7 +182,11 @@
         }
       }
     },
+    "Default relay" : {
+
+    },
     "Delete" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -162,6 +226,12 @@
         }
       }
     },
+    "Deposit Anyway" : {
+
+    },
+    "Deposited to %lld new holder(s). Discard the old distribution now? Each of its holders will be asked to delete their copy." : {
+
+    },
     "Depositing…" : {
       "localizations" : {
         "de" : {
@@ -182,6 +252,30 @@
         }
       }
     },
+    "Detected %@" : {
+
+    },
+    "Discard" : {
+
+    },
+    "Discard %@" : {
+
+    },
+    "Discard Old Distribution" : {
+
+    },
+    "Discard this secret?" : {
+
+    },
+    "Discarding" : {
+
+    },
+    "Discarding…" : {
+
+    },
+    "Dismiss" : {
+
+    },
     "Distributed" : {
       "localizations" : {
         "de" : {
@@ -191,6 +285,12 @@
           }
         }
       }
+    },
+    "Distributing to %lld people is a lot to manage — you'll need to exchange keys, approve every pickup, and keep track of all of them." : {
+
+    },
+    "Distributing to %lld people is more holders than usual to keep track of." : {
+
     },
     "Done" : {
       "localizations" : {
@@ -227,10 +327,13 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffentlicher Verschlüsselungsschlüssel (base64url)"
+            "value" : "Verschlüsselungsschlüssel (base64url)"
           }
         }
       }
+    },
+    "Enrol a biometric (Face ID or Touch ID) in device settings to reconstruct the secret." : {
+
     },
     "Enter Keys Manually" : {
       "localizations" : {
@@ -262,6 +365,25 @@
         }
       }
     },
+    "Every single holder must be available — if even one loses their share, this secret becomes unrecoverable." : {
+
+    },
+    "Excluded %lld inconsistent share(s) (from: %@). Reconstructed from the remaining consistent shares." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Excluded %1$lld inconsistent share(s) (from: %2$@). Reconstructed from the remaining consistent shares."
+          }
+        }
+      }
+    },
+    "Export Catalog…" : {
+
+    },
+    "Force Forget" : {
+
+    },
     "From: %@" : {
       "localizations" : {
         "de" : {
@@ -271,6 +393,9 @@
           }
         }
       }
+    },
+    "Generates a brand-new keypair for this device and automatically notifies all your contacts. Requests still pending with someone else at this moment may become unreachable afterward — best to let those settle first. This cannot be undone." : {
+
     },
     "Get started" : {
       "localizations" : {
@@ -282,6 +407,9 @@
         }
       }
     },
+    "Getting stale" : {
+
+    },
     "Held" : {
       "localizations" : {
         "de" : {
@@ -291,6 +419,27 @@
           }
         }
       }
+    },
+    "Holders" : {
+
+    },
+    "How sure are you this is really them? Count your independent assurances: a trusted channel, and/or live proof you saw them." : {
+
+    },
+    "https://…" : {
+
+    },
+    "Identity" : {
+
+    },
+    "Import Catalog…" : {
+
+    },
+    "Imported %lld new contact(s)." : {
+
+    },
+    "Integrity confirmed — every collected share agreed." : {
+
     },
     "Invalid encryption key (expected 32 bytes, base64url)." : {
       "localizations" : {
@@ -322,6 +471,12 @@
         }
       }
     },
+    "Inventory" : {
+
+    },
+    "Key Conflicts" : {
+
+    },
     "Label" : {
       "localizations" : {
         "de" : {
@@ -351,6 +506,18 @@
           }
         }
       }
+    },
+    "Margin of one — re-split soon" : {
+
+    },
+    "Mark Compromised" : {
+
+    },
+    "Mark Key Compromised" : {
+
+    },
+    "Mark this contact's current key as compromised?" : {
+
     },
     "My QR Code" : {
       "localizations" : {
@@ -382,6 +549,16 @@
         }
       }
     },
+    "Need %lld approved retrieval(s) to reconstruct — %lld so far." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Need %1$lld approved retrieval(s) to reconstruct — %2$lld so far."
+          }
+        }
+      }
+    },
     "Need %lld more approved retrieval(s)." : {
       "localizations" : {
         "de" : {
@@ -402,6 +579,9 @@
           }
         }
       }
+    },
+    "New keys" : {
+
     },
     "No contacts" : {
       "localizations" : {
@@ -443,6 +623,9 @@
         }
       }
     },
+    "No holders on record for this secret." : {
+
+    },
     "No pending requests" : {
       "localizations" : {
         "de" : {
@@ -463,6 +646,35 @@
         }
       }
     },
+    "Not Now" : {
+
+    },
+    "Not requested" : {
+
+    },
+    "Notified %lld of %lld contact(s)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Notified %1$lld of %2$lld contact(s)."
+          }
+        }
+      }
+    },
+    "Only %lld of %lld holders need to cooperate to reconstruct this secret — a small group could do so without your knowledge." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Only %1$lld of %2$lld holders need to cooperate to reconstruct this secret — a small group could do so without your knowledge."
+          }
+        }
+      }
+    },
+    "Only do this if you have an out-of-band reason to believe %@'s key was stolen. Deposplit will refuse to auto-accept any future key rotation claiming continuity from it — you'll need to verify them fresh, in person or over a trusted channel, to reconnect." : {
+
+    },
     "Open request" : {
       "localizations" : {
         "de" : {
@@ -472,6 +684,9 @@
           }
         }
       }
+    },
+    "Pause Heartbeats" : {
+
     },
     "Pending" : {
       "localizations" : {
@@ -483,7 +698,10 @@
         }
       }
     },
-    "Pick Up" : {
+    "Pending Requests" : {
+
+    },
+    "Possible impersonation attempt" : {
 
     },
     "Pseudonym" : {
@@ -536,6 +754,9 @@
         }
       }
     },
+    "Reconstruct + re-split now" : {
+
+    },
     "Reconstruct secret…" : {
       "localizations" : {
         "de" : {
@@ -545,6 +766,28 @@
           }
         }
       }
+    },
+    "Reconstructed from exactly the required shares — no integrity cross-check was possible." : {
+
+    },
+    "Reconstruction integrity check failed: no trustworthy majority found among %lld collected shares (largest consistent group was only %lld)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reconstruction integrity check failed: no trustworthy majority found among %1$lld collected shares (largest consistent group was only %2$lld)."
+          }
+        }
+      }
+    },
+    "Regenerate" : {
+
+    },
+    "Regenerate My Identity" : {
+
+    },
+    "Regenerate your identity?" : {
+
     },
     "Relay not reachable" : {
       "localizations" : {
@@ -556,6 +799,33 @@
         }
       }
     },
+    "Relay override (optional, BYOR)" : {
+
+    },
+    "Relink (Key Changed)" : {
+
+    },
+    "Relink %@" : {
+
+    },
+    "Removal" : {
+
+    },
+    "Repair" : {
+
+    },
+    "Repair %@" : {
+
+    },
+    "Repair complete" : {
+
+    },
+    "Request Missing Retrievals" : {
+
+    },
+    "Request Retrieval (all)" : {
+
+    },
     "Requests" : {
       "localizations" : {
         "de" : {
@@ -566,7 +836,20 @@
         }
       }
     },
+    "Requests deletion from all %lld holder(s). Each must approve — this only removes it from your device's list once every holder confirms (or you force-forget it)." : {
+
+    },
+    "Reset to Default" : {
+
+    },
+    "Resume Heartbeats" : {
+
+    },
+    "Retrieval" : {
+
+    },
     "Retrieve" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -606,6 +889,9 @@
         }
       }
     },
+    "Scanned new keys for **%@**." : {
+
+    },
     "Secret" : {
       "localizations" : {
         "de" : {
@@ -615,6 +901,9 @@
           }
         }
       }
+    },
+    "Settings" : {
+
     },
     "Share" : {
       "localizations" : {
@@ -626,7 +915,14 @@
         }
       }
     },
+    "Share Export" : {
+
+    },
+    "Silent — possible loss" : {
+
+    },
     "Split & Share" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -635,6 +931,12 @@
           }
         }
       }
+    },
+    "This creates a new key pair and notifies %lld contact(s). Any request currently pending with someone else may be lost." : {
+
+    },
+    "This device has no biometric sensor — reconstruction is disabled." : {
+
     },
     "This pseudonym is stored on your device and shared with contacts when they scan your QR code." : {
       "localizations" : {
@@ -646,6 +948,12 @@
         }
       }
     },
+    "This QR code uses an encryption scheme this app version doesn't support." : {
+
+    },
+    "This tolerates the loss of only one holder before the secret becomes unrecoverable." : {
+
+    },
     "Threshold: %lld of %lld" : {
       "localizations" : {
         "de" : {
@@ -656,7 +964,25 @@
         }
       }
     },
-    "Verify key" : {
+    "Unknown contact" : {
+
+    },
+    "Unmonitored by choice" : {
+
+    },
+    "Unrecoverable" : {
+
+    },
+    "Used for contacts without a BYOR override, and advertised in your own QR code." : {
+
+    },
+    "Verification level" : {
+
+    },
+    "Verification Level" : {
+
+    },
+    "Verification key" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -666,15 +992,18 @@
         }
       }
     },
-    "Verify key (base64url)" : {
+    "Verification key (base64url)" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffentlicher Verifizierungsschlüssel (base64url)"
+            "value" : "Verifizierungsschlüssel (base64url)"
           }
         }
       }
+    },
+    "Withdrawn" : {
+
     },
     "Your pseudonym" : {
       "localizations" : {
