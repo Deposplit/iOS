@@ -37,7 +37,8 @@ iOS/
 │       │                              (item 13 — bounded-exhaustive maximum-agreement decoding to detect/exclude a bad share among a
 │       │                              surplus beyond threshold, via the Reed–Solomon unique-decoding-radius bound)
 │       ├── driving_ports/
-│       │   ├── Identity.swift             isRegistered, register, pseudonym, edPublicKey, xPublicKey, sign;
+│       │   ├── Identity.swift             isRegistered, register, pseudonym, verifyKey, encKey, sign (item 14 —
+│       │   │                              renamed from edPublicKey/xPublicKey; names describe role, not algorithm);
 │       │   │                              generateNewKeyPair/activateKeyPair (item 9 — regenerate-identity trigger;
 │       │   │                              generateNewKeyPair is pure key generation, not persisted, so a caller can
 │       │   │                              push a rotation notice signed by the old identity before activateKeyPair
@@ -51,13 +52,17 @@ iOS/
 │       │   │                              identity" trigger: best-effort drains the inbox/distributed state under the old identity,
 │       │   │                              generates new keys, pushes a signed rotation to every contact via pushRotation while still
 │       │   │                              signing as the old identity, then activates the new keys — returns RegenerateIdentityResult)
-│       │   ├── ContactManagement.swift    listContacts, addManually, addFromQr, updateContact (item 8 — contact-update-in-place,
-│       │   │                              key change forces a fresh verificationLevel), deleteContact, markKeyCompromised (item 10 —
-│       │   │                              flags an Ed25519 key into the contact's revokedEdKeys history; defaults to the contact's
-│       │   │                              current key when no explicit key is given)
+│       │   ├── ContactManagement.swift    listContacts, addManually, addFromQr (item 14 — gains a required
+│       │   │                              cipherSuite param; the QR/link payload is where this self-describing
+│       │   │                              fact originates), updateContact (item 8 — contact-update-in-place,
+│       │   │                              key change forces a fresh verificationLevel; item 14 — a cipherSuite-only
+│       │   │                              change forces the same fresh level), deleteContact, markKeyCompromised
+│       │   │                              (item 10 — flags a verify key into the contact's revokedEdKeys history;
+│       │   │                              defaults to the contact's current key when no explicit key is given)
 │       │   └── CatalogManagement.swift    exportCatalog, importCatalog — optional non-secret catalog backup (item 8)
 │       ├── driven_ports/
-│       │   ├── IdentityStore.swift        isRegistered, save, pseudonym, edPublicKey, edPrivateKey, xPublicKey, xPrivateKey
+│       │   ├── IdentityStore.swift        isRegistered, save, pseudonym, verifyKey, signKey, encKey, decKey (item 14 —
+│       │   │                              renamed from edPublicKey/edPrivateKey/xPublicKey/xPrivateKey)
 │       │   ├── ContactRepository.swift    getAll, getByEdKey, getById, save, delete
 │       │   ├── ShareRepository.swift      getAll, getPlaintextShare (keyed on secretId, not the pickup relay-row id — item 8), save, delete
 │       │   ├── SecretRepository.swift     getAll, save, delete — local store of sender-side Secret aggregates (item 11)
@@ -69,14 +74,19 @@ iOS/
 │       │   │                              respondToShareRequest, deleteShareRequest, deleteShareRequests, withdrawShareRequests
 │       │   │                              (item 9 — best-effort tombstone, not a hard delete), pushRotation/listRotations/deleteRotation
 │       │   │                              (item 9's signed rotate(K_old→K_new) push — grouped onto this port rather than a separate
-│       │   │                              one since it's the same physical relay + BYOR routing; see KeyRotation.swift)
+│       │   │                              one since it's the same physical relay + BYOR routing; see KeyRotation.swift; pushRotation
+│       │   │                              gained a newCipherSuite param, item 14)
 │       │   ├── ShareRelayResolver.swift   resolve(relayBaseUrl: String?): any ShareRelay — BYOR factory/cache; nil resolves to the device's default relay
 │       │   └── RelaySettings.swift        defaultRelayBaseURL, setDefaultRelayBaseURL — device's runtime-configurable default relay
 │       ├── services/
 │       │   ├── IdentityService.swift      Identity + ShareEncryption impl — CryptoKit only, no Security/UserDefaults;
 │       │   │                              generateNewKeyPair/activateKeyPair (item 9) share the same private key-gen
-│       │   │                              helper register() uses, factored out for reuse
-│       │   ├── ShareEncryption.swift      intra-hexagon interface: encrypt, decrypt — implemented by IdentityService, used by ShareService
+│       │   │                              helper register() uses, factored out for reuse; encrypt/decrypt prepend/
+│       │   │                              dispatch on a TransportSuite tag byte (item 14), throwing
+│       │   │                              TransportSuiteError.unsupported on an unrecognized tag
+│       │   ├── ShareEncryption.swift      intra-hexagon interface: encrypt, decrypt — implemented by IdentityService, used by ShareService;
+│       │   │                              wire format is suiteTag(1) || nonce(12) || ciphertext+tag (item 14 — was
+│       │   │                              nonce(12) || ciphertext+tag)
 │       │   ├── ShareService.swift         ShareManagement impl — calls ShareRelay + ShareEncryption + ShareRepository + ShareMetadataRepository + SecretRepository + ContactRepository;
 │       │   │                              deposit() writes ShareMetadata + a Secret to local store (incl. k/n on the deposit); listDistributed()/listSecrets() read from local store;
 │       │   │                              syncDistributed() syncs field updates from relay (never deletes), then reconcileDiscarding() cleans up DISCARDING
@@ -94,41 +104,59 @@ iOS/
 │       │   │                              verification level to min(old, .low) per item 10's unifying rule; deleteHeldShare/deleteAllHeldFromSender
 │       │   │                              best-effort withdraw via the sender's relay before deleting locally (item 9); syncDistributed() drops the
 │       │   │                              local ShareMetadata pointer and deletes the relay row when it observes a .withdrawn deposit row;
-│       │   │                              processRotations() (item 10) now checks the notice's oldEd25519Key against the contact's
+│       │   │                              processRotations() (item 10) now checks the notice's oldVerifyKey against the contact's
 │       │   │                              revokedEdKeys *before* the downgrade/auto-accept branch — on a match it saves a KeyConflict via
 │       │   │                              the new KeyConflictRepository dependency, deletes the relay notice, and skips updateContact
 │       │   │                              entirely (never auto-resolved); listKeyConflicts/dismissKeyConflict (item 10) delegate directly
-│       │   │                              to KeyConflictRepository, local-only, no relay involvement; regenerateIdentity() (item 9)
+│       │   │                              to KeyConflictRepository, local-only, no relay involvement; processRotations() also threads the
+│       │   │                              notice's newCipherSuite through to updateContact, applying item 10's min(level, .low) downgrade
+│       │   │                              to a cipher-suite-only change too (item 14); regenerateIdentity() (item 9)
 │       │   │                              best-effort drains (syncInbox/syncDistributed) under the old identity, generates new keys
-│       │   │                              via identity.generateNewKeyPair(), pushes a rotation to every contact via the unchanged
-│       │   │                              pushRotation (order matters — this must happen before the swap, since pushRotation signs
-│       │   │                              with whatever identity is currently persisted), then calls identity.activateKeyPair()
-│       │   ├── ContactService.swift       ContactManagement impl — validates + delegates to ContactRepository; defines ContactError;
-│       │   │                              updateContact requires a fresh verificationLevel whenever either key changes (item 8) and now
-│       │   │                              also carries revokedEdKeys forward and stamps keyChangedAt when a key actually changes (item 10);
+│       │   │                              via identity.generateNewKeyPair(), pushes a rotation (asserting CipherSuite.current, item 14)
+│       │   │                              to every contact via the unchanged pushRotation (order matters — this must happen before the
+│       │   │                              swap, since pushRotation signs with whatever identity is currently persisted), then calls
+│       │   │                              identity.activateKeyPair()
+│       │   ├── ContactService.swift       ContactManagement impl — suite-aware key-length validation (against the resolved
+│       │   │                              CipherSuite, item 14 — replaces the old bare 32-byte checks) + delegates to ContactRepository;
+│       │   │                              defines ContactError; updateContact requires a fresh verificationLevel whenever either key OR
+│       │   │                              the cipherSuite changes (item 8; item 14 extends the rule) and now also carries revokedEdKeys
+│       │   │                              forward and stamps keyChangedAt when the identity actually changes (item 10);
 │       │   │                              markKeyCompromised (item 10) is idempotent — a no-op if the key is already flagged
 │       │   └── CatalogService.swift       CatalogManagement impl — exportCatalog/importCatalog (upsert-if-absent-by-id), item 8
 │       └── value_objects/
 │           ├── AuthError.swift            Error enum for auth failures
 │           ├── Catalog.swift              Catalog struct (contacts, secrets, shareMetadata) — item 8's optional backup; Codable
-│           ├── Contact.swift              Contact struct + VerificationLevel enum; Codable (for Catalog export/import); gained
+│           ├── Contact.swift              Contact struct + VerificationLevel enum; Codable (for Catalog export/import); fields
+│           │                              renamed edPublicKey/xPublicKey → verifyKey/encKey (item 14); gained
 │           │                              revokedEdKeys: [Data] (item 10 — historical set, not a single flag, so a later legitimate
-│           │                              relink to a genuinely new key is never blocked) and keyChangedAt: Date? (item 10 — stamped
-│           │                              by updateContact on any key change, surfaced as "key changed N days ago" on retrieve-approval)
-│           ├── KeyConflict.swift          KeyConflict struct (item 10) — id, contactId, oldEd25519Key, newEd25519Key, newX25519Key,
-│           │                              detectedAt; captured the instant a rotation notice's old key is found in revokedEdKeys,
-│           │                              durable and local, never re-derived from the relay
+│           │                              relink to a genuinely new key is never blocked), keyChangedAt: Date? (item 10 — stamped
+│           │                              by updateContact on any key change, surfaced as "key changed N days ago" on retrieve-approval),
+│           │                              and cipherSuite: CipherSuite = .current (item 14 — defaulted, not required, so the rename
+│           │                              didn't also become a thread-through-every-call-site exercise)
+│           ├── KeyConflict.swift          KeyConflict struct (item 10) — id, contactId, oldVerifyKey, newVerifyKey, newEncKey
+│           │                              (renamed from oldEd25519Key/newEd25519Key/newX25519Key, item 14), detectedAt; captured the
+│           │                              instant a rotation notice's old key is found in revokedEdKeys, durable and local, never
+│           │                              re-derived from the relay
 │           ├── HeldShare.swift            HeldShare struct (incl. k/n — item 8, reported back to the owner during recovery)
 │           ├── Secret.swift               Secret struct (id, label, k, n, secretCreatedAt, state) + SecretState enum (active/discarding) —
 │           │                              sender-side per-secret aggregate, see CLAUDE.md item 11; Codable
 │           ├── ReconstructionResult.swift  ReconstructionResult (secret, integrity) + ReconstructionIntegrity enum (item 13 —
 │           │                              .noMargin/.confirmed/.excludedSuspects(excludedContactIds)) — reconstruct()'s return type
-│           ├── KeyPairMaterial.swift      KeyPairMaterial struct (edPublicKey/edPrivateKey/xPublicKey/xPrivateKey, item 9) —
-│           │                              a freshly generated keypair not yet persisted as this device's identity
+│           ├── KeyPairMaterial.swift      KeyPairMaterial struct (verifyKey/signKey/encKey/decKey — renamed from
+│           │                              edPublicKey/edPrivateKey/xPublicKey/xPrivateKey, item 14; item 9) —
+│           │                              a freshly generated keypair not yet persisted as this device's identity; no cipherSuite
+│           │                              field (only one suite exists to produce — see CipherSuite.swift)
 │           ├── RegenerateIdentityResult.swift  RegenerateIdentityResult (notifiedContacts, totalContacts, item 9) —
 │           │                              regenerateIdentity()'s return type
 │           ├── KeyRotation.swift          KeyRotation struct (item 9) — a signed rotate(K_old→K_new) notice addressed to this device;
-│           │                              not a ShareRequest (no secretId, no consent phase)
+│           │                              not a ShareRequest (no secretId, no consent phase); fields oldVerifyKey/newVerifyKey/newEncKey
+│           │                              (renamed, item 14) + newCipherSuite: CipherSuite (item 14 — no oldCipherSuite field, already
+│           │                              pinned on the contact)
+│           ├── CipherSuite.swift          CipherSuite enum (item 14, String rawValue) — the signing + key-agreement algorithm pairing
+│           │                              an identity currently uses; one case today, "ed25519+x25519-v1"; .current
+│           ├── TransportSuite.swift       TransportSuite enum (item 14, UInt8 rawValue) — a ciphertext-only 1-byte tag, not
+│           │                              JSON-facing; one case today (0x01); .current. Also declares TransportSuiteError
+│           │                              (.unsupported(tag:)), thrown by ShareEncryption.decrypt on an unrecognized tag
 │           └── Share.swift               Role, ShareTransactionType (incl. .inventory — item 8, self-approved, no consent phase),
 │                                          ShareRequestState (incl. .withdrawn — item 9, deposit-only best-effort tombstone), ShareMetadata
 │                                          (id/secretId/contactId only — label/secretCreatedAt live on Secret; Codable), ShareRequest (incl. k/n)
@@ -137,19 +165,23 @@ iOS/
 │   ├── DeposplitApp.swift            @main entry point + RootView (routes to SignInView or HomeView); wires
 │   │                                  CatalogService alongside ShareService/ContactService (item 8)
 │   ├── auth/
-│   │   └── KeychainIdentityStore.swift  IdentityStore adapter — Security framework + UserDefaults
+│   │   └── KeychainIdentityStore.swift  IdentityStore adapter — Security framework + UserDefaults; methods renamed
+│   │                                  verifyKey/signKey/encKey/decKey (item 14)
 │   ├── api/
 │   │   ├── DeposplitApiAdapter.swift  HTTP adapter — implements ShareRelay; URLSession + Ed25519 request signing (via Identity) + SHA-256 body hash;
 │   │   │                              all /share-requests operations (incl. k/n — item 8); POST /share-requests/withdraw and
-│   │   │                              POST/GET /key-rotations + DELETE /key-rotations/{id} (item 9)
+│   │   │                              POST/GET /key-rotations + DELETE /key-rotations/{id} (item 9); key-rotation JSON fields
+│   │   │                              renamed newVerifyKey/newEncKey/newCipherSuite, oldVerifyKey (item 14)
 │   │   └── DeposplitRelayResolver.swift  Implements ShareRelayResolver — memoizes one DeposplitApiAdapter per resolved base URL
 │   ├── contacts/
-│   │   ├── LocalContactRepository.swift  JSON file in Documents/contacts.json; ContactJSON gained non-optional revokedEdKeys: [String]
-│   │   │                              (base64url) and keyChangedAt: String? (item 10 — no optional/fallback decode shim, since
-│   │   │                              Deposplit is pre-launch and local stores are wiped, not migrated)
+│   │   ├── LocalContactRepository.swift  JSON file in Documents/contacts.json; ContactJSON fields renamed
+│   │   │                              edPublicKey/xPublicKey → verifyKey/encKey and gained non-optional revokedEdKeys: [String]
+│   │   │                              (base64url) and keyChangedAt: String? (item 10) and cipherSuite: String (item 14) —
+│   │   │                              no optional/fallback decode shim, since
+│   │   │                              Deposplit is pre-launch and local stores are wiped, not migrated
 │   │   └── LocalKeyConflictRepository.swift  JSON file in Documents/key_conflicts.json (item 10) — structurally identical to
 │   │                                  LocalShareMetadataRepository.swift: in-memory cache, KeyConflictJSON wire DTO, base64url keys,
-│   │                                  ISO-8601 timestamps
+│   │                                  ISO-8601 timestamps; fields renamed oldVerifyKey/newVerifyKey/newEncKey (item 14)
 │   ├── settings/
 │   │   └── UserDefaultsRelaySettings.swift  Implements RelaySettings — UserDefaults-backed default relay
 │   ├── shares/
@@ -179,7 +211,7 @@ iOS/
 │       │                              Requests"; RequestCard shows an orange "key changed N days ago" Label when keyChangedDaysAgo is set
 │       ├── contacts/
 │       │   ├── ContactsViewModel.swift  listContacts + deleteContact via ContactManagement; markKeyCompromised(_:) (item 10) calls
-│       │   │                        contactManagement.markKeyCompromised(contactId:edPublicKey: nil) then reloads
+│       │   │                        contactManagement.markKeyCompromised(contactId:verifyKey: nil) then reloads (item 14 — param renamed)
 │       │   ├── ContactsView.swift    List + delete + add via QR or manual entry; per-row "Relink (Key Changed)" context-menu action (item 8);
 │       │   │                        a red exclamationmark.shield.fill badge when !contact.revokedEdKeys.isEmpty, a destructive
 │       │   │                        "Mark Key Compromised" context-menu action, and a confirmationDialog explaining the consequence
@@ -228,7 +260,8 @@ iOS/
 │       │   └── ReconstructionAdvisoryView.swift  Renders ReconstructionIntegrity's three cases as a one-line badge
 │       │                        (info/checkmark/warning) — takes a contactName(UUID) -> String closure to resolve ExcludedSuspects' names
 │       ├── qr/
-│       │   ├── QrPayload.swift       {"v":1,"pseudonym":"…","ed":"…","x":"…"} encode/decode
+│       │   ├── QrPayload.swift       {"v":3,"pseudonym":"…","ed":"…","x":"…","relay":"…","cipherSuite":"…"} encode/decode
+│       │   │                        (item 14 — v bumped 2→3, cipherSuite required, no back-compat decode path)
 │       │   ├── QrDisplayViewModel.swift  CoreImage QR generation (synchronous, MainActor-safe)
 │       │   ├── QrDisplayView.swift
 │       │   └── QrScanView.swift      DataScannerViewController (VisionKit, iOS 16+) + QrScanViewModel; DataScannerRepresentable
@@ -276,7 +309,7 @@ swift test --package-path hexagon
 - **All UI in SwiftUI** — no UIKit, no storyboards. `DataScannerViewController` is wrapped via `UIViewControllerRepresentable` for QR scanning.
 - **Registration is keypair-first** — `CryptoKit.Curve25519.Signing.PrivateKey` (Ed25519) + `Curve25519.KeyAgreement.PrivateKey` (X25519). No OIDC, no password, no email. See `deposplit.com/CLAUDE.md` for rationale.
 - **Private key storage** — raw 32-byte key material stored in iOS Keychain (`kSecClassGenericPassword`, service `com.deposplit.Deposplit`, `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`). Curve25519 is not supported by the Secure Enclave (which only handles P256), so software Keychain is used.
-- **Public keys stored in Keychain too** — same service, separate account strings (`ed.public`, `x.public`). Pseudonym + `registered` flag in `UserDefaults`.
+- **Public keys stored in Keychain too** — same service, separate account strings (`verify.public`, `enc.public`; private counterparts `sign.private`, `dec.private` — item 14 renamed from `ed.public`/`x.public`/`ed.private`/`x.private`). Pseudonym + `registered` flag in `UserDefaults`.
 - **Share encryption uses CryptoKit**: X25519 key agreement → `sharedSecret.hkdfDerivedSymmetricKey(using: SHA256.self, salt: nonce, sharedInfo: "deposplit-share", outputByteCount: 32)` → `ChaChaPoly.seal(plaintext, using: key, nonce: nonce)`. Wire format: `sealedBox.combined` = nonce(12) + ciphertext + tag(16).
 - **API request signing**: SHA-256 body hash via `CryptoKit.SHA256.hash(data:)`, Ed25519 signature via `key.signature(for:)`.
 - **`SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`** — set in build settings. All types are `@MainActor` by default. Async network calls (`URLSession.data(for:)`) work fine since they suspend without blocking. CPU-bound operations (QR generation, SSS) are fast enough to run on the main actor.

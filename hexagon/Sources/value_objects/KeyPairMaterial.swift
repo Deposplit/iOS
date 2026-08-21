@@ -5,15 +5,15 @@ import Foundation
 /// parameters so a caller can push a signed rotation notice (proving continuity from the *old*
 /// key) before activating the new one.
 public struct KeyPairMaterial: Equatable {
-    public let edPublicKey: Data
-    public let edPrivateKey: Data
-    public let xPublicKey: Data
-    public let xPrivateKey: Data
+    public let verifyKey: Data
+    public let signKey: Data
+    public let encKey: Data
+    public let decKey: Data
 
-    public init(edPublicKey: Data, edPrivateKey: Data, xPublicKey: Data, xPrivateKey: Data) {
-        self.edPublicKey = edPublicKey
-        self.edPrivateKey = edPrivateKey
-        self.xPublicKey = xPublicKey
-        self.xPrivateKey = xPrivateKey
+    public init(verifyKey: Data, signKey: Data, encKey: Data, decKey: Data) {
+        self.verifyKey = verifyKey
+        self.signKey = signKey
+        self.encKey = encKey
+        self.decKey = decKey
     }
 }

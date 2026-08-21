@@ -96,7 +96,7 @@ public final class ShareService: ShareManagement {
             label: req.label, secretCreatedAt: req.secretCreatedAt, shareId: req.shareId, ciphertext: req.ciphertext,
             k: req.k, n: req.n
         )
-        return identity.verify(canon, signature: req.senderSignature, publicKey: contact.edPublicKey)
+        return identity.verify(canon, signature: req.senderSignature, publicKey: contact.verifyKey)
     }
 
     /// True only if `req`'s recipientSignature verifies against a known contact's Ed25519 key.
@@ -109,7 +109,7 @@ public final class ShareService: ShareManagement {
         let approved = req.state == .approved
         let signedCiphertext = (approved && req.transactionType == .retrieval) ? req.ciphertext : nil
         let canon = PayloadCanonical.forRespond(requestId: req.id, approved: approved, ciphertext: signedCiphertext)
-        return identity.verify(canon, signature: sig, publicKey: contact.edPublicKey)
+        return identity.verify(canon, signature: sig, publicKey: contact.verifyKey)
     }
 
     // MARK: - Sender flows
@@ -119,12 +119,12 @@ public final class ShareService: ShareManagement {
         let secretId = UUID()
         let createdAt = Date()
         for (contact, share) in zip(contacts, shares) {
-            let ciphertext = try encryption.encrypt(Data(share), recipientXPublicKey: contact.xPublicKey)
-            let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: .deposit, recipientKey: contact.edPublicKey, label: label, secretCreatedAt: createdAt, shareId: nil, ciphertext: ciphertext, k: threshold, n: contacts.count)
+            let ciphertext = try encryption.encrypt(Data(share), recipientXPublicKey: contact.encKey)
+            let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: .deposit, recipientKey: contact.verifyKey, label: label, secretCreatedAt: createdAt, shareId: nil, ciphertext: ciphertext, k: threshold, n: contacts.count)
             let senderSignature = try identity.sign(canon)
             let req = try await relay(for: contact).openShareRequest(
                 secretId: secretId,
-                recipientKey: contact.edPublicKey,
+                recipientKey: contact.verifyKey,
                 label: label,
                 secretCreatedAt: createdAt,
                 transactionType: .deposit,
@@ -271,11 +271,11 @@ public final class ShareService: ShareManagement {
                 $0.secretId == meta.secretId && ($0.state == .pending || $0.state == .approved)
             }
             if !hasActive {
-                let canon = PayloadCanonical.forOpen(secretId: meta.secretId, transactionType: .retrieval, recipientKey: contact.edPublicKey, label: secret.label, secretCreatedAt: secret.secretCreatedAt, shareId: meta.id, ciphertext: nil)
+                let canon = PayloadCanonical.forOpen(secretId: meta.secretId, transactionType: .retrieval, recipientKey: contact.verifyKey, label: secret.label, secretCreatedAt: secret.secretCreatedAt, shareId: meta.id, ciphertext: nil)
                 if let senderSignature = try? identity.sign(canon) {
                     _ = try? await relay(for: contact).openShareRequest(
                         secretId: meta.secretId,
-                        recipientKey: contact.edPublicKey,
+                        recipientKey: contact.verifyKey,
                         label: secret.label,
                         secretCreatedAt: secret.secretCreatedAt,
                         transactionType: .retrieval,
@@ -301,11 +301,11 @@ public final class ShareService: ShareManagement {
         guard let contact = contactRepository.getById(meta.contactId) else {
             throw ShareServiceError.contactNotFound
         }
-        let canon = PayloadCanonical.forOpen(secretId: meta.secretId, transactionType: type, recipientKey: contact.edPublicKey, label: secret.label, secretCreatedAt: secret.secretCreatedAt, shareId: shareId, ciphertext: nil)
+        let canon = PayloadCanonical.forOpen(secretId: meta.secretId, transactionType: type, recipientKey: contact.verifyKey, label: secret.label, secretCreatedAt: secret.secretCreatedAt, shareId: shareId, ciphertext: nil)
         let senderSignature = try identity.sign(canon)
         return try await relay(for: contact).openShareRequest(
             secretId: meta.secretId,
-            recipientKey: contact.edPublicKey,
+            recipientKey: contact.verifyKey,
             label: secret.label,
             secretCreatedAt: secret.secretCreatedAt,
             transactionType: type,
@@ -347,7 +347,7 @@ public final class ShareService: ShareManagement {
             guard let contact = contactRepository.getByEdKey(pair.request.recipientKey) else {
                 throw ShareServiceError.contactNotFound
             }
-            let plaintext = try encryption.decrypt(ct, recipientXPublicKey: contact.xPublicKey)
+            let plaintext = try encryption.decrypt(ct, recipientXPublicKey: contact.encKey)
             decryptedShares.append(Array(plaintext))
             contactIds.append(contact.id)
         }
@@ -404,7 +404,7 @@ public final class ShareService: ShareManagement {
                     guard let recipientSignature = try? identity.sign(canon) else { continue }
                     if let responded = try? await relay.respondToShareRequest(requestId: req.id, approved: true, ciphertext: nil, recipientSignature: recipientSignature),
                        let ct = responded.ciphertext,
-                       let plaintext = try? encryption.decrypt(ct, recipientXPublicKey: senderContact.xPublicKey) {
+                       let plaintext = try? encryption.decrypt(ct, recipientXPublicKey: senderContact.encKey) {
                         shareRepository.save(HeldShare(
                             id: req.id,
                             secretId: req.secretId,
@@ -441,18 +441,19 @@ public final class ShareService: ShareManagement {
             let dueSince = contact.lastHeartbeatSentAt.map { now.timeIntervalSince($0) } ?? .infinity
             guard dueSince >= CustodyHeartbeatTuning.emissionInterval else { continue }
             let secretIds = contact.heartbeatEmissionOptedOut ? [] : held.filter { $0.contactId == contactId }.map(\.secretId)
-            let canon = PayloadCanonical.forHeartbeat(ownerKey: contact.edPublicKey, secretIds: secretIds, optedOut: contact.heartbeatEmissionOptedOut)
+            let canon = PayloadCanonical.forHeartbeat(ownerKey: contact.verifyKey, secretIds: secretIds, optedOut: contact.heartbeatEmissionOptedOut)
             guard let signature = try? identity.sign(canon) else { continue }
             do {
-                try await relay(for: contact).pushHeartbeat(ownerKey: contact.edPublicKey, secretIds: secretIds, optedOut: contact.heartbeatEmissionOptedOut, signature: signature)
+                try await relay(for: contact).pushHeartbeat(ownerKey: contact.verifyKey, secretIds: secretIds, optedOut: contact.heartbeatEmissionOptedOut, signature: signature)
             } catch {
                 continue
             }
             contactRepository.save(Contact(
-                id: contact.id, pseudonym: contact.pseudonym, edPublicKey: contact.edPublicKey, xPublicKey: contact.xPublicKey,
+                id: contact.id, pseudonym: contact.pseudonym, verifyKey: contact.verifyKey, encKey: contact.encKey,
                 verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
                 relayBaseUrl: contact.relayBaseUrl, revokedEdKeys: contact.revokedEdKeys, keyChangedAt: contact.keyChangedAt,
-                heartbeatOptedOutAt: contact.heartbeatOptedOutAt, lastHeartbeatSentAt: now, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut
+                heartbeatOptedOutAt: contact.heartbeatOptedOutAt, lastHeartbeatSentAt: now, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut,
+                cipherSuite: contact.cipherSuite
             ))
         }
     }
@@ -463,7 +464,7 @@ public final class ShareService: ShareManagement {
     /// one-shot delivery. Unknown senders and forged signatures are silently skipped, same
     /// posture as `processRotations()`.
     private func processHeartbeats() async {
-        let myKey = identity.edPublicKey
+        let myKey = identity.verifyKey
         let existingMetadata = (try? shareMetadataRepository.getAll()) ?? []
         for relay in allRelays() {
             let notices = (try? await relay.listHeartbeats()) ?? []
@@ -473,19 +474,21 @@ public final class ShareService: ShareManagement {
                 guard identity.verify(canon, signature: notice.signature, publicKey: notice.holderKey) else { continue }
                 if notice.optedOut {
                     contactRepository.save(Contact(
-                        id: contact.id, pseudonym: contact.pseudonym, edPublicKey: contact.edPublicKey, xPublicKey: contact.xPublicKey,
+                        id: contact.id, pseudonym: contact.pseudonym, verifyKey: contact.verifyKey, encKey: contact.encKey,
                         verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
                         relayBaseUrl: contact.relayBaseUrl, revokedEdKeys: contact.revokedEdKeys, keyChangedAt: contact.keyChangedAt,
-                        heartbeatOptedOutAt: notice.createdAt, lastHeartbeatSentAt: contact.lastHeartbeatSentAt, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut
+                        heartbeatOptedOutAt: notice.createdAt, lastHeartbeatSentAt: contact.lastHeartbeatSentAt, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut,
+                        cipherSuite: contact.cipherSuite
                     ))
                     continue
                 }
                 if contact.heartbeatOptedOutAt != nil {
                     contactRepository.save(Contact(
-                        id: contact.id, pseudonym: contact.pseudonym, edPublicKey: contact.edPublicKey, xPublicKey: contact.xPublicKey,
+                        id: contact.id, pseudonym: contact.pseudonym, verifyKey: contact.verifyKey, encKey: contact.encKey,
                         verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
                         relayBaseUrl: contact.relayBaseUrl, revokedEdKeys: contact.revokedEdKeys, keyChangedAt: contact.keyChangedAt,
-                        heartbeatOptedOutAt: nil, lastHeartbeatSentAt: contact.lastHeartbeatSentAt, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut
+                        heartbeatOptedOutAt: nil, lastHeartbeatSentAt: contact.lastHeartbeatSentAt, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut,
+                        cipherSuite: contact.cipherSuite
                     ))
                 }
                 for secretId in notice.secretIds {
@@ -504,12 +507,13 @@ public final class ShareService: ShareManagement {
             throw ShareServiceError.contactNotFound
         }
         contactRepository.save(Contact(
-            id: contact.id, pseudonym: contact.pseudonym, edPublicKey: contact.edPublicKey, xPublicKey: contact.xPublicKey,
+            id: contact.id, pseudonym: contact.pseudonym, verifyKey: contact.verifyKey, encKey: contact.encKey,
             verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
             relayBaseUrl: contact.relayBaseUrl, revokedEdKeys: contact.revokedEdKeys, keyChangedAt: contact.keyChangedAt,
             // Reset so the changed preference reaches the contact on the very next poll rather
             // than waiting out the emission interval.
-            heartbeatOptedOutAt: contact.heartbeatOptedOutAt, lastHeartbeatSentAt: nil, heartbeatEmissionOptedOut: optedOut
+            heartbeatOptedOutAt: contact.heartbeatOptedOutAt, lastHeartbeatSentAt: nil, heartbeatEmissionOptedOut: optedOut,
+            cipherSuite: contact.cipherSuite
         ))
     }
 
@@ -524,24 +528,26 @@ public final class ShareService: ShareManagement {
         for relay in allRelays() {
             let notices = (try? await relay.listRotations()) ?? []
             for notice in notices {
-                guard let contact = contactRepository.getByEdKey(notice.oldEd25519Key) else { continue }
-                let canon = PayloadCanonical.forRotation(recipientKey: notice.recipientKey, newEd25519Key: notice.newEd25519Key, newX25519Key: notice.newX25519Key)
-                guard identity.verify(canon, signature: notice.signature, publicKey: notice.oldEd25519Key) else { continue }
+                guard let contact = contactRepository.getByEdKey(notice.oldVerifyKey) else { continue }
+                let canon = PayloadCanonical.forRotation(recipientKey: notice.recipientKey, newVerifyKey: notice.newVerifyKey, newEncKey: notice.newEncKey, newCipherSuite: notice.newCipherSuite)
+                guard identity.verify(canon, signature: notice.signature, publicKey: notice.oldVerifyKey) else { continue }
                 // Item 10 — a stolen key can't revoke itself, but a locally-flagged one blocks
                 // auto-accept here: capture the offer as a conflict for manual resolution instead
                 // of trusting a signature the attacker is fully capable of producing. Captured
                 // locally *before* deleting the relay row — the relay is best-effort and may GC
                 // the notice before anyone looks, but this KeyConflict record won't.
-                guard !contact.revokedEdKeys.contains(notice.oldEd25519Key) else {
+                guard !contact.revokedEdKeys.contains(notice.oldVerifyKey) else {
                     try? keyConflictRepository.save(KeyConflict(
-                        id: UUID(), contactId: contact.id, oldEd25519Key: notice.oldEd25519Key,
-                        newEd25519Key: notice.newEd25519Key, newX25519Key: notice.newX25519Key, detectedAt: Date()
+                        id: UUID(), contactId: contact.id, oldVerifyKey: notice.oldVerifyKey,
+                        newVerifyKey: notice.newVerifyKey, newEncKey: notice.newEncKey, detectedAt: Date()
                     ))
                     try? await relay.deleteRotation(id: notice.id)
                     continue
                 }
+                // Item 14 — a cipher-suite-only change is likewise "continuity of key control, not
+                // a personhood assurance," so it downgrades exactly like a plain key rotation.
                 let downgraded = min(contact.verificationLevel, .low)
-                try? contactManagement.updateContact(contactId: contact.id, edPublicKey: notice.newEd25519Key, xPublicKey: notice.newX25519Key, verificationLevel: downgraded)
+                try? contactManagement.updateContact(contactId: contact.id, verifyKey: notice.newVerifyKey, encKey: notice.newEncKey, newCipherSuite: notice.newCipherSuite, verificationLevel: downgraded)
                 try? await relay.deleteRotation(id: notice.id)
             }
         }
@@ -556,15 +562,15 @@ public final class ShareService: ShareManagement {
     }
 
     /// Item 9, sending side (client primitive only — see `ShareManagement.pushRotation`). Signs
-    /// the new keys with the device's *current* identity, which becomes `oldEd25519Key` on the
+    /// the new keys with the device's *current* identity, which becomes `oldVerifyKey` on the
     /// wire, proving continuity of key control to the recipient.
-    public func pushRotation(contactId: UUID, newEd25519Key: Data, newX25519Key: Data) async throws {
+    public func pushRotation(contactId: UUID, newVerifyKey: Data, newEncKey: Data, newCipherSuite: CipherSuite) async throws {
         guard let contact = contactRepository.getById(contactId) else {
             throw ShareServiceError.contactNotFound
         }
-        let canon = PayloadCanonical.forRotation(recipientKey: contact.edPublicKey, newEd25519Key: newEd25519Key, newX25519Key: newX25519Key)
+        let canon = PayloadCanonical.forRotation(recipientKey: contact.verifyKey, newVerifyKey: newVerifyKey, newEncKey: newEncKey, newCipherSuite: newCipherSuite)
         let signature = try identity.sign(canon)
-        try await relay(for: contact).pushRotation(recipientKey: contact.edPublicKey, newEd25519Key: newEd25519Key, newX25519Key: newX25519Key, signature: signature)
+        try await relay(for: contact).pushRotation(recipientKey: contact.verifyKey, newVerifyKey: newVerifyKey, newEncKey: newEncKey, newCipherSuite: newCipherSuite, signature: signature)
     }
 
     /// Item 9's identity-regen trigger. Order matters: the drain and the rotation pushes must both
@@ -582,7 +588,7 @@ public final class ShareService: ShareManagement {
         var notified = 0
         for contact in contacts {
             do {
-                try await pushRotation(contactId: contact.id, newEd25519Key: newKeys.edPublicKey, newX25519Key: newKeys.xPublicKey)
+                try await pushRotation(contactId: contact.id, newVerifyKey: newKeys.verifyKey, newEncKey: newKeys.encKey, newCipherSuite: .current)
                 notified += 1
             } catch {
                 // Best-effort — see the type's doc comment; no retry mechanism.
@@ -622,11 +628,11 @@ public final class ShareService: ShareManagement {
         }
         let heldFromContact = shareRepository.getAll().filter { $0.contactId == contactId }
         for share in heldFromContact {
-            let canon = PayloadCanonical.forOpen(secretId: share.secretId, transactionType: .inventory, recipientKey: contact.edPublicKey, label: share.label, secretCreatedAt: share.createdAt, shareId: nil, ciphertext: nil, k: share.k, n: share.n)
+            let canon = PayloadCanonical.forOpen(secretId: share.secretId, transactionType: .inventory, recipientKey: contact.verifyKey, label: share.label, secretCreatedAt: share.createdAt, shareId: nil, ciphertext: nil, k: share.k, n: share.n)
             guard let senderSignature = try? identity.sign(canon) else { continue }
             _ = try? await relay(for: contact).openShareRequest(
                 secretId: share.secretId,
-                recipientKey: contact.edPublicKey,
+                recipientKey: contact.verifyKey,
                 label: share.label,
                 secretCreatedAt: share.createdAt,
                 transactionType: .inventory,
@@ -670,7 +676,7 @@ public final class ShareService: ShareManagement {
             guard let requesterContact = contactRepository.getByEdKey(request.senderKey) else {
                 throw ShareServiceError.contactNotFound
             }
-            ciphertext = try encryption.encrypt(plaintext, recipientXPublicKey: requesterContact.xPublicKey)
+            ciphertext = try encryption.encrypt(plaintext, recipientXPublicKey: requesterContact.encKey)
         } else {
             ciphertext = nil
         }
@@ -700,7 +706,7 @@ public final class ShareService: ShareManagement {
     /// share from `contactId` in one relay call (`senderKey`) rather than one per secretId.
     public func deleteAllHeldFromSender(contactId: UUID) async throws {
         if let senderContact = contactRepository.getById(contactId) {
-            try? await relay(for: senderContact).withdrawShareRequests(senderKey: senderContact.edPublicKey, secretId: nil)
+            try? await relay(for: senderContact).withdrawShareRequests(senderKey: senderContact.verifyKey, secretId: nil)
         }
         for share in shareRepository.getAll() where share.contactId == contactId {
             shareRepository.delete(shareId: share.id)

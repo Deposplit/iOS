@@ -6,10 +6,10 @@ final class KeychainIdentityStore: IdentityStore {
     private enum Keys {
         static let registered = "deposplit.registered"
         static let pseudonymKey = "deposplit.pseudonym"
-        static let edPublicKeyAccount = "ed.public"
-        static let edPrivateKeyAccount = "ed.private"
-        static let xPublicKeyAccount = "x.public"
-        static let xPrivateKeyAccount = "x.private"
+        static let verifyKeyAccount = "verify.public"
+        static let signKeyAccount = "sign.private"
+        static let encKeyAccount = "enc.public"
+        static let decKeyAccount = "dec.private"
         static let service = "com.deposplit.Deposplit"
     }
 
@@ -17,11 +17,11 @@ final class KeychainIdentityStore: IdentityStore {
         UserDefaults.standard.bool(forKey: Keys.registered)
     }
 
-    func save(pseudonym: String, edPk: Data, edSk: Data, xPk: Data, xSk: Data) throws {
-        try saveToKeychain(edSk, account: Keys.edPrivateKeyAccount)
-        try saveToKeychain(edPk, account: Keys.edPublicKeyAccount)
-        try saveToKeychain(xSk, account: Keys.xPrivateKeyAccount)
-        try saveToKeychain(xPk, account: Keys.xPublicKeyAccount)
+    func save(pseudonym: String, verifyKey: Data, signKey: Data, encKey: Data, decKey: Data) throws {
+        try saveToKeychain(signKey, account: Keys.signKeyAccount)
+        try saveToKeychain(verifyKey, account: Keys.verifyKeyAccount)
+        try saveToKeychain(decKey, account: Keys.decKeyAccount)
+        try saveToKeychain(encKey, account: Keys.encKeyAccount)
         UserDefaults.standard.set(pseudonym, forKey: Keys.pseudonymKey)
         UserDefaults.standard.set(true, forKey: Keys.registered)
     }
@@ -30,20 +30,20 @@ final class KeychainIdentityStore: IdentityStore {
         UserDefaults.standard.string(forKey: Keys.pseudonymKey) ?? ""
     }
 
-    var edPublicKey: Data {
-        (try? loadFromKeychain(account: Keys.edPublicKeyAccount)) ?? Data()
+    var verifyKey: Data {
+        (try? loadFromKeychain(account: Keys.verifyKeyAccount)) ?? Data()
     }
 
-    var xPublicKey: Data {
-        (try? loadFromKeychain(account: Keys.xPublicKeyAccount)) ?? Data()
+    var encKey: Data {
+        (try? loadFromKeychain(account: Keys.encKeyAccount)) ?? Data()
     }
 
-    func edPrivateKey() throws -> Data {
-        try loadFromKeychain(account: Keys.edPrivateKeyAccount)
+    func signKey() throws -> Data {
+        try loadFromKeychain(account: Keys.signKeyAccount)
     }
 
-    func xPrivateKey() throws -> Data {
-        try loadFromKeychain(account: Keys.xPrivateKeyAccount)
+    func decKey() throws -> Data {
+        try loadFromKeychain(account: Keys.decKeyAccount)
     }
 
     private func saveToKeychain(_ data: Data, account: String) throws {

@@ -10,17 +10,17 @@ import Foundation
 public struct KeyConflict: Identifiable, Equatable {
     public let id: UUID
     public let contactId: UUID
-    public let oldEd25519Key: Data
-    public let newEd25519Key: Data
-    public let newX25519Key: Data
+    public let oldVerifyKey: Data
+    public let newVerifyKey: Data
+    public let newEncKey: Data
     public let detectedAt: Date
 
-    public init(id: UUID, contactId: UUID, oldEd25519Key: Data, newEd25519Key: Data, newX25519Key: Data, detectedAt: Date) {
+    public init(id: UUID, contactId: UUID, oldVerifyKey: Data, newVerifyKey: Data, newEncKey: Data, detectedAt: Date) {
         self.id = id
         self.contactId = contactId
-        self.oldEd25519Key = oldEd25519Key
-        self.newEd25519Key = newEd25519Key
-        self.newX25519Key = newX25519Key
+        self.oldVerifyKey = oldVerifyKey
+        self.newVerifyKey = newVerifyKey
+        self.newEncKey = newEncKey
         self.detectedAt = detectedAt
     }
 }

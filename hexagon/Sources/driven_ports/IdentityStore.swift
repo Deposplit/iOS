@@ -2,10 +2,10 @@ import Foundation
 
 public protocol IdentityStore {
     var isRegistered: Bool { get }
-    func save(pseudonym: String, edPk: Data, edSk: Data, xPk: Data, xSk: Data) throws
+    func save(pseudonym: String, verifyKey: Data, signKey: Data, encKey: Data, decKey: Data) throws
     var pseudonym: String { get }
-    var edPublicKey: Data { get }
-    var xPublicKey: Data { get }
-    func edPrivateKey() throws -> Data
-    func xPrivateKey() throws -> Data
+    var verifyKey: Data { get }
+    var encKey: Data { get }
+    func signKey() throws -> Data
+    func decKey() throws -> Data
 }

@@ -16,14 +16,14 @@ struct AddContactView: View {
                     TextField("Pseudonym", text: $viewModel.pseudonym)
                         .autocorrectionDisabled()
                 }
-                Section("Ed25519 public key (base64url)") {
-                    TextField("Ed25519 key", text: $viewModel.edKeyInput)
+                Section("Verify key (base64url)") {
+                    TextField("Verify key", text: $viewModel.edKeyInput)
                         .autocorrectionDisabled()
                         .autocapitalization(.none)
                         .font(.system(.body, design: .monospaced))
                 }
-                Section("X25519 public key (base64url)") {
-                    TextField("X25519 key", text: $viewModel.xKeyInput)
+                Section("Encryption key (base64url)") {
+                    TextField("Encryption key", text: $viewModel.xKeyInput)
                         .autocorrectionDisabled()
                         .autocapitalization(.none)
                         .font(.system(.body, design: .monospaced))

@@ -21,9 +21,9 @@ public protocol ShareRelay {
     // client-side HTTP-calling port, so no equivalent split is needed here.
 
     /// Pushes a signed rotation notice to one contact. `signature` must verify against the
-    /// caller's own current Ed25519 key (the relay's `oldEd25519Key`) over
+    /// caller's own current Ed25519 key (the relay's `oldVerifyKey`) over
     /// `PayloadCanonical.forRotation`.
-    func pushRotation(recipientKey: Data, newEd25519Key: Data, newX25519Key: Data, signature: Data) async throws
+    func pushRotation(recipientKey: Data, newVerifyKey: Data, newEncKey: Data, newCipherSuite: CipherSuite, signature: Data) async throws
     /// Rotation notices addressed to this device.
     func listRotations() async throws -> [KeyRotation]
     /// Deletes a rotation notice once consumed.

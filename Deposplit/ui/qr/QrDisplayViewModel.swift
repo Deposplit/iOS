@@ -22,8 +22,9 @@ final class QrDisplayViewModel {
         pseudonym = auth.pseudonym
         let json = QrPayload.encode(
             pseudonym: auth.pseudonym,
-            edPublicKey: auth.edPublicKey,
-            xPublicKey: auth.xPublicKey,
+            verifyKey: auth.verifyKey,
+            encKey: auth.encKey,
+            cipherSuite: .current,
             relayBaseUrl: relaySettings.defaultRelayBaseURL()
         ) ?? ""
         qrImage = makeQRImage(from: json)

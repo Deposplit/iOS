@@ -4,9 +4,12 @@ import Foundation
 /// Lives in `services/` rather than `driving_ports` or `driven_ports` because both its
 /// implementer and consumer are within the hexagon's service layer.
 public protocol ShareEncryption {
-    /// Encrypts `plaintext` to `recipientXPublicKey` via X25519+HKDF-SHA-256+ChaCha20-Poly1305.
-    /// Returns nonce(12) || ciphertext+tag.
+    /// Encrypts `plaintext` to `recipientXPublicKey` via the current `TransportSuite` (today:
+    /// X25519+HKDF-SHA-256+ChaCha20-Poly1305). Returns suiteTag(1) || nonce(12) || ciphertext+tag
+    /// — item 14's per-message transport tag rides for free inside this already-opaque blob.
     func encrypt(_ plaintext: Data, recipientXPublicKey: Data) throws -> Data
-    /// Decrypts `noncePlusCiphertext` (nonce(12) || ciphertext+tag) using `recipientXPublicKey`.
-    func decrypt(_ noncePlusCiphertext: Data, recipientXPublicKey: Data) throws -> Data
+    /// Decrypts `data` (suiteTag(1) || nonce(12) || ciphertext+tag) using `recipientXPublicKey`,
+    /// dispatching on the leading `TransportSuite` tag. Throws `TransportSuiteError.unsupported`
+    /// for an unrecognized tag — never a silent misparse.
+    func decrypt(_ data: Data, recipientXPublicKey: Data) throws -> Data
 }

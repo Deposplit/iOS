@@ -5,7 +5,7 @@ import Foundation
 private final class InMemoryContactRepositoryForCatalogTest: ContactRepository {
     private(set) var contacts: [Contact] = []
     func getAll() -> [Contact] { contacts }
-    func getByEdKey(_ edPublicKey: Data) -> Contact? { contacts.first { $0.edPublicKey == edPublicKey } }
+    func getByEdKey(_ verifyKey: Data) -> Contact? { contacts.first { $0.verifyKey == verifyKey } }
     func getById(_ id: UUID) -> Contact? { contacts.first { $0.id == id } }
     func save(_ contact: Contact) {
         contacts.removeAll { $0.id == contact.id }
@@ -37,7 +37,7 @@ private final class InMemoryShareMetadataRepositoryForCatalogTest: ShareMetadata
 private func makeContact(_ name: String) -> Contact {
     Contact(
         id: UUID(), pseudonym: name,
-        edPublicKey: Data(repeating: 0x01, count: 32), xPublicKey: Data(repeating: 0x02, count: 32),
+        verifyKey: Data(repeating: 0x01, count: 32), encKey: Data(repeating: 0x02, count: 32),
         verificationLevel: .veryHigh, verifiedAt: Date(), addedAt: Date()
     )
 }
@@ -81,7 +81,7 @@ private func makeContact(_ name: String) -> Contact {
     contactRepo.save(localContact)
     let staleImportedVersion = Contact(
         id: localContact.id, pseudonym: "stale-backup-name",
-        edPublicKey: localContact.edPublicKey, xPublicKey: localContact.xPublicKey,
+        verifyKey: localContact.verifyKey, encKey: localContact.encKey,
         verificationLevel: .veryLow, verifiedAt: nil, addedAt: localContact.addedAt
     )
     let catalog = Catalog(contacts: [staleImportedVersion], secrets: [], shareMetadata: [])

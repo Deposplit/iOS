@@ -29,7 +29,7 @@ final class ContactsViewModel {
     /// notice claiming continuity from that key is refused auto-accept; only a fresh
     /// human-verified relink can move the contact forward.
     func markKeyCompromised(_ contact: Contact) {
-        try? contactManagement.markKeyCompromised(contactId: contact.id, edPublicKey: nil)
+        try? contactManagement.markKeyCompromised(contactId: contact.id, verifyKey: nil)
         load()
     }
 

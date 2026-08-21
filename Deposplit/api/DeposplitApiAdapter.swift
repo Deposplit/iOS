@@ -82,11 +82,12 @@ final class DeposplitApiAdapter: ShareRelay {
         _ = try await execute("POST", path: "/share-requests/withdraw\(query)")
     }
 
-    func pushRotation(recipientKey: Data, newEd25519Key: Data, newX25519Key: Data, signature: Data) async throws {
+    func pushRotation(recipientKey: Data, newVerifyKey: Data, newEncKey: Data, newCipherSuite: CipherSuite, signature: Data) async throws {
         let body = PushRotationJSON(
             recipientKey: recipientKey.base64URLEncoded,
-            newEd25519Key: newEd25519Key.base64URLEncoded,
-            newX25519Key: newX25519Key.base64URLEncoded,
+            newVerifyKey: newVerifyKey.base64URLEncoded,
+            newEncKey: newEncKey.base64URLEncoded,
+            newCipherSuite: newCipherSuite.rawValue,
             signature: signature.base64URLEncoded
         )
         _ = try await execute("POST", path: "/key-rotations", body: body)
@@ -136,7 +137,7 @@ final class DeposplitApiAdapter: ShareRelay {
         request.httpMethod = method
         request.timeoutInterval = 30
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue(identity.edPublicKey.base64URLEncoded, forHTTPHeaderField: "X-Deposplit-Public-Key")
+        request.setValue(identity.verifyKey.base64URLEncoded, forHTTPHeaderField: "X-Deposplit-Verify-Key")
         request.setValue(nonce, forHTTPHeaderField: "X-Deposplit-Nonce")
         request.setValue(sig.base64URLEncoded, forHTTPHeaderField: "X-Deposplit-Signature")
         if let bodyData {
@@ -226,27 +227,30 @@ final class DeposplitApiAdapter: ShareRelay {
 
     private struct PushRotationJSON: Encodable {
         let recipientKey: String
-        let newEd25519Key: String
-        let newX25519Key: String
+        let newVerifyKey: String
+        let newEncKey: String
+        let newCipherSuite: String
         let signature: String
     }
 
     private struct KeyRotationJSON: Decodable {
         let id: String
-        let oldEd25519Key: String
+        let oldVerifyKey: String
         let recipientKey: String
-        let newEd25519Key: String
-        let newX25519Key: String
+        let newVerifyKey: String
+        let newEncKey: String
+        let newCipherSuite: String
         let signature: String
         let createdAt: String
 
         func toDomain() -> KeyRotation {
             KeyRotation(
                 id: UUID(uuidString: id) ?? UUID(),
-                oldEd25519Key: Data(base64URLEncoded: oldEd25519Key) ?? Data(),
+                oldVerifyKey: Data(base64URLEncoded: oldVerifyKey) ?? Data(),
                 recipientKey: Data(base64URLEncoded: recipientKey) ?? Data(),
-                newEd25519Key: Data(base64URLEncoded: newEd25519Key) ?? Data(),
-                newX25519Key: Data(base64URLEncoded: newX25519Key) ?? Data(),
+                newVerifyKey: Data(base64URLEncoded: newVerifyKey) ?? Data(),
+                newEncKey: Data(base64URLEncoded: newEncKey) ?? Data(),
+                newCipherSuite: CipherSuite(rawValue: newCipherSuite) ?? .current,
                 signature: Data(base64URLEncoded: signature) ?? Data(),
                 createdAt: parseISO8601(createdAt)
             )

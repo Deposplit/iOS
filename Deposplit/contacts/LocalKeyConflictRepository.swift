@@ -38,9 +38,9 @@ final class LocalKeyConflictRepository: KeyConflictRepository {
     private struct KeyConflictJSON: Codable {
         let id: String
         let contactId: String
-        let oldEd25519Key: String
-        let newEd25519Key: String
-        let newX25519Key: String
+        let oldVerifyKey: String
+        let newVerifyKey: String
+        let newEncKey: String
         let detectedAt: String
     }
 
@@ -50,11 +50,11 @@ final class LocalKeyConflictRepository: KeyConflictRepository {
         return items.compactMap { json in
             guard let id = UUID(uuidString: json.id),
                   let contactId = UUID(uuidString: json.contactId),
-                  let oldEd = Data(base64URLEncoded: json.oldEd25519Key),
-                  let newEd = Data(base64URLEncoded: json.newEd25519Key),
-                  let newX = Data(base64URLEncoded: json.newX25519Key),
+                  let oldEd = Data(base64URLEncoded: json.oldVerifyKey),
+                  let newEd = Data(base64URLEncoded: json.newVerifyKey),
+                  let newX = Data(base64URLEncoded: json.newEncKey),
                   let detectedAt = _keyConflictISO8601.date(from: json.detectedAt) else { return nil }
-            return KeyConflict(id: id, contactId: contactId, oldEd25519Key: oldEd, newEd25519Key: newEd, newX25519Key: newX, detectedAt: detectedAt)
+            return KeyConflict(id: id, contactId: contactId, oldVerifyKey: oldEd, newVerifyKey: newEd, newEncKey: newX, detectedAt: detectedAt)
         }
     }
 
@@ -63,9 +63,9 @@ final class LocalKeyConflictRepository: KeyConflictRepository {
             KeyConflictJSON(
                 id: c.id.uuidString,
                 contactId: c.contactId.uuidString,
-                oldEd25519Key: c.oldEd25519Key.base64URLEncoded,
-                newEd25519Key: c.newEd25519Key.base64URLEncoded,
-                newX25519Key: c.newX25519Key.base64URLEncoded,
+                oldVerifyKey: c.oldVerifyKey.base64URLEncoded,
+                newVerifyKey: c.newVerifyKey.base64URLEncoded,
+                newEncKey: c.newEncKey.base64URLEncoded,
                 detectedAt: _keyConflictISO8601.string(from: c.detectedAt)
             )
         }

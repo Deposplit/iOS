@@ -41,8 +41,8 @@ public enum VerificationLevel: String, Codable, Sendable, CaseIterable, Hashable
 public struct Contact: Identifiable, Equatable, Sendable, Codable {
     public let id: UUID
     public let pseudonym: String
-    public let edPublicKey: Data
-    public let xPublicKey: Data
+    public let verifyKey: Data
+    public let encKey: Data
     public let verificationLevel: VerificationLevel
     public let verifiedAt: Date?
     public let addedAt: Date
@@ -55,7 +55,7 @@ public struct Contact: Identifiable, Equatable, Sendable, Codable {
     /// revocation is socially anchored, so only a fresh human-verified relink can move the
     /// contact forward once a key lands here. Never cleared automatically.
     public let revokedEdKeys: [Data]
-    /// Item 10 — when `edPublicKey` (or `xPublicKey`) last changed via `updateContact`, whether
+    /// Item 10 — when `verifyKey` (or `encKey`) last changed via `updateContact`, whether
     /// through a human-verified relink (item 8) or an auto-accepted rotation (item 9). `nil`
     /// until the first key change. Surfaced on the retrieve-approval screen as "this requester's
     /// key changed N days ago" — the attack signature item 10 hardens against is key change
@@ -77,22 +77,28 @@ public struct Contact: Identifiable, Equatable, Sendable, Codable {
     /// opt-in). When `true`, `ShareService`'s emission loop still visits this contact on its
     /// normal cadence but sends a signed opt-out notice instead of a normal heartbeat.
     public let heartbeatEmissionOptedOut: Bool
+    /// Item 14 — the signing + key-agreement algorithm pairing `verifyKey`/`encKey` use. Defaults
+    /// to `.current` for constructor convenience (every contact really is on that one suite
+    /// today, not a placeholder) — `addFromQr`/`updateContact` pass the value actually asserted
+    /// by the contact's QR payload or rotation notice.
+    public let cipherSuite: CipherSuite
 
     public init(
         id: UUID, pseudonym: String,
-        edPublicKey: Data, xPublicKey: Data,
+        verifyKey: Data, encKey: Data,
         verificationLevel: VerificationLevel, verifiedAt: Date?, addedAt: Date,
         relayBaseUrl: String? = nil,
         revokedEdKeys: [Data] = [],
         keyChangedAt: Date? = nil,
         heartbeatOptedOutAt: Date? = nil,
         lastHeartbeatSentAt: Date? = nil,
-        heartbeatEmissionOptedOut: Bool = false
+        heartbeatEmissionOptedOut: Bool = false,
+        cipherSuite: CipherSuite = .current
     ) {
         self.id = id
         self.pseudonym = pseudonym
-        self.edPublicKey = edPublicKey
-        self.xPublicKey = xPublicKey
+        self.verifyKey = verifyKey
+        self.encKey = encKey
         self.verificationLevel = verificationLevel
         self.verifiedAt = verifiedAt
         self.addedAt = addedAt
@@ -102,5 +108,6 @@ public struct Contact: Identifiable, Equatable, Sendable, Codable {
         self.heartbeatOptedOutAt = heartbeatOptedOutAt
         self.lastHeartbeatSentAt = lastHeartbeatSentAt
         self.heartbeatEmissionOptedOut = heartbeatEmissionOptedOut
+        self.cipherSuite = cipherSuite
     }
 }

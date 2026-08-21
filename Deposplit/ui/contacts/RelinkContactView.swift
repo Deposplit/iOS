@@ -90,8 +90,9 @@ final class RelinkContactViewModel {
     var didFinish = false
     var pendingLevel: VerificationLevel?
 
-    private var pendingEd: Data?
-    private var pendingX: Data?
+    private var pendingVerifyKey: Data?
+    private var pendingEncKey: Data?
+    private var pendingCipherSuite: CipherSuite?
     private let contactManagement: any ContactManagement
     private let shareManagement: any ShareManagement
 
@@ -103,26 +104,34 @@ final class RelinkContactViewModel {
 
     func handleScan(_ string: String) {
         guard !hasScanned else { return }
-        guard let payload = QrPayload.decode(string), (1...2).contains(payload.v) else {
+        // No version gate: `v` stays at 1 permanently (pre-launch, never decodes an old shape —
+        // see QrPayload.swift). A payload missing a required field like cipherSuite (item 14)
+        // already fails to decode on its own; checking `v` would add nothing.
+        guard let payload = QrPayload.decode(string) else {
             error = String(localized: "Not a valid Deposplit QR code.")
             return
         }
-        guard let ed = Data(base64URLEncoded: payload.ed), let x = Data(base64URLEncoded: payload.x) else {
+        guard let verifyKey = Data(base64URLEncoded: payload.verifyKey), let encKey = Data(base64URLEncoded: payload.encKey) else {
             error = String(localized: "Invalid keys in QR payload.")
             return
         }
+        guard let cipherSuite = CipherSuite(rawValue: payload.cipherSuite) else {
+            error = String(localized: "This QR code uses an encryption scheme this app version doesn't support.")
+            return
+        }
         hasScanned = true
-        pendingEd = ed
-        pendingX = x
+        pendingVerifyKey = verifyKey
+        pendingEncKey = encKey
+        pendingCipherSuite = cipherSuite
         // In-person re-scan is the strongest assurance this flow can claim (item 6) — defaulted,
         // but always shown for confirmation since a key change forces a fresh choice (item 8).
         pendingLevel = .veryHigh
     }
 
     func confirm() async {
-        guard let ed = pendingEd, let x = pendingX, let level = pendingLevel else { return }
+        guard let verifyKey = pendingVerifyKey, let encKey = pendingEncKey, let cipherSuite = pendingCipherSuite, let level = pendingLevel else { return }
         do {
-            try contactManagement.updateContact(contactId: contact.id, edPublicKey: ed, xPublicKey: x, verificationLevel: level)
+            try contactManagement.updateContact(contactId: contact.id, verifyKey: verifyKey, encKey: encKey, newCipherSuite: cipherSuite, verificationLevel: level)
             try await shareManagement.pushRecoveryMetadata(contactId: contact.id)
             didFinish = true
         } catch {

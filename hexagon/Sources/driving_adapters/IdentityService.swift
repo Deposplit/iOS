@@ -10,17 +10,17 @@ public final class IdentityService: Identity, ShareEncryption {
 
     public var isRegistered: Bool { identityStore.isRegistered }
     public var pseudonym: String { identityStore.pseudonym }
-    public var edPublicKey: Data { identityStore.edPublicKey }
-    public var xPublicKey: Data { identityStore.xPublicKey }
+    public var verifyKey: Data { identityStore.verifyKey }
+    public var encKey: Data { identityStore.encKey }
 
     public func register(pseudonym: String) throws {
         let material = Self.generateKeyPairMaterial()
         try identityStore.save(
             pseudonym: pseudonym,
-            edPk: material.edPublicKey,
-            edSk: material.edPrivateKey,
-            xPk: material.xPublicKey,
-            xSk: material.xPrivateKey
+            verifyKey: material.verifyKey,
+            signKey: material.signKey,
+            encKey: material.encKey,
+            decKey: material.decKey
         )
     }
 
@@ -31,10 +31,10 @@ public final class IdentityService: Identity, ShareEncryption {
     public func activateKeyPair(_ keyPair: KeyPairMaterial) throws {
         try identityStore.save(
             pseudonym: identityStore.pseudonym,
-            edPk: keyPair.edPublicKey,
-            edSk: keyPair.edPrivateKey,
-            xPk: keyPair.xPublicKey,
-            xSk: keyPair.xPrivateKey
+            verifyKey: keyPair.verifyKey,
+            signKey: keyPair.signKey,
+            encKey: keyPair.encKey,
+            decKey: keyPair.decKey
         )
     }
 
@@ -42,15 +42,15 @@ public final class IdentityService: Identity, ShareEncryption {
         let edKey = Curve25519.Signing.PrivateKey()
         let xKey = Curve25519.KeyAgreement.PrivateKey()
         return KeyPairMaterial(
-            edPublicKey: edKey.publicKey.rawRepresentation,
-            edPrivateKey: edKey.rawRepresentation,
-            xPublicKey: xKey.publicKey.rawRepresentation,
-            xPrivateKey: xKey.rawRepresentation
+            verifyKey: edKey.publicKey.rawRepresentation,
+            signKey: edKey.rawRepresentation,
+            encKey: xKey.publicKey.rawRepresentation,
+            decKey: xKey.rawRepresentation
         )
     }
 
     public func sign(_ message: Data) throws -> Data {
-        let rawKey = try identityStore.edPrivateKey()
+        let rawKey = try identityStore.signKey()
         let key = try Curve25519.Signing.PrivateKey(rawRepresentation: rawKey)
         return try key.signature(for: message)
     }
@@ -61,7 +61,7 @@ public final class IdentityService: Identity, ShareEncryption {
     }
 
     public func encrypt(_ plaintext: Data, recipientXPublicKey: Data) throws -> Data {
-        let rawKey = try identityStore.xPrivateKey()
+        let rawKey = try identityStore.decKey()
         let myKey = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: rawKey)
         let theirKey = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: recipientXPublicKey)
         let sharedSecret = try myKey.sharedSecretFromKeyAgreement(with: theirKey)
@@ -74,16 +74,24 @@ public final class IdentityService: Identity, ShareEncryption {
             outputByteCount: 32
         )
         let sealedBox = try ChaChaPoly.seal(plaintext, using: symmetricKey, nonce: nonce)
-        return sealedBox.combined
+        return Data([TransportSuite.current.rawValue]) + sealedBox.combined
     }
 
     public func decrypt(_ noncePlusCiphertext: Data, recipientXPublicKey: Data) throws -> Data {
-        let rawKey = try identityStore.xPrivateKey()
+        guard let tagByte = noncePlusCiphertext.first,
+              let suite = TransportSuite(rawValue: tagByte) else {
+            throw TransportSuiteError.unsupported(tag: noncePlusCiphertext.first ?? 0)
+        }
+        switch suite {
+        case .x25519HkdfSha256ChaCha20Poly1305:
+            break
+        }
+        let rawKey = try identityStore.decKey()
         let myKey = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: rawKey)
         let theirKey = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: recipientXPublicKey)
         let sharedSecret = try myKey.sharedSecretFromKeyAgreement(with: theirKey)
 
-        let sealedBox = try ChaChaPoly.SealedBox(combined: noncePlusCiphertext)
+        let sealedBox = try ChaChaPoly.SealedBox(combined: noncePlusCiphertext.dropFirst())
         let symmetricKey = sharedSecret.hkdfDerivedSymmetricKey(
             using: SHA256.self,
             salt: Data(sealedBox.nonce),

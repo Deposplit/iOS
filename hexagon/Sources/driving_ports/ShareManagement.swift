@@ -36,12 +36,11 @@ public protocol ShareManagement {
     func pushRecoveryMetadata(contactId: UUID) async throws
 
     // Item 9 — signed rotate(K_old -> K_new) push, client primitive only. Signs
-    // newEd25519Key/newX25519Key with the device's *current* identity (which becomes
-    // `oldEd25519Key` on the wire) and pushes one signed notice to `contactId`. There is
-    // deliberately no "regenerate my own identity" trigger yet — see deposplit.com/TODO.md item
-    // 9's scope-split note — so callers supply the new keys directly; this method is exercised
-    // by tests today, not yet by any UI action.
-    func pushRotation(contactId: UUID, newEd25519Key: Data, newX25519Key: Data) async throws
+    // newVerifyKey/newEncKey with the device's *current* identity (which becomes
+    // `oldVerifyKey` on the wire) and pushes one signed notice to `contactId`. Used both directly
+    // by tests and internally by `regenerateIdentity()`. `newCipherSuite` (item 14) is the
+    // signing + key-agreement algorithm pairing the new keys use.
+    func pushRotation(contactId: UUID, newVerifyKey: Data, newEncKey: Data, newCipherSuite: CipherSuite) async throws
 
     // Item 10 — stolen-key revocation. A rotation notice whose old key is locally flagged
     // compromised (`ContactManagement.markKeyCompromised`) is never auto-accepted; instead it's

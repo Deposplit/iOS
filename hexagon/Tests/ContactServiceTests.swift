@@ -5,7 +5,7 @@ import Foundation
 private final class InMemoryContactRepositoryForContactServiceTest: ContactRepository {
     private(set) var contacts: [Contact] = []
     func getAll() -> [Contact] { contacts }
-    func getByEdKey(_ edPublicKey: Data) -> Contact? { contacts.first { $0.edPublicKey == edPublicKey } }
+    func getByEdKey(_ verifyKey: Data) -> Contact? { contacts.first { $0.verifyKey == verifyKey } }
     func getById(_ id: UUID) -> Contact? { contacts.first { $0.id == id } }
     func save(_ contact: Contact) {
         contacts.removeAll { $0.id == contact.id }
@@ -17,7 +17,7 @@ private final class InMemoryContactRepositoryForContactServiceTest: ContactRepos
 private func makeContact() -> Contact {
     Contact(
         id: UUID(), pseudonym: "bob",
-        edPublicKey: Data(repeating: 0x01, count: 32), xPublicKey: Data(repeating: 0x02, count: 32),
+        verifyKey: Data(repeating: 0x01, count: 32), encKey: Data(repeating: 0x02, count: 32),
         verificationLevel: .veryHigh, verifiedAt: Date.distantPast, addedAt: Date.distantPast
     )
 }
@@ -33,13 +33,13 @@ private func makeContact() -> Contact {
     let newEd = Data(repeating: 0x03, count: 32)
     let newX = Data(repeating: 0x04, count: 32)
 
-    try svc.updateContact(contactId: original.id, edPublicKey: newEd, xPublicKey: newX, verificationLevel: .low)
+    try svc.updateContact(contactId: original.id, verifyKey: newEd, encKey: newX, newCipherSuite: nil, verificationLevel: .low)
 
     let updated = repo.getById(original.id)
     #expect(updated?.id == original.id)
     #expect(updated?.pseudonym == original.pseudonym)
-    #expect(updated?.edPublicKey == newEd)
-    #expect(updated?.xPublicKey == newX)
+    #expect(updated?.verifyKey == newEd)
+    #expect(updated?.encKey == newX)
     #expect(updated?.verificationLevel == .low)
 }
 
@@ -50,7 +50,7 @@ private func makeContact() -> Contact {
     repo.save(original)
 
     do {
-        try svc.updateContact(contactId: original.id, edPublicKey: Data(repeating: 0x03, count: 32), xPublicKey: nil, verificationLevel: nil)
+        try svc.updateContact(contactId: original.id, verifyKey: Data(repeating: 0x03, count: 32), encKey: nil, newCipherSuite: nil, verificationLevel: nil)
         Issue.record("expected ContactError.levelRequiredOnKeyChange")
     } catch ContactError.levelRequiredOnKeyChange {
         // expected
@@ -63,10 +63,10 @@ private func makeContact() -> Contact {
     let original = makeContact()
     repo.save(original)
 
-    try svc.updateContact(contactId: original.id, edPublicKey: nil, xPublicKey: nil, verificationLevel: .high)
+    try svc.updateContact(contactId: original.id, verifyKey: nil, encKey: nil, newCipherSuite: nil, verificationLevel: .high)
 
     let updated = repo.getById(original.id)
-    #expect(updated?.edPublicKey == original.edPublicKey)
+    #expect(updated?.verifyKey == original.verifyKey)
     #expect(updated?.verificationLevel == .high)
 }
 
@@ -75,9 +75,52 @@ private func makeContact() -> Contact {
     let svc = ContactService(contactRepository: repo)
 
     do {
-        try svc.updateContact(contactId: UUID(), edPublicKey: nil, xPublicKey: nil, verificationLevel: .high)
+        try svc.updateContact(contactId: UUID(), verifyKey: nil, encKey: nil, newCipherSuite: nil, verificationLevel: .high)
         Issue.record("expected ContactError.contactNotFound")
     } catch ContactError.contactNotFound {
         // expected
     }
+}
+
+// Item 14 ("crypto agility") — cipher-suite-only changes and suite-driven key-length validation.
+
+@Test func updateContactRequiresAFreshLevelOnACipherSuiteOnlyChangeWithNoKeyValueChange() throws {
+    let repo = InMemoryContactRepositoryForContactServiceTest()
+    let svc = ContactService(contactRepository: repo)
+    let original = makeContact()
+    repo.save(original)
+
+    do {
+        try svc.updateContact(contactId: original.id, verifyKey: nil, encKey: nil, newCipherSuite: .current, verificationLevel: nil)
+        Issue.record("expected ContactError.levelRequiredOnKeyChange")
+    } catch ContactError.levelRequiredOnKeyChange {
+        // expected
+    }
+
+    try svc.updateContact(contactId: original.id, verifyKey: nil, encKey: nil, newCipherSuite: .current, verificationLevel: .low)
+    let updated = repo.getById(original.id)
+    #expect(updated?.cipherSuite == .current)
+    #expect(updated?.verificationLevel == .low)
+    #expect(updated?.keyChangedAt != nil)
+}
+
+@Test func addFromQrRejectsAVerifyKeyWhoseLengthDoesNotMatchTheAssertedCipherSuite() throws {
+    let repo = InMemoryContactRepositoryForContactServiceTest()
+    let svc = ContactService(contactRepository: repo)
+
+    do {
+        try svc.addFromQr(pseudonym: "eve", verifyKey: Data(repeating: 0x01, count: 16), encKey: Data(repeating: 0x02, count: 32), cipherSuite: .current, verificationLevel: .veryHigh, relayBaseUrl: nil)
+        Issue.record("expected ContactError.invalidKeySize")
+    } catch ContactError.invalidKeySize {
+        // expected
+    }
+}
+
+@Test func addFromQrStoresTheAssertedCipherSuite() throws {
+    let repo = InMemoryContactRepositoryForContactServiceTest()
+    let svc = ContactService(contactRepository: repo)
+
+    try svc.addFromQr(pseudonym: "eve", verifyKey: Data(repeating: 0x01, count: 32), encKey: Data(repeating: 0x02, count: 32), cipherSuite: .current, verificationLevel: .veryHigh, relayBaseUrl: nil)
+
+    #expect(repo.getAll().first?.cipherSuite == .current)
 }

@@ -6,26 +6,26 @@ import Foundation
 private final class InMemoryIdentityStore: IdentityStore {
     private(set) var isRegistered = false
     private var _pseudonym = ""
-    private var edPk = Data()
-    private var edSk = Data()
-    private var xPk = Data()
-    private var xSk = Data()
+    private var _verifyKey = Data()
+    private var _signKey = Data()
+    private var _encKey = Data()
+    private var _decKey = Data()
 
     var pseudonym: String { _pseudonym }
-    var edPublicKey: Data { edPk }
-    var xPublicKey: Data { xPk }
+    var verifyKey: Data { _verifyKey }
+    var encKey: Data { _encKey }
 
-    func save(pseudonym: String, edPk: Data, edSk: Data, xPk: Data, xSk: Data) throws {
+    func save(pseudonym: String, verifyKey: Data, signKey: Data, encKey: Data, decKey: Data) throws {
         self._pseudonym = pseudonym
-        self.edPk = edPk
-        self.edSk = edSk
-        self.xPk = xPk
-        self.xSk = xSk
+        self._verifyKey = verifyKey
+        self._signKey = signKey
+        self._encKey = encKey
+        self._decKey = decKey
         self.isRegistered = true
     }
 
-    func edPrivateKey() throws -> Data { edSk }
-    func xPrivateKey() throws -> Data { xSk }
+    func signKey() throws -> Data { _signKey }
+    func decKey() throws -> Data { _decKey }
 }
 
 private func newIdentity() throws -> IdentityService {
@@ -42,7 +42,7 @@ private func newIdentity() throws -> IdentityService {
     let alice = try newIdentity()
     let message = Data("hello deposplit".utf8)
     let sig = try alice.sign(message)
-    #expect(alice.verify(message, signature: sig, publicKey: alice.edPublicKey))
+    #expect(alice.verify(message, signature: sig, publicKey: alice.verifyKey))
 }
 
 @Test func verifyReturnsFalseForATamperedMessage() throws {
@@ -50,7 +50,7 @@ private func newIdentity() throws -> IdentityService {
     let message = Data("hello deposplit".utf8)
     let sig = try alice.sign(message)
     let tampered = Data("hello depospliz".utf8)
-    #expect(!alice.verify(tampered, signature: sig, publicKey: alice.edPublicKey))
+    #expect(!alice.verify(tampered, signature: sig, publicKey: alice.verifyKey))
 }
 
 @Test func verifyReturnsFalseWhenCheckedAgainstADifferentKey() throws {
@@ -58,7 +58,7 @@ private func newIdentity() throws -> IdentityService {
     let bob = try newIdentity()
     let message = Data("hello deposplit".utf8)
     let sig = try alice.sign(message)
-    #expect(!bob.verify(message, signature: sig, publicKey: bob.edPublicKey))
+    #expect(!bob.verify(message, signature: sig, publicKey: bob.verifyKey))
 }
 
 // -------------------------------------------------------------------------
@@ -67,32 +67,65 @@ private func newIdentity() throws -> IdentityService {
 
 @Test func generateNewKeyPairDoesNotTouchStorage() throws {
     let alice = try newIdentity()
-    let originalEdKey = alice.edPublicKey
-    let originalXKey = alice.xPublicKey
+    let originalEdKey = alice.verifyKey
+    let originalXKey = alice.encKey
     let candidate = alice.generateNewKeyPair()
-    #expect(candidate.edPublicKey != originalEdKey)
-    #expect(candidate.xPublicKey != originalXKey)
+    #expect(candidate.verifyKey != originalEdKey)
+    #expect(candidate.encKey != originalXKey)
     // Unpersisted — the live identity hasn't moved.
-    #expect(alice.edPublicKey == originalEdKey)
-    #expect(alice.xPublicKey == originalXKey)
+    #expect(alice.verifyKey == originalEdKey)
+    #expect(alice.encKey == originalXKey)
 }
 
 @Test func activateKeyPairPersistsTheNewKeysAndPreservesThePseudonym() throws {
     let alice = try newIdentity()
     let candidate = alice.generateNewKeyPair()
     try alice.activateKeyPair(candidate)
-    #expect(alice.edPublicKey == candidate.edPublicKey)
-    #expect(alice.xPublicKey == candidate.xPublicKey)
+    #expect(alice.verifyKey == candidate.verifyKey)
+    #expect(alice.encKey == candidate.encKey)
     #expect(alice.pseudonym == "test")
 }
 
 @Test func signAfterActivateKeyPairVerifiesAgainstTheNewKeyNotTheOld() throws {
     let alice = try newIdentity()
-    let oldEdKey = alice.edPublicKey
+    let oldEdKey = alice.verifyKey
     let candidate = alice.generateNewKeyPair()
     try alice.activateKeyPair(candidate)
     let message = Data("post-rotation message".utf8)
     let sig = try alice.sign(message)
-    #expect(alice.verify(message, signature: sig, publicKey: candidate.edPublicKey))
+    #expect(alice.verify(message, signature: sig, publicKey: candidate.verifyKey))
     #expect(!alice.verify(message, signature: sig, publicKey: oldEdKey))
+}
+
+// -------------------------------------------------------------------------
+// encrypt() / decrypt() — item 14's per-message TransportSuite tag
+// -------------------------------------------------------------------------
+
+@Test func encryptThenDecryptRoundTrips() throws {
+    let alice = try newIdentity()
+    let bob = try newIdentity()
+    let plaintext = Data("shhh".utf8)
+    let ciphertext = try alice.encrypt(plaintext, recipientXPublicKey: bob.encKey)
+    let decrypted = try bob.decrypt(ciphertext, recipientXPublicKey: alice.encKey)
+    #expect(decrypted == plaintext)
+}
+
+@Test func encryptPrependsTheCurrentTransportSuiteTag() throws {
+    let alice = try newIdentity()
+    let bob = try newIdentity()
+    let ciphertext = try alice.encrypt(Data("shhh".utf8), recipientXPublicKey: bob.encKey)
+    #expect(ciphertext.first == TransportSuite.current.rawValue)
+}
+
+@Test func decryptThrowsUnsupportedForAnUnrecognizedSuiteTag() throws {
+    let alice = try newIdentity()
+    let bob = try newIdentity()
+    var ciphertext = try alice.encrypt(Data("shhh".utf8), recipientXPublicKey: bob.encKey)
+    ciphertext[ciphertext.startIndex] = 0xFF
+    do {
+        _ = try bob.decrypt(ciphertext, recipientXPublicKey: alice.encKey)
+        Issue.record("expected TransportSuiteError.unsupported")
+    } catch TransportSuiteError.unsupported(let tag) {
+        #expect(tag == 0xFF)
+    }
 }

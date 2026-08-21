@@ -18,8 +18,8 @@ final class LocalContactRepository: ContactRepository {
         return contacts
     }
 
-    func getByEdKey(_ edPublicKey: Data) -> Contact? {
-        getAll().first { $0.edPublicKey == edPublicKey }
+    func getByEdKey(_ verifyKey: Data) -> Contact? {
+        getAll().first { $0.verifyKey == verifyKey }
     }
 
     func getById(_ id: UUID) -> Contact? {
@@ -46,8 +46,8 @@ final class LocalContactRepository: ContactRepository {
     private struct ContactJSON: Codable {
         let id: String
         let pseudonym: String
-        let edPublicKey: String
-        let xPublicKey: String
+        let verifyKey: String
+        let encKey: String
         let verificationLevel: VerificationLevel
         let verifiedAt: String?
         let addedAt: String
@@ -59,6 +59,8 @@ final class LocalContactRepository: ContactRepository {
         let heartbeatOptedOutAt: String?
         let lastHeartbeatSentAt: String?
         let heartbeatEmissionOptedOut: Bool
+        // Item 14 — same "no back-compat shim" precedent as above.
+        let cipherSuite: CipherSuite
     }
 
     private func load() throws -> [Contact] {
@@ -66,14 +68,14 @@ final class LocalContactRepository: ContactRepository {
         let items = try JSONDecoder().decode([ContactJSON].self, from: data)
         return items.compactMap { json in
             guard let id = UUID(uuidString: json.id),
-                  let ed = Data(base64URLEncoded: json.edPublicKey),
-                  let x = Data(base64URLEncoded: json.xPublicKey),
+                  let ed = Data(base64URLEncoded: json.verifyKey),
+                  let x = Data(base64URLEncoded: json.encKey),
                   let addedAt = json.addedAt.parseISO8601() else { return nil }
             return Contact(
                 id: id,
                 pseudonym: json.pseudonym,
-                edPublicKey: ed,
-                xPublicKey: x,
+                verifyKey: ed,
+                encKey: x,
                 verificationLevel: json.verificationLevel,
                 verifiedAt: json.verifiedAt?.parseISO8601(),
                 addedAt: addedAt,
@@ -82,7 +84,8 @@ final class LocalContactRepository: ContactRepository {
                 keyChangedAt: json.keyChangedAt?.parseISO8601(),
                 heartbeatOptedOutAt: json.heartbeatOptedOutAt?.parseISO8601(),
                 lastHeartbeatSentAt: json.lastHeartbeatSentAt?.parseISO8601(),
-                heartbeatEmissionOptedOut: json.heartbeatEmissionOptedOut
+                heartbeatEmissionOptedOut: json.heartbeatEmissionOptedOut,
+                cipherSuite: json.cipherSuite
             )
         }
     }
@@ -92,8 +95,8 @@ final class LocalContactRepository: ContactRepository {
             ContactJSON(
                 id: c.id.uuidString,
                 pseudonym: c.pseudonym,
-                edPublicKey: c.edPublicKey.base64URLEncoded,
-                xPublicKey: c.xPublicKey.base64URLEncoded,
+                verifyKey: c.verifyKey.base64URLEncoded,
+                encKey: c.encKey.base64URLEncoded,
                 verificationLevel: c.verificationLevel,
                 verifiedAt: c.verifiedAt.map { _localISO8601.string(from: $0) },
                 addedAt: _localISO8601.string(from: c.addedAt),
@@ -102,7 +105,8 @@ final class LocalContactRepository: ContactRepository {
                 keyChangedAt: c.keyChangedAt.map { _localISO8601.string(from: $0) },
                 heartbeatOptedOutAt: c.heartbeatOptedOutAt.map { _localISO8601.string(from: $0) },
                 lastHeartbeatSentAt: c.lastHeartbeatSentAt.map { _localISO8601.string(from: $0) },
-                heartbeatEmissionOptedOut: c.heartbeatEmissionOptedOut
+                heartbeatEmissionOptedOut: c.heartbeatEmissionOptedOut,
+                cipherSuite: c.cipherSuite
             )
         }
         let data = try JSONEncoder().encode(items)

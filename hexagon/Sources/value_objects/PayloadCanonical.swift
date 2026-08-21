@@ -61,14 +61,20 @@ public enum PayloadCanonical {
     }
 
     /// Signed by the old key when pushing a rotation notice (item 9), i.e. by the caller who
-    /// becomes `KeyRotation.oldEd25519Key`. Proves continuity of key control — only someone
+    /// becomes `KeyRotation.oldVerifyKey`. Proves continuity of key control — only someone
     /// holding the old private key can produce this signature, which is what lets the recipient
     /// auto-verify and auto-accept the rotation without a fresh human re-verification.
-    public static func forRotation(recipientKey: Data, newEd25519Key: Data, newX25519Key: Data) -> Data {
+    ///
+    /// `newCipherSuite` (item 14) is appended at the end of the sequence, keeping the pre-item-14
+    /// field order — and this construction's cross-platform byte-vector test — undisturbed. No
+    /// `oldCipherSuite` is signed — the recipient already has it pinned on the existing contact
+    /// record.
+    public static func forRotation(recipientKey: Data, newVerifyKey: Data, newEncKey: Data, newCipherSuite: CipherSuite) -> Data {
         let parts = [
             recipientKey.base64URLEncodedForSigning,
-            newEd25519Key.base64URLEncodedForSigning,
-            newX25519Key.base64URLEncodedForSigning,
+            newVerifyKey.base64URLEncodedForSigning,
+            newEncKey.base64URLEncodedForSigning,
+            newCipherSuite.rawValue,
         ]
         return Data(parts.joined(separator: "\n").utf8)
     }

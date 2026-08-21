@@ -5,9 +5,9 @@ public protocol Identity {
     func register(pseudonym: String) throws
     var pseudonym: String { get }
     /// Ed25519 public key — 32 raw bytes
-    var edPublicKey: Data { get }
+    var verifyKey: Data { get }
     /// X25519 public key — 32 raw bytes
-    var xPublicKey: Data { get }
+    var encKey: Data { get }
     /// Signs `message` with the Ed25519 private key. Returns the 64-byte signature.
     func sign(_ message: Data) throws -> Data
 
@@ -23,6 +23,6 @@ public protocol Identity {
     func generateNewKeyPair() -> KeyPairMaterial
 
     /// Item 9 — persists `keyPair` as this device's identity, preserving the existing pseudonym.
-    /// After this call, `sign`/`edPublicKey`/`xPublicKey` all reflect the new keys.
+    /// After this call, `sign`/`verifyKey`/`encKey` all reflect the new keys.
     func activateKeyPair(_ keyPair: KeyPairMaterial) throws
 }

@@ -60,7 +60,7 @@ struct ContactsView: View {
                                             .font(.caption)
                                     }
                                 }
-                                Text(contact.edPublicKey.base64URLEncoded.prefix(16) + "…")
+                                Text(contact.verifyKey.base64URLEncoded.prefix(16) + "…")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

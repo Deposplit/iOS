@@ -44,7 +44,7 @@ final class RequestsViewModel {
     }
 
     func senderName(for request: ShareRequest) -> String {
-        allContacts.first(where: { $0.edPublicKey == request.senderKey })?.pseudonym
+        allContacts.first(where: { $0.verifyKey == request.senderKey })?.pseudonym
             ?? request.senderKey.base64URLEncoded.prefix(8) + "…"
     }
 
@@ -52,7 +52,7 @@ final class RequestsViewModel {
     /// retrieval*, so this is surfaced only for Retrieval requests, not every request type.
     func keyChangedDaysAgo(for request: ShareRequest) -> Int? {
         guard request.transactionType == .retrieval else { return nil }
-        guard let contact = allContacts.first(where: { $0.edPublicKey == request.senderKey }),
+        guard let contact = allContacts.first(where: { $0.verifyKey == request.senderKey }),
               let changedAt = contact.keyChangedAt else { return nil }
         return Calendar.current.dateComponents([.day], from: changedAt, to: Date()).day
     }

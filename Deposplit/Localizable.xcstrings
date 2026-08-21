@@ -212,22 +212,22 @@
         }
       }
     },
-    "Ed25519 key" : {
+    "Encryption key" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ed25519-Schlüssel"
+            "value" : "Verschlüsselungsschlüssel"
           }
         }
       }
     },
-    "Ed25519 public key (base64url)" : {
+    "Encryption key (base64url)" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffentlicher Ed25519-Schlüssel (base64url)"
+            "value" : "Öffentlicher Verschlüsselungsschlüssel (base64url)"
           }
         }
       }
@@ -292,12 +292,12 @@
         }
       }
     },
-    "Invalid Ed25519 key (expected 32 bytes, base64url)." : {
+    "Invalid encryption key (expected 32 bytes, base64url)." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ungültiger Ed25519-Schlüssel (32 Bytes erwartet, base64url)."
+            "value" : "Ungültiger Verschlüsselungsschlüssel (32 Bytes erwartet, base64url)."
           }
         }
       }
@@ -312,12 +312,12 @@
         }
       }
     },
-    "Invalid X25519 key (expected 32 bytes, base64url)." : {
+    "Invalid verify key (expected 32 bytes, base64url)." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ungültiger X25519-Schlüssel (32 Bytes erwartet, base64url)."
+            "value" : "Ungültiger Verifizierungsschlüssel (32 Bytes erwartet, base64url)."
           }
         }
       }
@@ -656,22 +656,22 @@
         }
       }
     },
-    "X25519 key" : {
+    "Verify key" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "X25519-Schlüssel"
+            "value" : "Verifizierungsschlüssel"
           }
         }
       }
     },
-    "X25519 public key (base64url)" : {
+    "Verify key (base64url)" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Öffentlicher X25519-Schlüssel (base64url)"
+            "value" : "Öffentlicher Verifizierungsschlüssel (base64url)"
           }
         }
       }

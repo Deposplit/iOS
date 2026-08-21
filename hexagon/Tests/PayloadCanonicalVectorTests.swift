@@ -90,11 +90,37 @@ private func base64URLEncode(_ data: Data) -> String {
 }
 
 // ---------------------------------------------------------------------------
+// forRotation (items 9/14) — same cross-platform-interop purpose as forOpen above, using the
+// same fixed private key seed. Identical fixture checked into
+// deposplit.com/hexagons/relay/src/test/scala/value_objects/PayloadCanonicalVectorTests.scala
+// and Android's PayloadCanonicalVectorTest.kt. Closes the gap this file's own comment used to
+// flag ("forRotation's vector was never added here when item 9 shipped") — item 14's appended
+// newCipherSuite field made recomputing this vector unavoidable, so it's added properly now.
+// ---------------------------------------------------------------------------
+
+private let fixtureRotationRecipientKey = Data(repeating: 0x03, count: 32)
+private let fixtureNewVerifyKey = Data(repeating: 0x04, count: 32)
+private let fixtureNewEncKey = Data(repeating: 0x05, count: 32)
+private let fixtureNewCipherSuite = CipherSuite.current
+private let expectedRotationSignatureBase64Url = "EH45bL4chGQALZ6J9IDhfUAtPNovGHmqlJvF6HBKa8sqkF3SU1NhMGWmSTGM87isxdHIxoQCHFITplmzN1zeDg"
+
+@Test func forRotationProducesTheFixedCanonicalBytes() {
+    let canon = PayloadCanonical.forRotation(recipientKey: fixtureRotationRecipientKey, newVerifyKey: fixtureNewVerifyKey, newEncKey: fixtureNewEncKey, newCipherSuite: fixtureNewCipherSuite)
+    let expected = "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM\nBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ\nBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU\ned25519+x25519-v1"
+    #expect(String(data: canon, encoding: .utf8) == expected)
+}
+
+@Test func theFixedRotationSignatureVerifiesAgainstTheFixedPublicKey() throws {
+    let canon = PayloadCanonical.forRotation(recipientKey: fixtureRotationRecipientKey, newVerifyKey: fixtureNewVerifyKey, newEncKey: fixtureNewEncKey, newCipherSuite: fixtureNewCipherSuite)
+    let publicKey = try Curve25519.Signing.PublicKey(rawRepresentation: base64URLDecode(expectedPublicKeyBase64Url))
+    let signature = base64URLDecode(expectedRotationSignatureBase64Url)
+    #expect(publicKey.isValidSignature(signature, for: canon))
+}
+
+// ---------------------------------------------------------------------------
 // forHeartbeat (item 12) — same cross-platform-interop purpose as forOpen above, using the same
 // fixed private key seed. Identical fixture checked into
 // deposplit.com/hexagons/relay/src/test/scala/value_objects/PayloadCanonicalVectorTests.scala.
-// (forRotation's vector was never added here when item 9 shipped — a pre-existing gap, not
-// touched by this item.)
 // ---------------------------------------------------------------------------
 
 private let fixtureHeartbeatOwnerKey = Data(repeating: 0x06, count: 32)
