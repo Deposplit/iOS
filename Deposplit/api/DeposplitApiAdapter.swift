@@ -13,7 +13,7 @@ final class DeposplitApiAdapter: ShareRelay {
     private let identity: any Identity
     private let baseURL: String
 
-    init(identity: any Identity, baseURL: String = "https://api.deposplit.com") {
+    init(identity: any Identity, baseURL: String = RelayDefaults.fallbackBaseURL) {
         self.identity = identity
         self.baseURL = baseURL
     }

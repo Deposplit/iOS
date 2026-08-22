@@ -96,16 +96,12 @@ Private keys are stored in the iOS **Keychain** via the `Security` framework (`S
 
 Curve25519 (Ed25519 + X25519) is not supported by the **Secure Enclave**, which only handles P256. Deposplit uses software-backed Keychain items.
 
-### `#if DEBUG`
+### Pointing at a local Web app/service
 
-Swift's conditional compilation flag `DEBUG` is defined in the `Debug` build configuration (see `SWIFT_ACTIVE_COMPILATION_CONDITIONS` in the project settings). Deposplit uses it to switch the Web app/service URL:
+The relay URL is not a compile-time switch — `RelayDefaults.fallbackBaseURL` (`api/RelayDefaults.swift`) is a single fixed fallback (`https://api.deposplit.com`), matching Android's `RelayDefaults.kt`. To test against a local `sbt run` instance, use the in-app **Settings** screen's default-relay editor to point the device at `http://localhost:9000` (the iOS Simulator shares the host Mac's loopback, so no ATS exception or extra config is needed — unlike Android's emulator, which needs the `10.0.2.2` alias plus a cleartext network-security exception). `DeposplitApiAdapter` is constructed via `DeposplitRelayResolver`, which always resolves a URL through `RelaySettings` (`identity: identityService` — not `auth:`, following the item-14 `Identity` rename):
 
 ```swift
-#if DEBUG
-transport = DeposplitApiAdapter(auth: a, baseURL: "http://localhost:9000")
-#else
-transport = DeposplitApiAdapter(auth: a)
-#endif
+let relay = DeposplitApiAdapter(identity: identityService, baseURL: url)
 ```
 
 ---
