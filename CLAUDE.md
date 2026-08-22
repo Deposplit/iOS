@@ -58,7 +58,10 @@ iOS/
 │       │   │                              key change forces a fresh verificationLevel; item 14 — a cipherSuite-only
 │       │   │                              change forces the same fresh level), deleteContact, markKeyCompromised
 │       │   │                              (item 10 — flags a verify key into the contact's revokedEdKeys history;
-│       │   │                              defaults to the contact's current key when no explicit key is given)
+│       │   │                              defaults to the contact's current key when no explicit key is given),
+│       │   │                              renameContact (item 15 — purely local disambiguation label,
+│       │   │                              deliberately separate from updateContact so a rename never triggers
+│       │   │                              its fresh-verification-level gate)
 │       │   └── CatalogManagement.swift    exportCatalog, importCatalog — optional non-secret catalog backup (item 8)
 │       ├── driven_ports/
 │       │   ├── IdentityStore.swift        isRegistered, save, pseudonym, verifyKey, signKey, encKey, decKey (item 14 —
@@ -121,7 +124,9 @@ iOS/
 │       │   │                              defines ContactError; updateContact requires a fresh verificationLevel whenever either key OR
 │       │   │                              the cipherSuite changes (item 8; item 14 extends the rule) and now also carries revokedEdKeys
 │       │   │                              forward and stamps keyChangedAt when the identity actually changes (item 10);
-│       │   │                              markKeyCompromised (item 10) is idempotent — a no-op if the key is already flagged
+│       │   │                              markKeyCompromised (item 10) is idempotent — a no-op if the key is already flagged;
+│       │   │                              renameContact (item 15) never touches keys/level/cipherSuite; addManually/
+│       │   │                              addFromQr thread a normalized nickname (trim, empty→nil)
 │       │   └── CatalogService.swift       CatalogManagement impl — exportCatalog/importCatalog (upsert-if-absent-by-id), item 8
 │       └── value_objects/
 │           ├── AuthError.swift            Error enum for auth failures
@@ -132,7 +137,9 @@ iOS/
 │           │                              relink to a genuinely new key is never blocked), keyChangedAt: Date? (item 10 — stamped
 │           │                              by updateContact on any key change, surfaced as "key changed N days ago" on retrieve-approval),
 │           │                              and cipherSuite: CipherSuite = .current (item 14 — defaulted, not required, so the rename
-│           │                              didn't also become a thread-through-every-call-site exercise)
+│           │                              didn't also become a thread-through-every-call-site exercise), and nickname: String?
+│           │                              (item 15 — purely local disambiguation label, never transmitted anywhere); a
+│           │                              displayName computed property (nickname ?? pseudonym), reused at every render site
 │           ├── KeyConflict.swift          KeyConflict struct (item 10) — id, contactId, oldVerifyKey, newVerifyKey, newEncKey
 │           │                              (renamed from oldEd25519Key/newEd25519Key/newX25519Key, item 14), detectedAt; captured the
 │           │                              instant a rotation notice's old key is found in revokedEdKeys, durable and local, never
@@ -178,7 +185,9 @@ iOS/
 │   │   │                              edPublicKey/xPublicKey → verifyKey/encKey and gained non-optional revokedEdKeys: [String]
 │   │   │                              (base64url) and keyChangedAt: String? (item 10) and cipherSuite: String (item 14) —
 │   │   │                              no optional/fallback decode shim, since
-│   │   │                              Deposplit is pre-launch and local stores are wiped, not migrated
+│   │   │                              Deposplit is pre-launch and local stores are wiped, not migrated; gained
+│   │   │                              nickname: String? (item 15) — free via Codable's synthesized optional decode,
+│   │   │                              no shim needed even for a contacts.json written before this field existed
 │   │   └── LocalKeyConflictRepository.swift  JSON file in Documents/key_conflicts.json (item 10) — structurally identical to
 │   │                                  LocalShareMetadataRepository.swift: in-memory cache, KeyConflictJSON wire DTO, base64url keys,
 │   │                                  ISO-8601 timestamps; fields renamed oldVerifyKey/newVerifyKey/newEncKey (item 14)
@@ -211,12 +220,14 @@ iOS/
 │       │                              Requests"; RequestCard shows an orange "key changed N days ago" Label when keyChangedDaysAgo is set
 │       ├── contacts/
 │       │   ├── ContactsViewModel.swift  listContacts + deleteContact via ContactManagement; markKeyCompromised(_:) (item 10) calls
-│       │   │                        contactManagement.markKeyCompromised(contactId:verifyKey: nil) then reloads (item 14 — param renamed)
+│       │   │                        contactManagement.markKeyCompromised(contactId:verifyKey: nil) then reloads (item 14 — param renamed);
+│       │   │                        rename(_:nickname:) (item 15) calls contactManagement.renameContact then reloads
 │       │   ├── ContactsView.swift    List + delete + add via QR or manual entry; per-row "Relink (Key Changed)" context-menu action (item 8);
 │       │   │                        a red exclamationmark.shield.fill badge when !contact.revokedEdKeys.isEmpty, a destructive
 │       │   │                        "Mark Key Compromised" context-menu action, and a confirmationDialog explaining the consequence
-│       │   │                        before flagging (item 10)
-│       │   ├── AddContactViewModel.swift  addManually via ContactManagement
+│       │   │                        before flagging (item 10); a nickname subtitle line, a "Rename" context-menu action, and a
+│       │   │                        renameTarget-driven .alert with a bound TextField (item 15)
+│       │   ├── AddContactViewModel.swift  addManually via ContactManagement; an optional "Nickname (optional)" field (item 15)
 │       │   ├── AddContactView.swift
 │       │   └── RelinkContactView.swift + RelinkContactViewModel.swift  (item 8) Scans a re-presented QR code, calls
 │       │                              contactManagement.updateContact then shareManagement.pushRecoveryMetadata; distinct

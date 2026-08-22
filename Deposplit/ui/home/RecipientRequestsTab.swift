@@ -47,6 +47,7 @@ struct RecipientRequestsTab: View {
                                 RequestCard(
                                     request: request,
                                     senderName: viewModel.senderName(for: request),
+                                    senderSubtitle: viewModel.senderSubtitle(for: request),
                                     keyChangedDaysAgo: viewModel.keyChangedDaysAgo(for: request),
                                     isResponding: viewModel.respondingTo == request.id,
                                     onApprove: { Task { await viewModel.respond(to: request, approve: true) } },
@@ -64,6 +65,8 @@ struct RecipientRequestsTab: View {
 private struct RequestCard: View {
     let request: ShareRequest
     let senderName: String
+    // Item 15 — the sender's pseudonym, shown only when senderName above is actually a nickname.
+    let senderSubtitle: String?
     let keyChangedDaysAgo: Int?
     let isResponding: Bool
     let onApprove: () -> Void
@@ -82,6 +85,9 @@ private struct RequestCard: View {
                     .foregroundStyle(.white)
             }
             Text("From: \(senderName)").font(.caption).foregroundStyle(.secondary)
+            if let subtitle = senderSubtitle {
+                Text(subtitle).font(.caption).foregroundStyle(.secondary)
+            }
 
             // Item 10's retrieve-approval hardening — the attack signature is key change
             // followed by a quick retrieval request, so nudge toward a fresh out-of-band check.

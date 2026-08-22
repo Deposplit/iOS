@@ -61,6 +61,9 @@ final class LocalContactRepository: ContactRepository {
         let heartbeatEmissionOptedOut: Bool
         // Item 14 — same "no back-compat shim" precedent as above.
         let cipherSuite: CipherSuite
+        // Item 15 — Optional, so Codable's synthesized decode already treats a missing key as
+        // nil for free; no shim needed even for a contacts.json written before this field existed.
+        let nickname: String?
     }
 
     private func load() throws -> [Contact] {
@@ -85,7 +88,8 @@ final class LocalContactRepository: ContactRepository {
                 heartbeatOptedOutAt: json.heartbeatOptedOutAt?.parseISO8601(),
                 lastHeartbeatSentAt: json.lastHeartbeatSentAt?.parseISO8601(),
                 heartbeatEmissionOptedOut: json.heartbeatEmissionOptedOut,
-                cipherSuite: json.cipherSuite
+                cipherSuite: json.cipherSuite,
+                nickname: json.nickname
             )
         }
     }
@@ -106,7 +110,8 @@ final class LocalContactRepository: ContactRepository {
                 heartbeatOptedOutAt: c.heartbeatOptedOutAt.map { _localISO8601.string(from: $0) },
                 lastHeartbeatSentAt: c.lastHeartbeatSentAt.map { _localISO8601.string(from: $0) },
                 heartbeatEmissionOptedOut: c.heartbeatEmissionOptedOut,
-                cipherSuite: c.cipherSuite
+                cipherSuite: c.cipherSuite,
+                nickname: c.nickname
             )
         }
         let data = try JSONEncoder().encode(items)

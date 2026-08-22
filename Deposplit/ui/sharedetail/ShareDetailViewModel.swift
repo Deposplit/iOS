@@ -32,12 +32,12 @@ final class ShareDetailViewModel {
 
     var shareLabel: String { secret.label }
     var recipientName: String {
-        allContacts.first(where: { $0.id == share.contactId })?.pseudonym
+        allContacts.first(where: { $0.id == share.contactId })?.displayName
             ?? String(localized: "Unknown contact")
     }
 
     func contactName(_ id: UUID) -> String {
-        allContacts.first(where: { $0.id == id })?.pseudonym ?? String(localized: "Unknown contact")
+        allContacts.first(where: { $0.id == id })?.displayName ?? String(localized: "Unknown contact")
     }
 
     func load() async {

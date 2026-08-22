@@ -34,6 +34,7 @@ struct DistributedTab: View {
                             isExpanded: expandedSecretId == group.id,
                             isRequestingAll: requestingAllIds.contains(group.id),
                             contactName: { contactId in contactName(for: contactId) },
+                            contactSubtitle: { contactId in contactSubtitle(for: contactId) },
                             onToggle: {
                                 expandedSecretId = expandedSecretId == group.id ? nil : group.id
                             },
@@ -64,7 +65,13 @@ struct DistributedTab: View {
     }
 
     private func contactName(for contactId: UUID) -> String {
-        contacts.first(where: { $0.id == contactId })?.pseudonym ?? String(localized: "Unknown contact")
+        contacts.first(where: { $0.id == contactId })?.displayName ?? String(localized: "Unknown contact")
+    }
+
+    // Item 15 — the contact's pseudonym, shown as a secondary line, but only when contactName
+    // above is actually a nickname; nil otherwise.
+    private func contactSubtitle(for contactId: UUID) -> String? {
+        contacts.first(where: { $0.id == contactId }).flatMap { $0.nickname != nil ? $0.pseudonym : nil }
     }
 }
 
@@ -73,6 +80,7 @@ private struct SecretGroupRow: View {
     let isExpanded: Bool
     let isRequestingAll: Bool
     let contactName: (UUID) -> String
+    let contactSubtitle: (UUID) -> String?
     let onToggle: () -> Void
     let onHolderTap: (HolderStatus) -> Void
     let onRequestAll: () -> Void
@@ -108,6 +116,9 @@ private struct SecretGroupRow: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(contactName(holder.contactId))
+                                if let subtitle = contactSubtitle(holder.contactId) {
+                                    Text(subtitle).font(.caption2).foregroundStyle(.secondary)
+                                }
                                 // Item 12 — early nudge, surfaced before the holder actually
                                 // drops out of n_live.
                                 if holder.isGettingStale {

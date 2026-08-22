@@ -28,7 +28,7 @@ public final class ContactService: ContactManagement {
         contactRepository.getAll()
     }
 
-    public func addManually(pseudonym: String, verifyKey: Data, encKey: Data, verificationLevel: VerificationLevel, relayBaseUrl: String?) throws {
+    public func addManually(pseudonym: String, verifyKey: Data, encKey: Data, verificationLevel: VerificationLevel, relayBaseUrl: String?, nickname: String?) throws {
         let name = pseudonym.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { throw ContactError.blankPseudonym }
         // Manual entry has no wire-carried suite info — only one suite exists to assume.
@@ -48,11 +48,12 @@ public final class ContactService: ContactManagement {
             verifiedAt: now,
             addedAt: now,
             relayBaseUrl: relayBaseUrl,
-            cipherSuite: cipherSuite
+            cipherSuite: cipherSuite,
+            nickname: Self.normalizeNickname(nickname)
         ))
     }
 
-    public func addFromQr(pseudonym: String, verifyKey: Data, encKey: Data, cipherSuite: CipherSuite, verificationLevel: VerificationLevel, relayBaseUrl: String?) throws {
+    public func addFromQr(pseudonym: String, verifyKey: Data, encKey: Data, cipherSuite: CipherSuite, verificationLevel: VerificationLevel, relayBaseUrl: String?, nickname: String?) throws {
         let name = pseudonym.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { throw ContactError.blankPseudonym }
         guard verifyKey.count == cipherSuite.verifyKeyLength else { throw ContactError.invalidKeySize }
@@ -67,7 +68,8 @@ public final class ContactService: ContactManagement {
             verifiedAt: now,
             addedAt: now,
             relayBaseUrl: relayBaseUrl,
-            cipherSuite: cipherSuite
+            cipherSuite: cipherSuite,
+            nickname: Self.normalizeNickname(nickname)
         ))
     }
 
@@ -95,7 +97,31 @@ public final class ContactService: ContactManagement {
             heartbeatOptedOutAt: existing.heartbeatOptedOutAt,
             lastHeartbeatSentAt: existing.lastHeartbeatSentAt,
             heartbeatEmissionOptedOut: existing.heartbeatEmissionOptedOut,
-            cipherSuite: resolvedSuite
+            cipherSuite: resolvedSuite,
+            nickname: existing.nickname
+        ))
+    }
+
+    /// Item 15 — deliberately separate from `updateContact`: never touches keys, cipherSuite,
+    /// verificationLevel, verifiedAt, or keyChangedAt. Pass nil to clear an existing nickname.
+    public func renameContact(contactId: UUID, nickname: String?) throws {
+        guard let existing = contactRepository.getById(contactId) else { throw ContactError.contactNotFound }
+        contactRepository.save(Contact(
+            id: existing.id,
+            pseudonym: existing.pseudonym,
+            verifyKey: existing.verifyKey,
+            encKey: existing.encKey,
+            verificationLevel: existing.verificationLevel,
+            verifiedAt: existing.verifiedAt,
+            addedAt: existing.addedAt,
+            relayBaseUrl: existing.relayBaseUrl,
+            revokedEdKeys: existing.revokedEdKeys,
+            keyChangedAt: existing.keyChangedAt,
+            heartbeatOptedOutAt: existing.heartbeatOptedOutAt,
+            lastHeartbeatSentAt: existing.lastHeartbeatSentAt,
+            heartbeatEmissionOptedOut: existing.heartbeatEmissionOptedOut,
+            cipherSuite: existing.cipherSuite,
+            nickname: Self.normalizeNickname(nickname)
         ))
     }
 
@@ -121,7 +147,15 @@ public final class ContactService: ContactManagement {
             heartbeatOptedOutAt: existing.heartbeatOptedOutAt,
             lastHeartbeatSentAt: existing.lastHeartbeatSentAt,
             heartbeatEmissionOptedOut: existing.heartbeatEmissionOptedOut,
-            cipherSuite: existing.cipherSuite
+            cipherSuite: existing.cipherSuite,
+            nickname: existing.nickname
         ))
+    }
+
+    // Item 15 — trim, then collapse blank to nil. Lives here (not the UI layer) so every
+    // caller — UI, tests, a future relink flow — gets consistent normalization for free.
+    private static func normalizeNickname(_ nickname: String?) -> String? {
+        guard let trimmed = nickname?.trimmingCharacters(in: .whitespaces), !trimmed.isEmpty else { return nil }
+        return trimmed
     }
 }

@@ -4,11 +4,13 @@ public protocol ContactManagement {
     func listContacts() throws -> [Contact]
     /// `addManually` has no `cipherSuite` parameter — manual entry has no wire-carried suite
     /// info, so `ContactService` pins the contact to `CipherSuite.current` (the only suite there
-    /// is to assume today).
-    func addManually(pseudonym: String, verifyKey: Data, encKey: Data, verificationLevel: VerificationLevel, relayBaseUrl: String?) throws
+    /// is to assume today). `nickname` (item 15) lets a nickname be set at add-time rather than
+    /// only via a later `renameContact` call; it is purely local and never transmitted anywhere.
+    func addManually(pseudonym: String, verifyKey: Data, encKey: Data, verificationLevel: VerificationLevel, relayBaseUrl: String?, nickname: String?) throws
     /// `cipherSuite` (item 14) is the signing + key-agreement algorithm pairing asserted by the
-    /// scanned QR payload — self-describing keys, not assumed.
-    func addFromQr(pseudonym: String, verifyKey: Data, encKey: Data, cipherSuite: CipherSuite, verificationLevel: VerificationLevel, relayBaseUrl: String?) throws
+    /// scanned QR payload — self-describing keys, not assumed. `nickname` (item 15) is not
+    /// sourced from the QR payload either — it is purely local — so callers typically pass nil.
+    func addFromQr(pseudonym: String, verifyKey: Data, encKey: Data, cipherSuite: CipherSuite, verificationLevel: VerificationLevel, relayBaseUrl: String?, nickname: String?) throws
     /// Updates an existing contact **in place**, preserving `contactId` — never delete-and-re-add,
     /// which would mint a fresh id and orphan any `HeldShare`/`ShareMetadata` rows anchored to it.
     /// See deposplit.com/CLAUDE.md "What is next" item 8. `verifyKey`/`encKey` are nil to
@@ -19,6 +21,10 @@ public protocol ContactManagement {
     /// rule as a key change — an algorithm change is still "continuity of key control, not a
     /// personhood assurance," the same reasoning item 10 already applies to a plain key rotation.
     func updateContact(contactId: UUID, verifyKey: Data?, encKey: Data?, newCipherSuite: CipherSuite?, verificationLevel: VerificationLevel?) throws
+    /// Item 15 — deliberately separate from `updateContact`: a rename is not an identity change,
+    /// so it must never trigger `updateContact`'s `changingIdentity` gate (which forces
+    /// re-choosing the verification level). Pass `nil` to clear an existing nickname.
+    func renameContact(contactId: UUID, nickname: String?) throws
     func deleteContact(contactId: UUID) throws
 
     /// Marks a specific Ed25519 key as compromised for this contact (item 10) — the local,

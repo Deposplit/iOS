@@ -54,13 +54,20 @@ struct DepositFormContent<LeadingToolbar: ToolbarContent>: View {
                     Text("No contacts added yet.").foregroundStyle(.secondary)
                 } else {
                     ForEach(viewModel.allContacts) { contact in
-                        Toggle(contact.pseudonym, isOn: Binding(
+                        Toggle(isOn: Binding(
                             get: { viewModel.selectedContacts.contains(contact.id) },
                             set: { selected in
                                 if selected { viewModel.selectedContacts.insert(contact.id) }
                                 else { viewModel.selectedContacts.remove(contact.id) }
                             }
-                        ))
+                        )) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(contact.displayName)
+                                if contact.nickname != nil {
+                                    Text(contact.pseudonym).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
                     }
                 }
             }

@@ -35,6 +35,10 @@ struct AddContactView: View {
                         .keyboardType(.URL)
                         .font(.system(.body, design: .monospaced))
                 }
+                Section("Nickname (optional)") {
+                    TextField("Nickname", text: $viewModel.nicknameInput)
+                        .autocorrectionDisabled()
+                }
                 Section {
                     ForEach(viewModel.selectableLevels, id: \.self) { level in
                         Button {

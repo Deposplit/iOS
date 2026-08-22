@@ -453,7 +453,7 @@ public final class ShareService: ShareManagement {
                 verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
                 relayBaseUrl: contact.relayBaseUrl, revokedEdKeys: contact.revokedEdKeys, keyChangedAt: contact.keyChangedAt,
                 heartbeatOptedOutAt: contact.heartbeatOptedOutAt, lastHeartbeatSentAt: now, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut,
-                cipherSuite: contact.cipherSuite
+                cipherSuite: contact.cipherSuite, nickname: contact.nickname
             ))
         }
     }
@@ -478,7 +478,7 @@ public final class ShareService: ShareManagement {
                         verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
                         relayBaseUrl: contact.relayBaseUrl, revokedEdKeys: contact.revokedEdKeys, keyChangedAt: contact.keyChangedAt,
                         heartbeatOptedOutAt: notice.createdAt, lastHeartbeatSentAt: contact.lastHeartbeatSentAt, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut,
-                        cipherSuite: contact.cipherSuite
+                        cipherSuite: contact.cipherSuite, nickname: contact.nickname
                     ))
                     continue
                 }
@@ -488,7 +488,7 @@ public final class ShareService: ShareManagement {
                         verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
                         relayBaseUrl: contact.relayBaseUrl, revokedEdKeys: contact.revokedEdKeys, keyChangedAt: contact.keyChangedAt,
                         heartbeatOptedOutAt: nil, lastHeartbeatSentAt: contact.lastHeartbeatSentAt, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut,
-                        cipherSuite: contact.cipherSuite
+                        cipherSuite: contact.cipherSuite, nickname: contact.nickname
                     ))
                 }
                 for secretId in notice.secretIds {
@@ -513,7 +513,7 @@ public final class ShareService: ShareManagement {
             // Reset so the changed preference reaches the contact on the very next poll rather
             // than waiting out the emission interval.
             heartbeatOptedOutAt: contact.heartbeatOptedOutAt, lastHeartbeatSentAt: nil, heartbeatEmissionOptedOut: optedOut,
-            cipherSuite: contact.cipherSuite
+            cipherSuite: contact.cipherSuite, nickname: contact.nickname
         ))
     }
 

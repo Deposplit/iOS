@@ -18,6 +18,8 @@ struct ContactsView: View {
     @State private var showQrScanner = false
     @State private var relinkTarget: Contact?
     @State private var compromiseTarget: Contact?
+    @State private var renameTarget: Contact?
+    @State private var renameInput: String = ""
     @Environment(\.dismiss) private var dismiss
 
     private let contactManagement: any ContactManagement
@@ -40,7 +42,7 @@ struct ContactsView: View {
                         ForEach(viewModel.contacts) { contact in
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack {
-                                    Text(contact.pseudonym).font(.headline)
+                                    Text(contact.displayName).font(.headline)
                                     if contact.verificationLevel > .veryLow {
                                         Text(contact.verificationLevel.displayName)
                                             .font(.caption2.weight(.semibold))
@@ -60,11 +62,25 @@ struct ContactsView: View {
                                             .font(.caption)
                                     }
                                 }
+                                if contact.nickname != nil {
+                                    // The only name value that ever left the counterparty's
+                                    // device — kept visible so it can actually be cross-checked.
+                                    // See CLAUDE.md item 15.
+                                    Text(contact.pseudonym)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                                 Text(contact.verifyKey.base64URLEncoded.prefix(16) + "…")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                             .contextMenu {
+                                Button {
+                                    renameInput = contact.nickname ?? ""
+                                    renameTarget = contact
+                                } label: {
+                                    Label("Rename", systemImage: "pencil")
+                                }
                                 Button {
                                     relinkTarget = contact
                                 } label: {
@@ -135,7 +151,18 @@ struct ContactsView: View {
                 }
                 Button("Cancel", role: .cancel) { compromiseTarget = nil }
             } message: {
-                Text("Only do this if you have an out-of-band reason to believe \(compromiseTarget?.pseudonym ?? "this contact")'s key was stolen. Deposplit will refuse to auto-accept any future key rotation claiming continuity from it — you'll need to verify them fresh, in person or over a trusted channel, to reconnect.")
+                Text("Only do this if you have an out-of-band reason to believe \(compromiseTarget?.displayName ?? "this contact")'s key was stolen. Deposplit will refuse to auto-accept any future key rotation claiming continuity from it — you'll need to verify them fresh, in person or over a trusted channel, to reconnect.")
+            }
+            .alert(
+                "Rename contact",
+                isPresented: Binding(get: { renameTarget != nil }, set: { if !$0 { renameTarget = nil } })
+            ) {
+                TextField("Nickname", text: $renameInput)
+                Button("Save") {
+                    if let contact = renameTarget { viewModel.rename(contact, nickname: renameInput) }
+                    renameTarget = nil
+                }
+                Button("Cancel", role: .cancel) { renameTarget = nil }
             }
         }
     }

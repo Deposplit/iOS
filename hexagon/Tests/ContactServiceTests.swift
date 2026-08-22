@@ -109,7 +109,7 @@ private func makeContact() -> Contact {
     let svc = ContactService(contactRepository: repo)
 
     do {
-        try svc.addFromQr(pseudonym: "eve", verifyKey: Data(repeating: 0x01, count: 16), encKey: Data(repeating: 0x02, count: 32), cipherSuite: .current, verificationLevel: .veryHigh, relayBaseUrl: nil)
+        try svc.addFromQr(pseudonym: "eve", verifyKey: Data(repeating: 0x01, count: 16), encKey: Data(repeating: 0x02, count: 32), cipherSuite: .current, verificationLevel: .veryHigh, relayBaseUrl: nil, nickname: nil)
         Issue.record("expected ContactError.invalidKeySize")
     } catch ContactError.invalidKeySize {
         // expected
@@ -120,7 +120,91 @@ private func makeContact() -> Contact {
     let repo = InMemoryContactRepositoryForContactServiceTest()
     let svc = ContactService(contactRepository: repo)
 
-    try svc.addFromQr(pseudonym: "eve", verifyKey: Data(repeating: 0x01, count: 32), encKey: Data(repeating: 0x02, count: 32), cipherSuite: .current, verificationLevel: .veryHigh, relayBaseUrl: nil)
+    try svc.addFromQr(pseudonym: "eve", verifyKey: Data(repeating: 0x01, count: 32), encKey: Data(repeating: 0x02, count: 32), cipherSuite: .current, verificationLevel: .veryHigh, relayBaseUrl: nil, nickname: nil)
 
     #expect(repo.getAll().first?.cipherSuite == .current)
+}
+
+// Item 15 ("local contact nicknames") — renameContact never touches
+// verificationLevel/keyChangedAt/verifiedAt/keys, matching CLAUDE.md's requirement that a
+// rename is not an identity change.
+
+@Test func renameContactSetsANicknameWithoutTouchingKeysLevelOrKeyChangedAt() throws {
+    let repo = InMemoryContactRepositoryForContactServiceTest()
+    let svc = ContactService(contactRepository: repo)
+    let original = makeContact()
+    repo.save(original)
+
+    try svc.renameContact(contactId: original.id, nickname: "Coworker Paul")
+
+    let updated = repo.getById(original.id)
+    #expect(updated?.nickname == "Coworker Paul")
+    #expect(updated?.pseudonym == original.pseudonym)
+    #expect(updated?.verifyKey == original.verifyKey)
+    #expect(updated?.encKey == original.encKey)
+    #expect(updated?.verificationLevel == original.verificationLevel)
+    #expect(updated?.verifiedAt == original.verifiedAt)
+    #expect(updated?.keyChangedAt == nil)
+}
+
+@Test func renameContactTrimsAndCollapsesABlankNicknameToNil() throws {
+    let repo = InMemoryContactRepositoryForContactServiceTest()
+    let svc = ContactService(contactRepository: repo)
+    let original = makeContact()
+    repo.save(original)
+
+    try svc.renameContact(contactId: original.id, nickname: "  Paul  ")
+    #expect(repo.getById(original.id)?.nickname == "Paul")
+
+    try svc.renameContact(contactId: original.id, nickname: "   ")
+    #expect(repo.getById(original.id)?.nickname == nil)
+}
+
+@Test func renameContactCanClearAnExistingNickname() throws {
+    let repo = InMemoryContactRepositoryForContactServiceTest()
+    let svc = ContactService(contactRepository: repo)
+    var original = makeContact()
+    original = Contact(
+        id: original.id, pseudonym: original.pseudonym, verifyKey: original.verifyKey, encKey: original.encKey,
+        verificationLevel: original.verificationLevel, verifiedAt: original.verifiedAt, addedAt: original.addedAt,
+        nickname: "Paul"
+    )
+    repo.save(original)
+
+    try svc.renameContact(contactId: original.id, nickname: nil)
+
+    #expect(repo.getById(original.id)?.nickname == nil)
+}
+
+@Test func renameContactThrowsForAnUnknownContactId() throws {
+    let repo = InMemoryContactRepositoryForContactServiceTest()
+    let svc = ContactService(contactRepository: repo)
+
+    do {
+        try svc.renameContact(contactId: UUID(), nickname: "Paul")
+        Issue.record("expected ContactError.contactNotFound")
+    } catch ContactError.contactNotFound {
+        // expected
+    }
+}
+
+@Test func addManuallyAndAddFromQrTrimAndNormalizeTheNickname() throws {
+    let repo = InMemoryContactRepositoryForContactServiceTest()
+    let svc = ContactService(contactRepository: repo)
+
+    try svc.addManually(pseudonym: "bob", verifyKey: Data(repeating: 0x01, count: 32), encKey: Data(repeating: 0x02, count: 32), verificationLevel: .low, relayBaseUrl: nil, nickname: "  Bobby  ")
+    try svc.addFromQr(pseudonym: "carol", verifyKey: Data(repeating: 0x03, count: 32), encKey: Data(repeating: 0x04, count: 32), cipherSuite: .current, verificationLevel: .veryHigh, relayBaseUrl: nil, nickname: "   ")
+
+    let contacts = repo.getAll()
+    #expect(contacts.first { $0.pseudonym == "bob" }?.nickname == "Bobby")
+    #expect(contacts.first { $0.pseudonym == "carol" }?.nickname == nil)
+}
+
+@Test func addManuallyDefaultsTheNicknameToNilWhenOmitted() throws {
+    let repo = InMemoryContactRepositoryForContactServiceTest()
+    let svc = ContactService(contactRepository: repo)
+
+    try svc.addManually(pseudonym: "bob", verifyKey: Data(repeating: 0x01, count: 32), encKey: Data(repeating: 0x02, count: 32), verificationLevel: .low, relayBaseUrl: nil, nickname: nil)
+
+    #expect(repo.getAll().first?.nickname == nil)
 }

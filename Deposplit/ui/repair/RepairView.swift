@@ -69,7 +69,12 @@ struct RepairView: View {
                 } else {
                     ForEach(viewModel.holderStatuses) { holder in
                         HStack {
-                            Text(holder.pseudonym)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(holder.pseudonym)
+                                if let subtitle = holder.subtitle {
+                                    Text(subtitle).font(.caption2).foregroundStyle(.secondary)
+                                }
+                            }
                             Spacer()
                             Text(holder.requestState?.label ?? "Not requested")
                                 .font(.caption)

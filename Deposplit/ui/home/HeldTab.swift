@@ -17,6 +17,9 @@ struct HeldTab: View {
                             Text("From: \(senderName(for: share))")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                            if let subtitle = senderSubtitle(for: share) {
+                                Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                            }
                             Text(share.createdAt.formatted(date: .abbreviated, time: .omitted))
                                 .font(.caption2)
                                 .foregroundStyle(.tertiary)
@@ -28,7 +31,14 @@ struct HeldTab: View {
     }
 
     private func senderName(for share: HeldShare) -> String {
-        contacts.first(where: { $0.id == share.contactId })?.pseudonym
+        contacts.first(where: { $0.id == share.contactId })?.displayName
             ?? share.senderPseudonym
+    }
+
+    // Item 15 — the contact's pseudonym, shown as a secondary line, but only when senderName
+    // above is actually a nickname; nil otherwise (including when there's no local Contact at
+    // all, in which case senderName already falls back to HeldShare's own senderPseudonym).
+    private func senderSubtitle(for share: HeldShare) -> String? {
+        contacts.first(where: { $0.id == share.contactId }).flatMap { $0.nickname != nil ? $0.pseudonym : nil }
     }
 }

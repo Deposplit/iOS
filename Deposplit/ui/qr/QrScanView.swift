@@ -87,7 +87,7 @@ final class QrScanViewModel {
             // scan flow can claim (CLAUDE.md item 6). A remote/video-call scan is a weaker claim,
             // but there's no UI step here to downgrade it yet — the user can always edit the
             // contact's level later once item 6's on-device editing UI exists.
-            try contactManagement.addFromQr(pseudonym: payload.pseudonym, verifyKey: verifyKey, encKey: encKey, cipherSuite: cipherSuite, verificationLevel: .veryHigh, relayBaseUrl: payload.relay)
+            try contactManagement.addFromQr(pseudonym: payload.pseudonym, verifyKey: verifyKey, encKey: encKey, cipherSuite: cipherSuite, verificationLevel: .veryHigh, relayBaseUrl: payload.relay, nickname: nil)
             hasScanned = true
             didSave = true
         } catch {

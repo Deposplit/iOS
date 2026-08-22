@@ -22,7 +22,7 @@ struct RelinkContactView: View {
                 if let level = viewModel.pendingLevel {
                     Form {
                         Section {
-                            Text("Scanned new keys for **\(viewModel.contact.pseudonym)**.")
+                            Text("Scanned new keys for **\(viewModel.contact.displayName)**.")
                         } header: {
                             Text("New keys")
                         } footer: {
@@ -68,7 +68,7 @@ struct RelinkContactView: View {
                                           description: Text("Camera access is required to scan QR codes."))
                 }
             }
-            .navigationTitle("Relink \(viewModel.contact.pseudonym)")
+            .navigationTitle("Relink \(viewModel.contact.displayName)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

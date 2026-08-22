@@ -8,6 +8,7 @@ final class AddContactViewModel {
     var edKeyInput = ""
     var xKeyInput = ""
     var relayBaseUrlInput = ""
+    var nicknameInput = ""
     var verificationLevel: VerificationLevel = .veryLow
     var error: String?
 
@@ -31,8 +32,16 @@ final class AddContactViewModel {
               x.count == 32
             else { error = String(localized: "Invalid encryption key (expected 32 bytes, base64url)."); return false }
         let trimmedRelay = relayBaseUrlInput.trimmingCharacters(in: .whitespaces)
+        let trimmedNickname = nicknameInput.trimmingCharacters(in: .whitespaces)
         do {
-            try contactManagement.addManually(pseudonym: pseudonym, verifyKey: ed, encKey: x, verificationLevel: verificationLevel, relayBaseUrl: trimmedRelay.isEmpty ? nil : trimmedRelay)
+            try contactManagement.addManually(
+                pseudonym: pseudonym,
+                verifyKey: ed,
+                encKey: x,
+                verificationLevel: verificationLevel,
+                relayBaseUrl: trimmedRelay.isEmpty ? nil : trimmedRelay,
+                nickname: trimmedNickname.isEmpty ? nil : trimmedNickname
+            )
             return true
         } catch {
             self.error = error.localizedDescription

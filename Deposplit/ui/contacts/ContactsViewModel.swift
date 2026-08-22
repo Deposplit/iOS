@@ -40,4 +40,11 @@ final class ContactsViewModel {
         try? shareManagement.setHeartbeatEmissionOptedOut(contactId: contact.id, optedOut: !contact.heartbeatEmissionOptedOut)
         load()
     }
+
+    /// Item 15 — purely local disambiguation label; never touches keys/level/cipherSuite. Pass
+    /// nil (or a blank string, normalized service-side) to clear an existing nickname.
+    func rename(_ contact: Contact, nickname: String?) {
+        try? contactManagement.renameContact(contactId: contact.id, nickname: nickname)
+        load()
+    }
 }

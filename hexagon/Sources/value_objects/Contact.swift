@@ -82,6 +82,11 @@ public struct Contact: Identifiable, Equatable, Sendable, Codable {
     /// today, not a placeholder) — `addFromQr`/`updateContact` pass the value actually asserted
     /// by the contact's QR payload or rotation notice.
     public let cipherSuite: CipherSuite
+    /// Item 15 — a purely local, optional label to disambiguate contacts who share the same
+    /// sender-asserted pseudonym (e.g. two different "Paul"s). Never transmitted anywhere — not
+    /// in the QR/link payload, any relay row, or any rotation/heartbeat/inventory push. Trimmed
+    /// and blank-collapsed-to-nil by `ContactService` before it ever reaches this field.
+    public let nickname: String?
 
     public init(
         id: UUID, pseudonym: String,
@@ -93,7 +98,8 @@ public struct Contact: Identifiable, Equatable, Sendable, Codable {
         heartbeatOptedOutAt: Date? = nil,
         lastHeartbeatSentAt: Date? = nil,
         heartbeatEmissionOptedOut: Bool = false,
-        cipherSuite: CipherSuite = .current
+        cipherSuite: CipherSuite = .current,
+        nickname: String? = nil
     ) {
         self.id = id
         self.pseudonym = pseudonym
@@ -109,5 +115,10 @@ public struct Contact: Identifiable, Equatable, Sendable, Codable {
         self.lastHeartbeatSentAt = lastHeartbeatSentAt
         self.heartbeatEmissionOptedOut = heartbeatEmissionOptedOut
         self.cipherSuite = cipherSuite
+        self.nickname = nickname
     }
+
+    /// Item 15 — the display-precedence policy ("nickname when set, else pseudonym") lives once
+    /// on the domain object rather than being re-derived at every one of the app's render sites.
+    public var displayName: String { nickname ?? pseudonym }
 }

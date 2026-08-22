@@ -21,6 +21,9 @@ final class RepairViewModel {
         let contactId: UUID
         let pseudonym: String
         let requestState: ShareRequestState?
+        // Item 15 — the contact's actual pseudonym, shown as a secondary line, but only when
+        // `pseudonym` above is actually a nickname; nil otherwise.
+        var subtitle: String?
         var id: UUID { contactId }
     }
 
@@ -53,7 +56,7 @@ final class RepairViewModel {
     var readyToReconstruct: Bool { approvedCount >= secret.k }
 
     func contactName(_ id: UUID) -> String {
-        allContacts.first(where: { $0.id == id })?.pseudonym ?? String(localized: "Unknown contact")
+        allContacts.first(where: { $0.id == id })?.displayName ?? String(localized: "Unknown contact")
     }
 
     func load() async {
@@ -72,8 +75,9 @@ final class RepairViewModel {
                     .max { $0.requestedAt < $1.requestedAt }
                 return HolderRetrievalStatus(
                     contactId: share.contactId,
-                    pseudonym: contact?.pseudonym ?? String(localized: "Unknown contact"),
-                    requestState: latestRetrieval?.state
+                    pseudonym: contact?.displayName ?? String(localized: "Unknown contact"),
+                    requestState: latestRetrieval?.state,
+                    subtitle: contact.flatMap { $0.nickname != nil ? $0.pseudonym : nil }
                 )
             }
             approvedCount = requests.filter {
