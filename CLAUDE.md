@@ -754,6 +754,16 @@ New `ui/biometric/BiometricGatedButton.swift` — a reusable SwiftUI view wrappi
 
 **Deliberately no `SKIP_BIOMETRIC`-equivalent build flag**, unlike Android — Xcode Simulator has first-class built-in Face ID/Touch ID enrollment simulation (Features → Face ID/Touch ID → Enrolled, then Device → Face ID → Matching/Non-matching Face) covering the same "test without real biometric hardware" need without an app-code bypass switch; a simulator left without enrolled biometrics just shows the unavailable-state message, same as a real device would.
 
+This precedent is biometric-specific and doesn't extend to `deposplit.com/CLAUDE.md`'s item 5 (freemium): once that item gates the Settings screen's default-relay editor behind `isPremium()`, iOS *will* need a debug-only fake-Premium `PurchaseRepository` bypass to keep local-relay testing possible (see the "Pointing at a local Web app/service" README section and `RelayDefaults.swift`) — there's no Simulator-native equivalent for a purchase-entitlement check the way there is for biometric enrollment. Android's `Android/CLAUDE.md` documents the same forward-looking note next to `SKIP_BIOMETRIC`; tracked in `deposplit.com/TODO.md` item 5.
+
 `INFOPLIST_KEY_NSFaceIDUsageDescription` added to both build configurations in `project.pbxproj` (Face ID requires an Info.plist usage description; Touch ID does not) — same `GENERATE_INFOPLIST_FILE`/`INFOPLIST_KEY_*` mechanism the existing `NSCameraUsageDescription` entry already uses.
 
 `xcodebuild build` succeeds; `swift test` (hexagon, unaffected) 73/73. `xcodebuild test` against a local simulator hits a pre-existing machine-level code-signing issue (unsigned `DeposplitTests.xctest` dylib) unrelated to this change, so the app-target test run itself remains unverified end-to-end on this machine.
+
+---
+
+## DONE: Complete German localizations (2026-08-22)
+
+Xcode auto-extracts new source strings into `Deposplit/Localizable.xcstrings` as UI work adds them, leaving each one's `"de"` `stringUnit` empty until someone fills it in by hand. All strings the app had accumulated through item 14 were translated, reusing the terminology conventions already established in the file (e.g. "Abrufanfrage" for retrieval request, "Inhaber" for holder, "Bestand" for the `inventory` transaction type, informal `du` address throughout).
+
+**Known limitation, not fixable from the strings file alone:** `"%@'s key changed %lld day%@ ago — verify fresh before approving"` (used on the retrieve-approval "key changed N days ago" indicator, item 10) passes an English pluralization suffix (`"s"`/`""`) as a raw `%@` argument from Swift call-site code, rather than using a proper stringsdict/plural rule. German pluralizes "Tag" → "Tage" differently (an "e" suffix, not "s"), so the German translation cannot be grammatically correct for both the singular and plural cases no matter what string is supplied there — the fix needs a code change at the call site (compute a German-appropriate suffix, or better, switch to `String(localized:)` with a proper `.stringsdict`-style plural rule so each language supplies its own pluralization instead of the call site hardcoding English's). Flagged for whoever picks this up next (Claude on macOS or otherwise) as a small follow-up; not blocking, since the sentence still reads correctly modulo the trailing "Tag"/"Tage" distinction.
