@@ -92,7 +92,7 @@ private struct RequestCard: View {
             // Item 10's retrieve-approval hardening — the attack signature is key change
             // followed by a quick retrieval request, so nudge toward a fresh out-of-band check.
             if let days = keyChangedDaysAgo {
-                Label("\(senderName)'s key changed \(days) day\(days == 1 ? "" : "s") ago — verify fresh before approving", systemImage: "exclamationmark.triangle")
+                Label("\(senderName)'s key changed \(days) days ago — verify fresh before approving", systemImage: "exclamationmark.triangle")
                     .font(.caption2)
                     .foregroundStyle(.orange)
             }

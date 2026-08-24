@@ -1,21 +1,43 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "" : {
-
-    },
-    "%@'s key changed %lld day%@ ago — verify fresh before approving" : {
+    "" : {},
+    "%@'s key changed %lld days ago — verify fresh before approving" : {
       "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Schlüssel von %1$@ hat sich vor %2$lld Tag%3$@ geändert — vor der Genehmigung frisch verifizieren"
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%@'s key changed %lld day ago — verify fresh before approving"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%@'s key changed %lld days ago — verify fresh before approving"
+                }
+              }
+            }
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@'s key changed %2$lld day%3$@ ago — verify fresh before approving"
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Der Schlüssel von %@ hat sich vor %lld Tag geändert — vor der Genehmigung frisch verifizieren"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Der Schlüssel von %@ hat sich vor %lld Tagen geändert — vor der Genehmigung frisch verifizieren"
+                }
+              }
+            }
           }
         }
       }
@@ -222,17 +244,6 @@
         }
       }
     },
-    "Contact not found for recipient — cannot decrypt share" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kontakt für Empfänger nicht gefunden – Anteil kann nicht entschlüsselt werden"
-          }
-        }
-      }
-    },
     "Contacts" : {
       "localizations" : {
         "de" : {
@@ -269,17 +280,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Standard-Relay"
-          }
-        }
-      }
-    },
-    "Delete" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Löschen"
           }
         }
       }
@@ -886,17 +886,6 @@
         }
       }
     },
-    "Need at least 2 approved retrieve requests." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mindestens 2 genehmigte Abrufanfragen erforderlich."
-          }
-        }
-      }
-    },
     "New keys" : {
       "localizations" : {
         "de" : {
@@ -1285,6 +1274,16 @@
         }
       }
     },
+    "Repair — Re-deposit" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reparatur — Neu hinterlegen"
+          }
+        }
+      }
+    },
     "Repair complete" : {
       "localizations" : {
         "de" : {
@@ -1361,17 +1360,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abruf"
-          }
-        }
-      }
-    },
-    "Retrieve" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abrufen"
           }
         }
       }
@@ -1467,7 +1455,6 @@
       }
     },
     "Split & Share" : {
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

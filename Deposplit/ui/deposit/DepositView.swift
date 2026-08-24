@@ -32,7 +32,7 @@ struct DepositView: View {
 /// "Split & Share" route; `RepairView` embeds it directly inside its own single `NavigationStack`.
 struct DepositFormContent<LeadingToolbar: ToolbarContent>: View {
     @Bindable var viewModel: DepositViewModel
-    let title: String
+    let title: LocalizedStringKey
     @ToolbarContentBuilder let leadingToolbar: () -> LeadingToolbar
 
     @State private var showWarningConfirmation = false
