@@ -81,7 +81,7 @@ iOS/
 │       │   │                              gained a newCipherSuite param, item 14)
 │       │   ├── ShareRelayResolver.swift   resolve(relayBaseUrl: String?): any ShareRelay — BYOR factory/cache; nil resolves to the device's default relay
 │       │   └── RelaySettings.swift        defaultRelayBaseURL, setDefaultRelayBaseURL — device's runtime-configurable default relay
-│       ├── services/
+│       ├── driving_adapters/
 │       │   ├── IdentityService.swift      Identity + ShareEncryption impl — CryptoKit only, no Security/UserDefaults;
 │       │   │                              generateNewKeyPair/activateKeyPair (item 9) share the same private key-gen
 │       │   │                              helper register() uses, factored out for reuse; encrypt/decrypt prepend/
@@ -340,7 +340,7 @@ swift test --package-path hexagon
 ```
 driving_ports/ShareManagement.swift   ← use-case interface, implemented by ShareService inside the hexagon
 driven_ports/ShareRelay.swift         ← raw relay API, called out by ShareService, implemented by DeposplitApiAdapter
-services/ShareService.swift           ← hexagon service: implements ShareManagement
+driving_adapters/ShareService.swift           ← hexagon service: implements ShareManagement
                                          calls ShareRelay + Identity + ShareRepository + ContactRepository
 ```
 
@@ -385,7 +385,7 @@ public protocol ShareManagement {
 }
 ```
 
-### Step 3 — Create `hexagon/Sources/services/ShareService.swift`
+### Step 3 — Create `hexagon/Sources/driving_adapters/ShareService.swift`
 
 Implements `ShareManagement`. Mirrors `ShareService.kt` / `ShareService.scala` exactly:
 
@@ -445,7 +445,7 @@ Key call-site changes:
 
 ### Step 8 — Update `iOS/CLAUDE.md` project structure table
 
-Update `driving_ports/ShareTransport.swift` → `driving_ports/ShareManagement.swift` and add `driven_ports/ShareRelay.swift` and `services/ShareService.swift` to the package layout.
+Update `driving_ports/ShareTransport.swift` → `driving_ports/ShareManagement.swift` and add `driven_ports/ShareRelay.swift` and `driving_adapters/ShareService.swift` to the package layout.
 
 ---
 
@@ -455,7 +455,7 @@ Update `driving_ports/ShareTransport.swift` → `driving_ports/ShareManagement.s
 
 ```
 driving_ports/ContactManagement.swift   ← use-case interface, implemented by ContactService inside the hexagon
-services/ContactService.swift           ← hexagon service: implements ContactManagement
+driving_adapters/ContactService.swift           ← hexagon service: implements ContactManagement
                                            enforces domain rules; delegates persistence to ContactRepository
 ```
 
@@ -470,7 +470,7 @@ public protocol ContactManagement {
 }
 ```
 
-### Step 2 — Create `hexagon/Sources/services/ContactService.swift`
+### Step 2 — Create `hexagon/Sources/driving_adapters/ContactService.swift`
 
 Implements `ContactManagement`. Mirrors `ContactService.kt` / `ContactService.scala` exactly:
 
@@ -555,7 +555,7 @@ Key call-site changes:
 ### Step 5 — Update `iOS/CLAUDE.md` project structure table
 
 - `driving_ports/ContactManagement.swift` (add)
-- `services/ContactService.swift` (add)
+- `driving_adapters/ContactService.swift` (add)
 
 ---
 
@@ -568,7 +568,7 @@ Target state:
 | Interface | Where | Used by |
 |---|---|---|
 | `Identity` | `driving_ports/` | UI layer + `DeposplitApiAdapter` (`isRegistered`, `register`, `pseudonym`, `edPublicKey`, `xPublicKey`, `sign`) |
-| `ShareEncryption` | `services/` (intra-hexagon) | `ShareService` (`encrypt`, `decrypt`) |
+| `ShareEncryption` | `driving_adapters/` (intra-hexagon) | `ShareService` (`encrypt`, `decrypt`) |
 
 ### Step 1 — Add `sign` to `hexagon/Sources/driving_ports/Identity.swift`
 
@@ -585,7 +585,7 @@ public protocol Identity {
 
 ### Step 2 — Delete `hexagon/Sources/driving_ports/RequestSigner.swift`
 
-### Step 3 — Update `hexagon/Sources/services/IdentityService.swift`
+### Step 3 — Update `hexagon/Sources/driving_adapters/IdentityService.swift`
 
 Remove `RequestSigner` from the conformance list:
 
@@ -595,7 +595,7 @@ class IdentityService: Identity, ShareEncryption { … }
 
 (The `sign` implementation stays — it moves from satisfying `RequestSigner` to satisfying `Identity`.)
 
-### Step 4 — Create `hexagon/Sources/services/ShareEncryption.swift`
+### Step 4 — Create `hexagon/Sources/driving_adapters/ShareEncryption.swift`
 
 `ShareEncryption` is an **intra-hexagon interface** — both its implementer (`IdentityService`) and its consumer (`ShareService`) live in the `services` layer.
 
@@ -606,7 +606,7 @@ protocol ShareEncryption {
 }
 ```
 
-### Step 5 — Update `hexagon/Sources/services/ShareService.swift`
+### Step 5 — Update `hexagon/Sources/driving_adapters/ShareService.swift`
 
 Replace the `identity: any Identity` (or `signer: any RequestSigner`) constructor parameter for encryption with `encryption: any ShareEncryption`; update call sites (`identity.encrypt` / `signer.encrypt` → `encryption.encrypt`, etc.).
 
@@ -631,8 +631,8 @@ let shareManagement: any ShareManagement = ShareService(
 
 - Remove `driving_ports/RequestSigner.swift`
 - Update `driving_ports/Identity.swift` description to include `sign`
-- Update `services/IdentityService.swift` description to remove `RequestSigner`
-- Update `services/ShareEncryption.swift` entry (add if not present)
+- Update `driving_adapters/IdentityService.swift` description to remove `RequestSigner`
+- Update `driving_adapters/ShareEncryption.swift` entry (add if not present)
 - Update `Deposplit/api/DeposplitApiAdapter.swift` description (`via Identity`)
 
 ---
@@ -665,7 +665,7 @@ Add `syncDistributed()` to the sender section:
 func syncDistributed() throws
 ```
 
-### Step 3 — Update `hexagon/Sources/services/ShareService.swift`
+### Step 3 — Update `hexagon/Sources/driving_adapters/ShareService.swift`
 
 Add `shareMetadataRepository: any ShareMetadataRepository` constructor parameter. Apply the same four changes as in `ShareService.kt`:
 
@@ -739,7 +739,7 @@ if homeViewModel.syncWarning {
 ### Step 8 — Update `iOS/CLAUDE.md` project structure table
 
 - `driven_ports/ShareMetadataRepository.swift` (add — local store of distributed `ShareMetadata`)
-- `services/ShareService.swift` description: add `ShareMetadataRepository` dependency
+- `driving_adapters/ShareService.swift` description: add `ShareMetadataRepository` dependency
 - `shares/LocalShareMetadataRepository.swift` (add — `Documents/distributed_shares.json`)
 - `home/HomeViewModel.swift` description: note two-phase load + `syncWarning`
 
