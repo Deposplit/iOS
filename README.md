@@ -1,404 +1,122 @@
 # Deposplit — iOS
 
-SwiftUI iOS app for [Deposplit](https://github.com/Deposplit/deposplit.com): a secret-sharing app built on Shamir's Secret Sharing (SSS). Secrets are split into *n* shares and distributed to contacts via the deposplit.com Web app/service; reconstruction requires at least *k* holders to cooperate.
+The iOS app, plus the Swift port of Shamir's Secret Sharing.
 
-This document is written for a developer who knows Swift well but has limited iOS / SwiftUI experience.
+Deposplit splits a secret into *n* shares, gives each to a person you choose, and
+reconstructs it from any *k*. Fewer than *k* shares reveal nothing. All cryptography happens
+on the device; the relay only stores and forwards bytes it cannot read.
 
----
+**Design documentation lives in the hub repository** and covers all three platforms:
 
-## Table of contents
+- [Architecture](https://github.com/Deposplit/deposplit.com/blob/main/docs/architecture.md)
+- [Protocol](https://github.com/Deposplit/deposplit.com/blob/main/docs/protocol.md)
+- [Security](https://github.com/Deposplit/deposplit.com/blob/main/docs/security.md)
+- [Trust model](https://github.com/Deposplit/deposplit.com/blob/main/docs/trust-model.md)
+- [Manual testing](https://github.com/Deposplit/deposplit.com/blob/main/docs/testing.md)
 
-1. [iOS concepts you need](#ios-concepts-you-need)
-2. [Project structure](#project-structure)
-3. [Architecture](#architecture)
-4. [The registration flow](#the-registration-flow)
-5. [Building and running](#building-and-running)
-6. [Testing against a local Web app/service](#testing-against-a-local-Web app/service)
-7. [What is next](#what-is-next)
+This README covers only what is specific to building and running the iOS app. iOS-specific
+guidance for Claude Code is in [CLAUDE.md](CLAUDE.md).
 
----
+## Requirements
 
-## iOS concepts you need
+- **Xcode 26 or later**, Swift 6
+- Deployment target **iOS 26.4** — set as `IPHONEOS_DEPLOYMENT_TARGET`; do not lower it
+- macOS, for anything involving the app target or a simulator
 
-### SwiftUI and the `App` protocol
+## Layout
 
-iOS apps no longer need a `UIApplicationDelegate`. A struct marked `@main` that conforms to `App` is the entry point. Its `body` property returns a `Scene` — almost always a `WindowGroup` — that wraps the root `View`.
+Two pieces, deliberately separated:
 
-```swift
-@main
-struct DeposplitApp: App {
-    var body: some Scene {
-        WindowGroup { RootView() }
-    }
-}
-```
+| Path | What |
+|---|---|
+| `hexagon/` | A local Swift package — the domain. No `UIKit`, `SwiftUI`, `Security` or `URLSession`. |
+| `Deposplit/` | The app target — adapters and SwiftUI views. |
+| `Deposplit.xcodeproj` | The project. `Package.swift` is in `hexagon/`, not at the repo root. |
 
-### Views and `@Observable`
+The package declares **no external dependencies**. The boundary is enforced by the compiler:
+because `hexagon` has no dependency on the frameworks above, an accidental import fails to
+build rather than quietly eroding the architecture.
 
-SwiftUI views are value types (`struct`) that describe what should appear on screen. They are redrawn whenever their observed state changes.
+**`hexagon/Sources/`** — `driving_ports/` (`Identity`, `ContactManagement`,
+`ShareManagement`, `CatalogManagement`), `driving_adapters/` (the services implementing them,
+plus `ShareEncryption`), `driven_ports/` (ten interfaces: `IdentityStore`,
+`ContactRepository`, `ShareRepository`, `ShareMetadataRepository`, `SecretRepository`,
+`RetainedDepositRepository`, `KeyConflictRepository`, `ShareRelay`, `ShareRelayResolver`,
+`RelaySettings`), `value_objects/`, and `shamir/ShamirSecretSharing.swift`.
 
-ViewModels in Deposplit use the `@Observable` macro (iOS 17+):
+**`Deposplit/`** — `api/` (relay client, resolver, defaults), `auth/`
+(`KeychainIdentityStore`), `contacts/` and `shares/` (JSON-file repositories), `settings/`,
+and `ui/` split by screen: `home`, `contacts`, `deposit`, `sharedetail`, `repair`, `qr`,
+`settings`, `biometric`, `reconstruction`.
 
-```swift
-@Observable
-final class HomeViewModel {
-    var shares: [ShareMetadata] = []   // changing this triggers a view refresh
-}
-```
+The app target uses `PBXFileSystemSynchronizedRootGroup`, so any `.swift` file placed under
+`Deposplit/` is compiled automatically — adding a file needs no `project.pbxproj` edit.
 
-Inside a view, reference the ViewModel and SwiftUI tracks which properties are read:
-
-```swift
-struct HomeView: View {
-    @State private var viewModel = HomeViewModel(...)
-    var body: some View {
-        Text("\(viewModel.shares.count) shares")  // re-renders when shares changes
-    }
-}
-```
-
-Use `@State` (not `@StateObject`) for `@Observable` objects owned by a view. Use `@Bindable` to create bindings to an `@Observable` object's properties (e.g., for `TextField`).
-
-### NavigationStack and sheets
-
-Navigation between screens uses `NavigationStack` with `.navigationDestination(for:)` or `.sheet(isPresented:)` for modal presentation:
-
-```swift
-NavigationStack {
-    List(items) { item in
-        NavigationLink(item.label, value: item)
-    }
-    .navigationDestination(for: MyType.self) { item in
-        DetailView(item: item)
-    }
-}
-```
-
-Types used as navigation values must conform to `Hashable`.
-
-### Tasks and async/await
-
-Async work is triggered from views using the `.task` modifier (scoped to the view's lifetime) or a `Task { }` block inside a button action:
-
-```swift
-.task { await viewModel.load() }          // called on appear, cancelled on disappear
-
-Button("Deposit") {
-    Task { await viewModel.deposit() }    // fire-and-forget
-}
-```
-
-All ViewModels and views run on the `@MainActor` by default (the project sets `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`), so async network calls via `URLSession` work without any explicit actor hopping.
-
-### Keychain
-
-Private keys are stored in the iOS **Keychain** via the `Security` framework (`SecItemAdd`, `SecItemCopyMatching`). Deposplit stores 32-byte raw key material as `kSecClassGenericPassword` items with `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`.
-
-Curve25519 (Ed25519 + X25519) is not supported by the **Secure Enclave**, which only handles P256. Deposplit uses software-backed Keychain items.
-
-### Pointing at a local Web app/service
-
-The relay URL is not a compile-time switch — `RelayDefaults.fallbackBaseURL` (`api/RelayDefaults.swift`) is a single fixed fallback (`https://api.deposplit.com`), matching Android's `RelayDefaults.kt`. To test against a local `sbt run` instance, use the in-app **Settings** screen's default-relay editor to point the device at `http://localhost:9000` (the iOS Simulator shares the host Mac's loopback, so no ATS exception or extra config is needed — unlike Android's emulator, which needs the `10.0.2.2` alias plus a cleartext network-security exception). `DeposplitApiAdapter` is constructed via `DeposplitRelayResolver`, which always resolves a URL through `RelaySettings` (`identity: identityService` — not `auth:`, following the item-14 `Identity` rename):
-
-```swift
-let relay = DeposplitApiAdapter(identity: identityService, baseURL: url)
-```
-
----
-
-## Project structure
-
-The project uses `PBXFileSystemSynchronizedRootGroup` (introduced in Xcode 16): **any `.swift` file added to the `Deposplit/` folder is automatically compiled** — there is no need to add files to `project.pbxproj` manually.
-
-```
-iOS/
-├── hexagon/                          ← local Swift Package — domain boundary enforced by the build system
-│   ├── Package.swift                 swift-tools-version: 6.0; platforms: iOS 26.4; path: "Sources"
-│   └── Sources/
-│       ├── shamir/
-│       │   └── ShamirSecretSharing.swift  SSS split/combine over GF(2⁸); ShamirError
-│       ├── driving_ports/
-│       │   ├── Identity.swift             isRegistered, register, pseudonym, edPublicKey, xPublicKey,
-│       │   │                              sign, encrypt, decrypt (Identity split into Identity + ShareEncryption
-│       │   │                              + RequestSigner is pending — see iOS/CLAUDE.md)
-│       │   ├── ShareManagement.swift      use-case interface: deposit, listSecrets, listDistributed,
-│       │   │                              reconstruct (pure read, real k), discardSecret, forceForgetSecret,
-│       │   │                              syncInbox, listPendingRequests, respond, pushRecoveryMetadata (item 8), …
-│       │   ├── ContactManagement.swift    listContacts, addManually, addFromQr, updateContact (item 8 —
-│       │   │                              contact-update-in-place, key change forces a fresh verificationLevel), deleteContact
-│       │   └── CatalogManagement.swift    exportCatalog, importCatalog — optional non-secret catalog backup (item 8)
-│       ├── driven_ports/
-│       │   ├── IdentityStore.swift        isRegistered, save, pseudonym, edPublicKey, edPrivateKey,
-│       │   │                              xPublicKey, xPrivateKey
-│       │   ├── ContactRepository.swift    getAll, getByEdKey, getById, save, delete
-│       │   ├── ShareRepository.swift      getAll, getPlaintextShare (keyed on secretId, not the pickup relay-row id — item 8), save, delete
-│       │   ├── SecretRepository.swift     getAll, save, delete — local store of sender-side Secret aggregates (item 11)
-│       │   ├── ShareMetadataRepository.swift  getAll, save, delete — local store of distributed ShareMetadata
-│       │   ├── ShareRelay.swift           openShareRequest (incl. k/n — item 8), listShareRequests, getShareRequest,
-│       │   │                              respondToShareRequest, deleteShareRequest, deleteShareRequests
-│       │   ├── ShareRelayResolver.swift   resolve(relayBaseUrl:) — BYOR factory/cache; nil resolves to the device's default relay
-│       │   └── RelaySettings.swift        defaultRelayBaseURL, setDefaultRelayBaseURL — device's runtime-configurable default relay
-│       ├── services/
-│       │   ├── IdentityService.swift      Identity + ShareEncryption impl — CryptoKit only, no Security/UserDefaults
-│       │   ├── ShareEncryption.swift      Intra-hexagon interface: encrypt(plaintext, recipientXPublicKey),
-│       │   │                              decrypt(noncePlusCiphertext, recipientXPublicKey)
-│       │   ├── ShareService.swift         ShareManagement impl — calls ShareRelay + ShareEncryption +
-│       │   │                              ShareRepository + ShareMetadataRepository + SecretRepository + ContactRepository;
-│       │   │                              deposit() writes ShareMetadata + a Secret to local store (incl. k/n); listDistributed()/listSecrets()
-│       │   │                              read from local store; reconstruct() is a pure read (item 11); discardSecret()/
-│       │   │                              forceForgetSecret() are the teardown primitives; syncInbox() auto-approves pending Deposit requests
-│       │   │                              then calls processRecoveryMetadata() (item 8); pushRecoveryMetadata(contactId) is the holder-side push
-│       │   ├── ContactService.swift       ContactManagement impl — validates + delegates to
-│       │   │                              ContactRepository; defines ContactError; updateContact requires a fresh
-│       │   │                              verificationLevel whenever either key changes (item 8)
-│       │   └── CatalogService.swift       CatalogManagement impl — exportCatalog/importCatalog (upsert-if-absent-by-id), item 8
-│       └── value_objects/
-│           ├── AuthError.swift            Error enum for auth failures
-│           ├── Catalog.swift              Catalog struct (contacts, secrets, shareMetadata) — item 8's optional backup; Codable
-│           ├── Contact.swift              Contact struct + VerificationLevel enum; Codable
-│           ├── HeldShare.swift            HeldShare struct (incl. k/n — item 8)
-│           ├── Secret.swift               Secret struct (id, label, k, n, secretCreatedAt, state) + SecretState —
-│           │                              sender-side per-secret aggregate, see CLAUDE.md item 11; Codable
-│           └── Share.swift               Role, ShareTransactionType (incl. .inventory — item 8), ShareRequestState,
-│                                          ShareMetadata (id/secretId/contactId only; Codable), ShareRequest (incl. k/n)
-├── Deposplit.xcodeproj/
-├── Deposplit/                        ← app target (adapters + UI); PBXFileSystemSynchronizedRootGroup
-│   ├── DeposplitApp.swift            @main entry point + RootView (routes to SignInView or HomeView); wires
-│   │                                  CatalogService alongside ShareService/ContactService (item 8)
-│   ├── auth/
-│   │   └── KeychainIdentityStore.swift  IdentityStore adapter — Security framework + UserDefaults
-│   ├── api/
-│   │   ├── DeposplitApiAdapter.swift  HTTP adapter — implements ShareRelay; URLSession + Ed25519 request
-│   │   │                              signing + SHA-256 body hash; all /share-requests operations (incl. k/n — item 8)
-│   │   └── DeposplitRelayResolver.swift  Implements ShareRelayResolver — memoizes one adapter per resolved base URL
-│   ├── contacts/
-│   │   └── LocalContactRepository.swift  JSON file in Documents/contacts.json
-│   ├── settings/
-│   │   └── UserDefaultsRelaySettings.swift  Implements RelaySettings
-│   ├── shares/
-│   │   ├── LocalShareRepository.swift          JSON file in Documents/shares.json; incl. k/n (item 8); getPlaintextShare keyed on secretId
-│   │   ├── LocalSecretRepository.swift         JSON file in Documents/secrets.json; local store of sender-side Secret aggregates
-│   │   └── LocalShareMetadataRepository.swift  JSON file in Documents/distributed_shares.json; local store of distributed ShareMetadata
-│   └── ui/
-│       ├── SignInViewModel.swift      Registration flow (pseudonym input)
-│       ├── SignInView.swift           Registration screen
-│       ├── HomeView.swift            NavigationStack + TabView (Distributed/Held/Requests)
-│       ├── home/
-│       │   ├── HomeViewModel.swift   syncInbox + listSecrets + listDistributed + listHeld via ShareManagement;
-│       │   │                        SecretGroup (wraps a Secret) + SecretHealth badge; requestAll/discardSecret/forceForgetSecret (item 11)
-│       │   ├── RequestsViewModel.swift  listPendingRequests + respond via ShareManagement
-│       │   ├── DistributedTab.swift  Per-secret grouped cards (item 11) → tapping a holder navigates to ShareDetailView
-│       │   │                        via a ShareDetailTarget (secret + share); health badge, discard/force-forget actions
-│       │   ├── HeldTab.swift         Read-only list of held shares
-│       │   └── RecipientRequestsTab.swift  Approve/deny incoming requests
-│       ├── contacts/
-│       │   ├── ContactsViewModel.swift  listContacts + deleteContact via ContactManagement
-│       │   ├── ContactsView.swift    List + delete + add via QR or manual entry; per-row "Relink (Key Changed)" action (item 8)
-│       │   ├── AddContactViewModel.swift  addManually via ContactManagement
-│       │   ├── AddContactView.swift
-│       │   └── RelinkContactView.swift + RelinkContactViewModel.swift  (item 8) QR re-scan → updateContact + pushRecoveryMetadata;
-│       │                              distinct from QrScanView, which always mints a *new* contact
-│       ├── deposit/
-│       │   ├── DepositViewModel.swift  deposit via ShareManagement; listContacts via ContactManagement; splitTimeWarnings (item 11)
-│       │   └── DepositView.swift     confirmationDialog surfaces splitTimeWarnings before deposit if any apply
-│       ├── sharedetail/
-│       │   ├── ShareDetailViewModel.swift  Takes a ShareDetailTarget (Secret + ShareMetadata); open RETRIEVE/DELETE
-│       │   │                        requests; reconstruct via ShareManagement (ready-threshold reads Secret.k)
-│       │   └── ShareDetailView.swift
-│       ├── qr/
-│       │   ├── QrPayload.swift       {"v":1,"pseudonym":"…","ed":"…","x":"…"} encode/decode
-│       │   ├── QrDisplayViewModel.swift  CoreImage QR generation
-│       │   ├── QrDisplayView.swift
-│       │   └── QrScanView.swift      DataScannerViewController (VisionKit) + QrScanViewModel; DataScannerRepresentable
-│       │                              is shared (not private) with RelinkContactView (item 8)
-│       └── settings/
-│           ├── SettingsView.swift    Default relay editor; "Catalog Backup" export/import (item 8)
-│           └── SettingsViewModel.swift
-└── DeposplitTests/                   ← unit test target (@testable import hexagon)
-    └── ShamirSecretSharingTests.swift  Swift Testing — round-trip and cross-platform vectors
-```
-
----
-
-## Architecture
-
-Deposplit follows **Ports & Adapters (Hexagonal Architecture)** for the domain and infrastructure layers. The UI layer uses MVVM with `@Observable`.
-
-```
-┌──────────────────────────────────────────────────────┐
-│  UI Layer (SwiftUI)                                  │
-│  SignInView ──► SignInViewModel                      │
-└─────────────────────────┬────────────────────────────┘
-                          │ calls port protocol
-┌─────────────────────────▼────────────────────────────┐
-│  Domain (Port)                                       │
-│  Identity  ◄──── IdentityService (Service)           │
-└──────────────────────────────────────────────────────┘
-```
-
-**Driving ports** (`Identity`, `ShareManagement`, `ContactManagement`) — Swift protocols defined by the domain; implemented by hexagon services. `Identity` includes `sign`; encryption/decryption is handled by the `ShareEncryption` intra-hexagon interface implemented by `IdentityService`.
-
-**Services** (`IdentityService`, `ShareService`, `ContactService`) — implement the driving ports using CryptoKit (no Security/UserDefaults imports). Delegate infrastructure concerns to driven ports.
-
-**Driven ports** (`IdentityStore`, `ShareRelay`, `ContactRepository`, `ShareRepository`) — implemented by infrastructure adapters in the app target.
-
-**Adapters** (`KeychainIdentityStore`, `DeposplitApiAdapter`, `LocalContactRepository`, `LocalShareRepository`) — implement the driven ports using Security, URLSession, and the file system.
-
-**ViewModel / UI layer** — ViewModels call only driving ports; they are unaware of adapters.
-
-**`DeposplitApp`** — wires everything together: constructs adapters, creates services, exposes driving-port references to the view hierarchy.
-
-Like Android's `:hexagon` Gradle module, the iOS domain code lives in its own **local Swift Package** (`iOS/hexagon/`), which is a separate SPM target linked into both the app and the test target. The compiler enforces the boundary: the package has no `Security`, `UIKit`, `SwiftUI`, or `URLSession` dependencies, so any accidental import is a build error.
-
----
-
-## The registration flow
-
-Deposplit does not use OIDC, passwords, or email. Registration is keypair-first.
-
-```
-1. User enters a pseudonym (display name only — no personal information required)
-        │
-2. App generates an Ed25519 keypair (API auth) and an X25519 keypair (share encryption)
-        │  via CryptoKit: Curve25519.Signing.PrivateKey + Curve25519.KeyAgreement.PrivateKey
-        │
-3. Both private keys are stored as raw bytes in the iOS Keychain
-        │  (kSecClassGenericPassword, kSecAttrAccessibleWhenUnlockedThisDeviceOnly)
-        │  Pseudonym + "registered" flag stored in UserDefaults
-        │
-4. DeposplitApp.RootView re-renders: isRegistered becomes true → shows HomeView
-        │  No server call — the keypair IS the identity
-```
-
----
-
-## Building and running
-
-### Prerequisites
-
-- **Xcode 26** (or later) — required for iOS 26 SDK and the simulator
-- **iOS 26 Simulator** — create one in Xcode → Window → Devices and Simulators → Simulators tab
-- A physical iOS device running iOS 26+ is optional (requires a valid signing identity)
-
-### Open the project
+## Build and test
 
 ```bash
-open iOS/Deposplit.xcodeproj
-```
+# from iOS/hexagon/ — no simulator needed, this is what CI runs
+swift build
+swift test                                  # 110 tests
+swift test --filter ShamirSecretSharingTests
 
-Select a simulator target (e.g., iPhone 16) and press **Run ▶ (⌘R)**.
+# from iOS/ — the app target
+xcodebuild build -project Deposplit.xcodeproj -scheme Deposplit \
+  -destination 'generic/platform=iOS'
 
-### Build from the command line
-
-```bash
-# from iOS/
-xcodebuild build \
-  -project Deposplit.xcodeproj \
-  -scheme Deposplit \
-  -destination 'generic/platform=iOS' \
-  CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
-```
-
-### Run the tests
-
-Tests use the **Swift Testing** framework and run against the app target:
-
-```bash
-xcodebuild test \
-  -project Deposplit.xcodeproj \
-  -scheme Deposplit \
+xcodebuild test -project Deposplit.xcodeproj -scheme Deposplit \
   -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
 
-Or in Xcode: **Product → Test (⌘U)**.
+Tests use the **Swift Testing** framework (`@Test`), not XCTest. All of them live in
+`hexagon/Tests/`; there is no app-target test directory.
 
-### First run
+> `xcodebuild test` currently fails on this project's development machine with a
+> code-signing error on an unsigned test dylib — a machine-level issue, unrelated to app
+> code. `xcodebuild build` passes, and the hexagon package's own suite covers the domain.
 
-On first launch the app shows the sign-in screen. Enter a pseudonym (display name only — stored locally, never sent to the Web app/service). Tapping **Get started** generates Ed25519 and X25519 keypairs via CryptoKit, stores the private keys in the Keychain, and navigates to the home screen.
+> On Windows, Swift writes to the Windows Console API, so output is not captured by Git
+> Bash. Run `swift test` from PowerShell, Windows Terminal or VS Code.
 
-### Continuous Integration
+## Pointing at a local relay
 
-A GitHub Actions workflow (`.github/workflows/test.yml`) runs `swift test` against the `hexagon` Swift package on `macos-latest` for every push and on pull requests targeting `main`. The `Deposplit.xcodeproj` app target isn't covered yet — that needs a simulator. Dependabot (`.github/dependabot.yml`) keeps GitHub Actions and Swift Package Manager dependencies (scoped to `/hexagon`) current on a weekly schedule.
+The relay URL is **not** a compile-time switch. `RelayDefaults.fallbackBaseURL` supplies a
+single fixed fallback (`https://api.deposplit.com`), and the app resolves its actual default
+at runtime through `RelaySettings`, backed by `UserDefaults`.
 
----
-
-## Testing against a local Web app/service
-
-### Setup
-
-**Start the Web app/service** (from `deposplit.com/`):
+Start a relay from `deposplit.com/`:
 
 ```bash
 sbt run -Dconfig.file=conf/localhost.conf
 ```
 
-It listens on port 9000. Unlike the Android emulator (which uses the special alias `10.0.2.2`), the **iOS Simulator shares the host machine's network stack** — it reaches the Web app/service simply via `localhost`. The debug build is wired to `http://localhost:9000` automatically via `#if DEBUG` in `DeposplitApp.swift`.
+Then set the default relay in the app's **Settings** screen:
 
-**Run the app** in Xcode: select a simulator and press **Run ▶**. The scheme is always `Debug` during development.
+- `http://localhost:9000` on the Simulator, which shares the host Mac's network stack — no
+  App Transport Security exception needed, unlike the Android emulator's `10.0.2.2` alias.
+- `http://<your-Mac-LAN-IP>:9000` on a physical device. Also add that address to
+  `play.filters.hosts.allowed` in `conf/localhost.conf`.
 
-> **Note on real devices:** A physical iOS device on the same Wi-Fi network reaches your Mac via its LAN IP (e.g., `http://192.168.1.100:9000`). Change the `#if DEBUG` URL in `DeposplitApp.swift` accordingly, and add that IP (with port) to `play.filters.hosts.allowed` in `conf/localhost.conf`.
+A contact may additionally carry its own `relayBaseUrl` override, which takes precedence for
+that contact's traffic — see the architecture doc on Bring Your Own Relay.
 
-### Three-simulator setup
+## Biometrics in the Simulator
 
-You need **three simulator instances** to exercise the full social flow with a 2-of-2 threshold split across two holders. In Xcode you can only run one simulator at a time from the Run button, but you can launch additional simulators via **Xcode → Open Developer Tool → Simulator**, then from within the Simulator app go to **File → Open Simulator** and choose another device model. Each instance runs the same app from the same build.
+There is deliberately **no** build flag to bypass the biometric gate, unlike Android's
+`SKIP_BIOMETRIC`. The Simulator provides enrollment natively: **Features → Face ID → Enrolled**,
+then **Features → Face ID → Matching Face** to satisfy a prompt. A Simulator with no
+enrolment shows the same unavailable state a real device would.
 
-> **Tip:** Mixing platforms works well — run Alice on an iOS Simulator, Bob on an Android emulator, and test cross-platform interoperability at the same time.
+## Localisation
 
-### Flow 1 — Happy path (2-of-2 threshold, 2 holders)
+English and German, in `Deposplit/Localizable.xcstrings`. Both must be kept in sync.
 
-| Step | Device | What to do |
-|---|---|---|
-| 1 | Sim-A | Launch → register as "Alice" |
-| 2 | Sim-B | Launch → register as "Bob" |
-| 3 | Sim-C | Launch → register as "Carol" |
-| 4 | Sim-A | TopAppBar QR icon → Alice's QR code appears |
-| 5 | Sim-B | Contacts (person icon) → **+** → **Enter Keys Manually** → paste Alice's keys; then show Bob's QR |
-| 6 | Sim-C | Same: add Alice as contact; show Carol's QR |
-| 7 | Sim-A | Add Bob and Carol as contacts (manual entry or QR) |
-| 8 | Sim-A | **+** (top right) → enter a label (e.g. "test secret") and a secret, toggle Bob and Carol on, threshold = 2 → **Deposit** |
-| 9 | Sim-A | **Distributed** tab → two entries appear (one per share/recipient, same `secretId`) |
-| 10 | Sim-B | **Their Secret Shares** tab → Bob's inbox shows Alice's Deposit request → app auto-approves it, decrypts the share, and stores it as plaintext locally; relay clears the ciphertext |
-| 11 | Sim-C | **Their Secret Shares** tab → Carol's inbox shows Alice's Deposit request → app auto-approves the same way |
-| 12 | Sim-A | Tap the Bob entry → **Open request** (Retrieval) |
-| 13 | Sim-A | Tap the Carol entry → **Open request** (Retrieval) |
-| 14 | Sim-B | **Requests** tab → a Retrieval request from Alice → tap **Approve** |
-| 15 | Sim-C | **Requests** tab → a Retrieval request from Alice → tap **Approve** |
-| 16 | Sim-A | Either Distributed entry → **Reconstruct secret…** button appears (both approved) → secret is displayed |
+## Continuous integration
 
-The threshold logic (`combine`) is tested in the unit tests; this flow validates the full path including encryption, transport, and decryption.
+`.github/workflows/test.yml` runs `swift test` against the `hexagon` package on macOS, on
+every push and on pull requests targeting `main`. The app target is not built in CI, because
+that needs a simulator. Dependabot updates pinned action SHAs weekly.
 
-### Flow 2 — Deny and re-request
+## Licence
 
-After step 12 above: Bob taps **Deny** → on Alice's side the Retrieval row shows "Denied" and a **Re-open** button → Alice re-opens the request → Bob approves.
-
-### Flow 3 — Sender-initiated deletion
-
-Alice taps **Open request** (Removal) on one of her Distributed shares → Bob's Requests tab shows a Removal request → Bob approves → Bob's Deposit row is deleted (cascade-deleting any related Retrieval/Removal rows) → the share disappears from Bob's Held tab.
-
-### Flow 4 — Recipient-initiated deletion
-
-On Sim-B, swipe to delete Alice's share from the Held tab. The share disappears locally without any request. Verify what Alice's Distributed tab shows on refresh.
-
-### Flow 5 — Error states
-
-Kill the Web app/service (`Ctrl-C`) → pull-to-refresh or tap the ↺ button on either device → error banner appears. Restart the Web app/service → tap ↺ → data loads again.
-
-### Flow 6 — Cross-platform (iOS + Android)
-
-Run Alice on an iOS Simulator and Bob on an Android emulator simultaneously. They connect to the same `sbt run` Web app/service. Alice deposits a share for Bob; Bob (on Android) sees it in the Held tab. Bob opens a Retrieval request; Alice (on iOS) reconstructs. This validates the cross-platform E2EE compatibility: CryptoKit (iOS) and BouncyCastle (Android) produce identical X25519+HKDF+ChaCha20-Poly1305 wire bytes.
-
-### Key edge cases to verify
-
-- Re-registering (delete and reinstall the app) generates fresh keypairs — existing contacts cannot decrypt new shares with the old keys.
-- The **Reconstruct secret…** button is hidden until ≥ 2 approved retrieve shares exist for the same `secretId`.
-- 2-of-3 threshold: split across three contacts, have only two approve — the secret should still reconstruct.
-- Contacts added by manual key entry default to `verificationLevel = .veryLow` and can be raised to `.low`/`.high` via the level picker (`.veryHigh` is not offered — it requires physical co-presence); contacts added by QR scan default to `.veryHigh` (shown with a colored level badge; no badge at `.veryLow`).
-
----
-
-## What is next
-
-The iOS app is feature-complete for v0.1. Planned improvements:
-
-1. **Biometric unlock** — gate `ShareDetailView.reconstruct()` behind `LAContext.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics)`, mirroring the Android `BiometricPrompt` implementation. See `iOS/CLAUDE.md` for the full implementation guide.
-2. **End-to-end test with production** — once `api.deposplit.com` is deployed, run the full flow against the live Web app/service.
+MIT. Copyright © 2026 [Squeng AG](https://www.squeng.com).
