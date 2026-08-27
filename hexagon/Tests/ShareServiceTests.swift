@@ -767,7 +767,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
     let revokedAliceContact = Contact(
         id: aliceContact.id, pseudonym: aliceContact.pseudonym, verifyKey: aliceContact.verifyKey,
         encKey: aliceContact.encKey, verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date(),
-        revokedEdKeys: [aliceKeys.publicKey]
+        revokedVerifyKeys: [aliceKeys.publicKey]
     )
     let (svc, bob, _, contactRepo, _, conflictRepo, _) = try makeService(relay: relay, contacts: [revokedAliceContact])
     let newEd = Data(repeating: 0x0e, count: 32)
@@ -796,7 +796,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
     let contactWithUnrelatedRevocation = Contact(
         id: aliceContact.id, pseudonym: aliceContact.pseudonym, verifyKey: aliceContact.verifyKey,
         encKey: aliceContact.encKey, verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date(),
-        revokedEdKeys: [Data(repeating: 0x99, count: 32)] // some unrelated historical key, not this one
+        revokedVerifyKeys: [Data(repeating: 0x99, count: 32)] // some unrelated historical key, not this one
     )
     let (svc, bob, _, contactRepo, _, conflictRepo, _) = try makeService(relay: relay, contacts: [contactWithUnrelatedRevocation])
     let newEd = Data(repeating: 0x10, count: 32)
@@ -828,7 +828,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
 
     try svc.markKeyCompromised(contactId: aliceContact.id, verifyKey: nil)
 
-    #expect(repo.getById(aliceContact.id)?.revokedEdKeys == [aliceContact.verifyKey])
+    #expect(repo.getById(aliceContact.id)?.revokedVerifyKeys == [aliceContact.verifyKey])
 }
 
 @Test func markKeyCompromisedIsIdempotentForAnAlreadyFlaggedKey() throws {
@@ -838,7 +838,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
 
     try svc.markKeyCompromised(contactId: aliceContact.id, verifyKey: nil)
 
-    #expect(repo.getById(aliceContact.id)?.revokedEdKeys == [aliceContact.verifyKey])
+    #expect(repo.getById(aliceContact.id)?.revokedVerifyKeys == [aliceContact.verifyKey])
 }
 
 @Test func updateContactSetsKeyChangedAtOnlyWhenKeysActuallyChange() throws {

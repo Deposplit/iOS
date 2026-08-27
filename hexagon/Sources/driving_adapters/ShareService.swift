@@ -451,7 +451,7 @@ public final class ShareService: ShareManagement {
             contactRepository.save(Contact(
                 id: contact.id, pseudonym: contact.pseudonym, verifyKey: contact.verifyKey, encKey: contact.encKey,
                 verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
-                relayBaseUrl: contact.relayBaseUrl, revokedEdKeys: contact.revokedEdKeys, keyChangedAt: contact.keyChangedAt,
+                relayBaseUrl: contact.relayBaseUrl, revokedVerifyKeys: contact.revokedVerifyKeys, keyChangedAt: contact.keyChangedAt,
                 heartbeatOptedOutAt: contact.heartbeatOptedOutAt, lastHeartbeatSentAt: now, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut,
                 cipherSuite: contact.cipherSuite, nickname: contact.nickname
             ))
@@ -476,7 +476,7 @@ public final class ShareService: ShareManagement {
                     contactRepository.save(Contact(
                         id: contact.id, pseudonym: contact.pseudonym, verifyKey: contact.verifyKey, encKey: contact.encKey,
                         verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
-                        relayBaseUrl: contact.relayBaseUrl, revokedEdKeys: contact.revokedEdKeys, keyChangedAt: contact.keyChangedAt,
+                        relayBaseUrl: contact.relayBaseUrl, revokedVerifyKeys: contact.revokedVerifyKeys, keyChangedAt: contact.keyChangedAt,
                         heartbeatOptedOutAt: notice.createdAt, lastHeartbeatSentAt: contact.lastHeartbeatSentAt, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut,
                         cipherSuite: contact.cipherSuite, nickname: contact.nickname
                     ))
@@ -486,7 +486,7 @@ public final class ShareService: ShareManagement {
                     contactRepository.save(Contact(
                         id: contact.id, pseudonym: contact.pseudonym, verifyKey: contact.verifyKey, encKey: contact.encKey,
                         verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
-                        relayBaseUrl: contact.relayBaseUrl, revokedEdKeys: contact.revokedEdKeys, keyChangedAt: contact.keyChangedAt,
+                        relayBaseUrl: contact.relayBaseUrl, revokedVerifyKeys: contact.revokedVerifyKeys, keyChangedAt: contact.keyChangedAt,
                         heartbeatOptedOutAt: nil, lastHeartbeatSentAt: contact.lastHeartbeatSentAt, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut,
                         cipherSuite: contact.cipherSuite, nickname: contact.nickname
                     ))
@@ -509,7 +509,7 @@ public final class ShareService: ShareManagement {
         contactRepository.save(Contact(
             id: contact.id, pseudonym: contact.pseudonym, verifyKey: contact.verifyKey, encKey: contact.encKey,
             verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
-            relayBaseUrl: contact.relayBaseUrl, revokedEdKeys: contact.revokedEdKeys, keyChangedAt: contact.keyChangedAt,
+            relayBaseUrl: contact.relayBaseUrl, revokedVerifyKeys: contact.revokedVerifyKeys, keyChangedAt: contact.keyChangedAt,
             // Reset so the changed preference reaches the contact on the very next poll rather
             // than waiting out the emission interval.
             heartbeatOptedOutAt: contact.heartbeatOptedOutAt, lastHeartbeatSentAt: nil, heartbeatEmissionOptedOut: optedOut,
@@ -536,7 +536,7 @@ public final class ShareService: ShareManagement {
                 // of trusting a signature the attacker is fully capable of producing. Captured
                 // locally *before* deleting the relay row — the relay is best-effort and may GC
                 // the notice before anyone looks, but this KeyConflict record won't.
-                guard !contact.revokedEdKeys.contains(notice.oldVerifyKey) else {
+                guard !contact.revokedVerifyKeys.contains(notice.oldVerifyKey) else {
                     try? keyConflictRepository.save(KeyConflict(
                         id: UUID(), contactId: contact.id, oldVerifyKey: notice.oldVerifyKey,
                         newVerifyKey: notice.newVerifyKey, newEncKey: notice.newEncKey, detectedAt: Date()

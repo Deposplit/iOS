@@ -51,7 +51,7 @@ struct ContactsView: View {
                                             .background(contact.verificationLevel.badgeColor.opacity(0.15), in: Capsule())
                                             .foregroundStyle(contact.verificationLevel.badgeColor)
                                     }
-                                    if !contact.revokedEdKeys.isEmpty {
+                                    if !contact.revokedVerifyKeys.isEmpty {
                                         Image(systemName: "exclamationmark.shield.fill")
                                             .foregroundStyle(.red)
                                             .font(.caption)

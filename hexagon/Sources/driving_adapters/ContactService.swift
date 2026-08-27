@@ -92,7 +92,7 @@ public final class ContactService: ContactManagement {
             verifiedAt: verificationLevel != nil ? Date() : existing.verifiedAt,
             addedAt: existing.addedAt,
             relayBaseUrl: existing.relayBaseUrl,
-            revokedEdKeys: existing.revokedEdKeys,
+            revokedVerifyKeys: existing.revokedVerifyKeys,
             keyChangedAt: changingIdentity ? Date() : existing.keyChangedAt,
             heartbeatOptedOutAt: existing.heartbeatOptedOutAt,
             lastHeartbeatSentAt: existing.lastHeartbeatSentAt,
@@ -115,7 +115,7 @@ public final class ContactService: ContactManagement {
             verifiedAt: existing.verifiedAt,
             addedAt: existing.addedAt,
             relayBaseUrl: existing.relayBaseUrl,
-            revokedEdKeys: existing.revokedEdKeys,
+            revokedVerifyKeys: existing.revokedVerifyKeys,
             keyChangedAt: existing.keyChangedAt,
             heartbeatOptedOutAt: existing.heartbeatOptedOutAt,
             lastHeartbeatSentAt: existing.lastHeartbeatSentAt,
@@ -132,7 +132,7 @@ public final class ContactService: ContactManagement {
     public func markKeyCompromised(contactId: UUID, verifyKey: Data?) throws {
         guard let existing = contactRepository.getById(contactId) else { throw ContactError.contactNotFound }
         let flagged = verifyKey ?? existing.verifyKey
-        guard !existing.revokedEdKeys.contains(flagged) else { return }
+        guard !existing.revokedVerifyKeys.contains(flagged) else { return }
         contactRepository.save(Contact(
             id: existing.id,
             pseudonym: existing.pseudonym,
@@ -142,7 +142,7 @@ public final class ContactService: ContactManagement {
             verifiedAt: existing.verifiedAt,
             addedAt: existing.addedAt,
             relayBaseUrl: existing.relayBaseUrl,
-            revokedEdKeys: existing.revokedEdKeys + [flagged],
+            revokedVerifyKeys: existing.revokedVerifyKeys + [flagged],
             keyChangedAt: existing.keyChangedAt,
             heartbeatOptedOutAt: existing.heartbeatOptedOutAt,
             lastHeartbeatSentAt: existing.lastHeartbeatSentAt,
