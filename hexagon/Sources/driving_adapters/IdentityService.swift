@@ -39,13 +39,13 @@ public final class IdentityService: Identity, ShareEncryption {
     }
 
     private static func generateKeyPairMaterial() -> KeyPairMaterial {
-        let edKey = Curve25519.Signing.PrivateKey()
-        let xKey = Curve25519.KeyAgreement.PrivateKey()
+        let signingKeyPair = Curve25519.Signing.PrivateKey()
+        let agreementKeyPair = Curve25519.KeyAgreement.PrivateKey()
         return KeyPairMaterial(
-            verifyKey: edKey.publicKey.rawRepresentation,
-            signKey: edKey.rawRepresentation,
-            encKey: xKey.publicKey.rawRepresentation,
-            decKey: xKey.rawRepresentation
+            verifyKey: signingKeyPair.publicKey.rawRepresentation,
+            signKey: signingKeyPair.rawRepresentation,
+            encKey: agreementKeyPair.publicKey.rawRepresentation,
+            decKey: agreementKeyPair.rawRepresentation
         )
     }
 
@@ -60,10 +60,10 @@ public final class IdentityService: Identity, ShareEncryption {
         return key.isValidSignature(signature, for: message)
     }
 
-    public func encrypt(_ plaintext: Data, recipientXPublicKey: Data) throws -> Data {
+    public func encrypt(_ plaintext: Data, recipientEncKey: Data) throws -> Data {
         let rawKey = try identityStore.decKey()
         let myKey = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: rawKey)
-        let theirKey = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: recipientXPublicKey)
+        let theirKey = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: recipientEncKey)
         let sharedSecret = try myKey.sharedSecretFromKeyAgreement(with: theirKey)
 
         let nonce = ChaChaPoly.Nonce()
@@ -77,7 +77,7 @@ public final class IdentityService: Identity, ShareEncryption {
         return Data([TransportSuite.current.rawValue]) + sealedBox.combined
     }
 
-    public func decrypt(_ noncePlusCiphertext: Data, recipientXPublicKey: Data) throws -> Data {
+    public func decrypt(_ noncePlusCiphertext: Data, recipientEncKey: Data) throws -> Data {
         guard let tagByte = noncePlusCiphertext.first,
               let suite = TransportSuite(rawValue: tagByte) else {
             throw TransportSuiteError.unsupported(tag: noncePlusCiphertext.first ?? 0)
@@ -88,7 +88,7 @@ public final class IdentityService: Identity, ShareEncryption {
         }
         let rawKey = try identityStore.decKey()
         let myKey = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: rawKey)
-        let theirKey = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: recipientXPublicKey)
+        let theirKey = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: recipientEncKey)
         let sharedSecret = try myKey.sharedSecretFromKeyAgreement(with: theirKey)
 
         let sealedBox = try ChaChaPoly.SealedBox(combined: noncePlusCiphertext.dropFirst())

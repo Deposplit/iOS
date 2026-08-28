@@ -17,13 +17,13 @@ struct AddContactView: View {
                         .autocorrectionDisabled()
                 }
                 Section("Verification key (base64url)") {
-                    TextField("Verification key", text: $viewModel.edKeyInput)
+                    TextField("Verification key", text: $viewModel.verifyKeyInput)
                         .autocorrectionDisabled()
                         .autocapitalization(.none)
                         .font(.system(.body, design: .monospaced))
                 }
                 Section("Encryption key (base64url)") {
-                    TextField("Encryption key", text: $viewModel.xKeyInput)
+                    TextField("Encryption key", text: $viewModel.encKeyInput)
                         .autocorrectionDisabled()
                         .autocapitalization(.none)
                         .font(.system(.body, design: .monospaced))

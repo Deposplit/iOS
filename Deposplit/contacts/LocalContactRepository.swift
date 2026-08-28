@@ -18,7 +18,7 @@ final class LocalContactRepository: ContactRepository {
         return contacts
     }
 
-    func getByEdKey(_ verifyKey: Data) -> Contact? {
+    func getByVerifyKey(_ verifyKey: Data) -> Contact? {
         getAll().first { $0.verifyKey == verifyKey }
     }
 

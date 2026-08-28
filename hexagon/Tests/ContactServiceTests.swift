@@ -5,7 +5,7 @@ import Foundation
 private final class InMemoryContactRepositoryForContactServiceTest: ContactRepository {
     private(set) var contacts: [Contact] = []
     func getAll() -> [Contact] { contacts }
-    func getByEdKey(_ verifyKey: Data) -> Contact? { contacts.first { $0.verifyKey == verifyKey } }
+    func getByVerifyKey(_ verifyKey: Data) -> Contact? { contacts.first { $0.verifyKey == verifyKey } }
     func getById(_ id: UUID) -> Contact? { contacts.first { $0.id == id } }
     func save(_ contact: Contact) {
         contacts.removeAll { $0.id == contact.id }

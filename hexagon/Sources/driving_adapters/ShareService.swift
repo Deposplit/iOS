@@ -90,7 +90,7 @@ public final class ShareService: ShareManagement {
 
     /// True only if `req`'s senderSignature verifies against a known contact's Ed25519 key.
     private func verifyOpen(_ req: ShareRequest) -> Bool {
-        guard let contact = contactRepository.getByEdKey(req.senderKey) else { return false }
+        guard let contact = contactRepository.getByVerifyKey(req.senderKey) else { return false }
         let canon = PayloadCanonical.forOpen(
             secretId: req.secretId, transactionType: req.transactionType, recipientKey: req.recipientKey,
             label: req.label, secretCreatedAt: req.secretCreatedAt, shareId: req.shareId, ciphertext: req.ciphertext,
@@ -105,7 +105,7 @@ public final class ShareService: ShareManagement {
     /// `ciphertext = nil` even though the row's own ciphertext field is populated for delivery.
     private func verifyRespond(_ req: ShareRequest) -> Bool {
         guard let sig = req.recipientSignature else { return false }
-        guard let contact = contactRepository.getByEdKey(req.recipientKey) else { return false }
+        guard let contact = contactRepository.getByVerifyKey(req.recipientKey) else { return false }
         let approved = req.state == .approved
         let signedCiphertext = (approved && req.transactionType == .retrieval) ? req.ciphertext : nil
         let canon = PayloadCanonical.forRespond(requestId: req.id, approved: approved, ciphertext: signedCiphertext)
@@ -119,7 +119,7 @@ public final class ShareService: ShareManagement {
         let secretId = UUID()
         let createdAt = Date()
         for (contact, share) in zip(contacts, shares) {
-            let ciphertext = try encryption.encrypt(Data(share), recipientXPublicKey: contact.encKey)
+            let ciphertext = try encryption.encrypt(Data(share), recipientEncKey: contact.encKey)
             let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: .deposit, recipientKey: contact.verifyKey, label: label, secretCreatedAt: createdAt, shareId: nil, ciphertext: ciphertext, k: threshold, n: contacts.count)
             let senderSignature = try identity.sign(canon)
             let req = try await relay(for: contact).openShareRequest(
@@ -168,7 +168,7 @@ public final class ShareService: ShareManagement {
                 }
                 // A row for a holder we no longer have a contact record for can't be re-anchored
                 // to a contactId — skip rather than drop the holder's identity on the floor.
-                guard let contact = contactRepository.getByEdKey(req.recipientKey) else { continue }
+                guard let contact = contactRepository.getByVerifyKey(req.recipientKey) else { continue }
                 let priorConfirmedAt = existingMetadata.first(where: { $0.id == req.id })?.lastConfirmedAt
                 if req.state == .approved, isRetentionStillPending(req.id) {
                     // Item 12 — first-observed pickup confirmation (relay-observed channel): a
@@ -344,10 +344,10 @@ public final class ShareService: ShareManagement {
         var contactIds: [UUID] = []
         for pair in approved {
             let ct = pair.request.ciphertext!
-            guard let contact = contactRepository.getByEdKey(pair.request.recipientKey) else {
+            guard let contact = contactRepository.getByVerifyKey(pair.request.recipientKey) else {
                 throw ShareServiceError.contactNotFound
             }
-            let plaintext = try encryption.decrypt(ct, recipientXPublicKey: contact.encKey)
+            let plaintext = try encryption.decrypt(ct, recipientEncKey: contact.encKey)
             decryptedShares.append(Array(plaintext))
             contactIds.append(contact.id)
         }
@@ -394,7 +394,7 @@ public final class ShareService: ShareManagement {
             let pending = (try? await relay.listShareRequests(role: .recipient, transactionType: .deposit, state: .pending)) ?? []
             // Unknown sender or unverified senderSignature: skip silently, do not auto-approve.
             for req in pending where verifyOpen(req) {
-                guard let senderContact = contactRepository.getByEdKey(req.senderKey) else { continue }
+                guard let senderContact = contactRepository.getByVerifyKey(req.senderKey) else { continue }
                 // A deposit without valid k/n can't happen against a conforming relay (required by
                 // ShareRequestsService) — skip defensively rather than store a share we can't
                 // later report thresholds for during recovery.
@@ -404,7 +404,7 @@ public final class ShareService: ShareManagement {
                     guard let recipientSignature = try? identity.sign(canon) else { continue }
                     if let responded = try? await relay.respondToShareRequest(requestId: req.id, approved: true, ciphertext: nil, recipientSignature: recipientSignature),
                        let ct = responded.ciphertext,
-                       let plaintext = try? encryption.decrypt(ct, recipientXPublicKey: senderContact.encKey) {
+                       let plaintext = try? encryption.decrypt(ct, recipientEncKey: senderContact.encKey) {
                         shareRepository.save(HeldShare(
                             id: req.id,
                             secretId: req.secretId,
@@ -469,7 +469,7 @@ public final class ShareService: ShareManagement {
         for relay in allRelays() {
             let notices = (try? await relay.listHeartbeats()) ?? []
             for notice in notices {
-                guard let contact = contactRepository.getByEdKey(notice.holderKey) else { continue }
+                guard let contact = contactRepository.getByVerifyKey(notice.holderKey) else { continue }
                 let canon = PayloadCanonical.forHeartbeat(ownerKey: myKey, secretIds: notice.secretIds, optedOut: notice.optedOut)
                 guard identity.verify(canon, signature: notice.signature, publicKey: notice.holderKey) else { continue }
                 if notice.optedOut {
@@ -528,7 +528,7 @@ public final class ShareService: ShareManagement {
         for relay in allRelays() {
             let notices = (try? await relay.listRotations()) ?? []
             for notice in notices {
-                guard let contact = contactRepository.getByEdKey(notice.oldVerifyKey) else { continue }
+                guard let contact = contactRepository.getByVerifyKey(notice.oldVerifyKey) else { continue }
                 let canon = PayloadCanonical.forRotation(recipientKey: notice.recipientKey, newVerifyKey: notice.newVerifyKey, newEncKey: notice.newEncKey, newCipherSuite: notice.newCipherSuite)
                 guard identity.verify(canon, signature: notice.signature, publicKey: notice.oldVerifyKey) else { continue }
                 // Item 10 — a stolen key can't revoke itself, but a locally-flagged one blocks
@@ -607,7 +607,7 @@ public final class ShareService: ShareManagement {
         for relay in allRelays() {
             let pushes = (try? await relay.listShareRequests(role: .recipient, transactionType: .inventory, state: .approved)) ?? []
             for req in pushes where verifyOpen(req) {
-                guard let holderContact = contactRepository.getByEdKey(req.senderKey) else { continue }
+                guard let holderContact = contactRepository.getByVerifyKey(req.senderKey) else { continue }
                 guard let k = req.k, let n = req.n else { continue }
                 let existingSecrets = (try? secretRepository.getAll()) ?? []
                 if !existingSecrets.contains(where: { $0.id == req.secretId }) {
@@ -673,10 +673,10 @@ public final class ShareService: ShareManagement {
             // Re-encrypt to the requester's *current* X25519 key — looked up live, not pinned at
             // deposit time. This is what lets reconstruction survive a sender key rotation/
             // recovery (item 7's core reason for existing).
-            guard let requesterContact = contactRepository.getByEdKey(request.senderKey) else {
+            guard let requesterContact = contactRepository.getByVerifyKey(request.senderKey) else {
                 throw ShareServiceError.contactNotFound
             }
-            ciphertext = try encryption.encrypt(plaintext, recipientXPublicKey: requesterContact.encKey)
+            ciphertext = try encryption.encrypt(plaintext, recipientEncKey: requesterContact.encKey)
         } else {
             ciphertext = nil
         }

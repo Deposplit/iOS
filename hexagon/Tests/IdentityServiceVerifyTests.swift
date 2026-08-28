@@ -67,14 +67,14 @@ private func newIdentity() throws -> IdentityService {
 
 @Test func generateNewKeyPairDoesNotTouchStorage() throws {
     let alice = try newIdentity()
-    let originalEdKey = alice.verifyKey
-    let originalXKey = alice.encKey
+    let originalVerifyKey = alice.verifyKey
+    let originalEncKey = alice.encKey
     let candidate = alice.generateNewKeyPair()
-    #expect(candidate.verifyKey != originalEdKey)
-    #expect(candidate.encKey != originalXKey)
+    #expect(candidate.verifyKey != originalVerifyKey)
+    #expect(candidate.encKey != originalEncKey)
     // Unpersisted — the live identity hasn't moved.
-    #expect(alice.verifyKey == originalEdKey)
-    #expect(alice.encKey == originalXKey)
+    #expect(alice.verifyKey == originalVerifyKey)
+    #expect(alice.encKey == originalEncKey)
 }
 
 @Test func activateKeyPairPersistsTheNewKeysAndPreservesThePseudonym() throws {
@@ -88,13 +88,13 @@ private func newIdentity() throws -> IdentityService {
 
 @Test func signAfterActivateKeyPairVerifiesAgainstTheNewKeyNotTheOld() throws {
     let alice = try newIdentity()
-    let oldEdKey = alice.verifyKey
+    let oldVerifyKey = alice.verifyKey
     let candidate = alice.generateNewKeyPair()
     try alice.activateKeyPair(candidate)
     let message = Data("post-rotation message".utf8)
     let sig = try alice.sign(message)
     #expect(alice.verify(message, signature: sig, publicKey: candidate.verifyKey))
-    #expect(!alice.verify(message, signature: sig, publicKey: oldEdKey))
+    #expect(!alice.verify(message, signature: sig, publicKey: oldVerifyKey))
 }
 
 // -------------------------------------------------------------------------
@@ -105,25 +105,25 @@ private func newIdentity() throws -> IdentityService {
     let alice = try newIdentity()
     let bob = try newIdentity()
     let plaintext = Data("shhh".utf8)
-    let ciphertext = try alice.encrypt(plaintext, recipientXPublicKey: bob.encKey)
-    let decrypted = try bob.decrypt(ciphertext, recipientXPublicKey: alice.encKey)
+    let ciphertext = try alice.encrypt(plaintext, recipientEncKey: bob.encKey)
+    let decrypted = try bob.decrypt(ciphertext, recipientEncKey: alice.encKey)
     #expect(decrypted == plaintext)
 }
 
 @Test func encryptPrependsTheCurrentTransportSuiteTag() throws {
     let alice = try newIdentity()
     let bob = try newIdentity()
-    let ciphertext = try alice.encrypt(Data("shhh".utf8), recipientXPublicKey: bob.encKey)
+    let ciphertext = try alice.encrypt(Data("shhh".utf8), recipientEncKey: bob.encKey)
     #expect(ciphertext.first == TransportSuite.current.rawValue)
 }
 
 @Test func decryptThrowsUnsupportedForAnUnrecognizedSuiteTag() throws {
     let alice = try newIdentity()
     let bob = try newIdentity()
-    var ciphertext = try alice.encrypt(Data("shhh".utf8), recipientXPublicKey: bob.encKey)
+    var ciphertext = try alice.encrypt(Data("shhh".utf8), recipientEncKey: bob.encKey)
     ciphertext[ciphertext.startIndex] = 0xFF
     do {
-        _ = try bob.decrypt(ciphertext, recipientXPublicKey: alice.encKey)
+        _ = try bob.decrypt(ciphertext, recipientEncKey: alice.encKey)
         Issue.record("expected TransportSuiteError.unsupported")
     } catch TransportSuiteError.unsupported(let tag) {
         #expect(tag == 0xFF)
