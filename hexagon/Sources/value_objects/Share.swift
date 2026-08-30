@@ -5,10 +5,9 @@ public enum Role: String {
 }
 
 /// The kind of thing that happened (or is being asked to happen) to a share, phrased as a
-/// neutral transaction noun rather than either party's verb — see deposplit.com/CLAUDE.md
-/// "Cross-cutting implementation chores" for why: naming from a single named actor's point of
-/// view (Alice's, or Bob's) breaks down because the actor genuinely alternates — Alice always
-/// opens deposit/retrieval/removal, but the *holder* opens inventory (holder → owner).
+/// neutral transaction noun rather than either party's verb. Naming from a single named actor's
+/// point of view (Alice's, or Bob's) breaks down because the actor genuinely alternates — Alice
+/// always opens deposit/retrieval/removal, but the *holder* opens inventory (holder → owner).
 public enum ShareTransactionType: String {
     case deposit, retrieval, removal
     // A holder-initiated metadata-only push during identity recovery — not consent-gated, unlike

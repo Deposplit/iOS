@@ -280,10 +280,11 @@ private func makeSignedRow(
     )
 }
 
-// Covers the recipient-side signature-verification gating described in deposplit.com/CLAUDE.md's
-// BYOR section: syncInbox/listPendingRequests must drop rows with an unverifiable senderSignature
-// (unknown sender, or a genuine contact's key but a forged/mismatched signature) instead of
-// trusting whatever the relay returns, and respond must reject explicitly.
+// Covers the recipient-side signature-verification gating BYOR requires — a third-party relay
+// performs no verification of its own, so syncInbox/listPendingRequests must drop rows with an
+// unverifiable senderSignature (unknown sender, or a genuine contact's key but a forged or
+// mismatched signature) instead of trusting whatever the relay returns, and respond must reject
+// explicitly.
 
 @Test func syncInboxApprovesAndSavesADepositWithAValidSenderSignatureFromAKnownContact() async throws {
     let relay = FakeShareRelay()
@@ -360,7 +361,7 @@ private func makeSignedRow(
     }
 }
 
-// MARK: - Fan-out across a contact's BYOR relay (deposplit.com/CLAUDE.md's BYOR section)
+// MARK: - Fan-out across a contact's BYOR relay
 
 private final class TwoRelayResolver: ShareRelayResolver {
     private let defaultRelay: any ShareRelay

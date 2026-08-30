@@ -2,7 +2,7 @@ import hexagon
 import Foundation
 
 // `relay` carries the *displaying* device's currently-configured relay — the out-of-band exchange
-// mechanism BYOR uses (deposplit.com/CLAUDE.md "BYOR"). nil means "use the scanning device's own
+// mechanism BYOR uses. nil means "use the scanning device's own
 // default relay".
 //
 // `cipherSuite` is the wire value of the signing + key-agreement
