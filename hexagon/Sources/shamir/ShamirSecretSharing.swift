@@ -127,7 +127,7 @@ public enum ShamirError: Error, Equatable {
     case sharesTooShort
     case unequalShareLengths
     case duplicateXCoordinate
-    /// Item 13 — more shares were collected than `threshold`, but no size-`threshold` subset
+    /// More shares were collected than `threshold`, but no size-`threshold` subset
     /// could be found whose agreement with the rest clears the Reed–Solomon unique-decoding-radius
     /// bound (`⌊(collected - threshold) / 2⌋` correctable bad shares). Never silently guesses.
     case reconstructionIntegrityFailed(largestConsistentGroup: Int, totalShares: Int)
@@ -201,8 +201,8 @@ public func combine(shares: [[UInt8]]) throws -> [UInt8] {
 }
 
 /// Result of `combineWithIntegrity`. `hasIntegrityMargin` is `false` only when exactly `threshold`
-/// shares were supplied (nothing to cross-check against — item 13's "reconstructed without
-/// integrity margin" case). `excludedIndices` are positions in the input `shares` array identified
+/// shares were supplied (the "reconstructed without integrity margin" case, with nothing to
+/// cross-check against). `excludedIndices` are positions in the input `shares` array identified
 /// as inconsistent with the rest and excluded from reconstruction; empty when every share agreed.
 public struct IntegrityCombineResult {
     public let secret: [UInt8]
@@ -220,7 +220,6 @@ private let maxIntegrityCombinationsTried = 5000
 /// Reconstructs from more than `threshold` shares by finding the largest mutually-consistent
 /// subset and using it — classic Shamir has no built-in integrity, so passing extra shares to
 /// plain `combine` would silently mix in a bad one and produce a wrong secret with no error
-/// signal. See deposplit.com/CLAUDE.md item 13.
 ///
 /// Algorithm: bounded-exhaustive maximum-agreement decoding. Every size-`threshold` subset of
 /// `shares` is a "hypothesis"; for each, the implied secret is interpolated and every one of the

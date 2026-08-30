@@ -48,13 +48,13 @@ final class RequestsViewModel {
             ?? request.senderKey.base64URLEncoded.prefix(8) + "…"
     }
 
-    // Item 15 — the sender's pseudonym, shown as a secondary line, but only when senderName
+    // The sender's pseudonym, shown as a secondary line, but only when senderName
     // above is actually a nickname; nil otherwise.
     func senderSubtitle(for request: ShareRequest) -> String? {
         allContacts.first(where: { $0.verifyKey == request.senderKey }).flatMap { $0.nickname != nil ? $0.pseudonym : nil }
     }
 
-    /// Item 10's retrieve-approval hardening: the attack signature is *key change → quick
+    /// Retrieve-approval hardening: the attack signature is *key change → quick
     /// retrieval*, so this is surfaced only for Retrieval requests, not every request type.
     func keyChangedDaysAgo(for request: ShareRequest) -> Int? {
         guard request.transactionType == .retrieval else { return nil }
@@ -63,7 +63,7 @@ final class RequestsViewModel {
         return Calendar.current.dateComponents([.day], from: changedAt, to: Date()).day
     }
 
-    // MARK: - Item 10: key conflicts (never auto-resolved)
+    // MARK: - Key conflicts (never auto-resolved)
 
     func contactName(for conflict: KeyConflict) -> String {
         allContacts.first(where: { $0.id == conflict.contactId })?.displayName ?? "Unknown contact"

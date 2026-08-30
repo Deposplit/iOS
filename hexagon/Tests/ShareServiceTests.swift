@@ -44,7 +44,7 @@ private final class InMemoryIdentityStoreForShareServiceTest: IdentityStore {
     func decKey() throws -> Data { _decKey }
 }
 
-/// A genuinely mutable in-memory store (not a no-op) — item 9's rotation-processing tests need to
+/// A genuinely mutable in-memory store (not a no-op) — the rotation-processing tests need to
 /// observe the effect of `ContactService.updateContact` on the same contacts `ShareService` reads.
 private final class FakeContactRepository: ContactRepository {
     private var contacts: [Contact]
@@ -129,7 +129,7 @@ private final class FakeShareRelay: ShareRelay {
     var openedRequests: [OpenedRequest] = []
     var unreachable = false
 
-    // Item 9
+    // Rotation push and withdraw tombstone
     struct WithdrawCall: Equatable { let senderKey: Data?; let secretId: UUID? }
     var withdrawCalls: [WithdrawCall] = []
     struct PushedRotation: Equatable { let recipientKey: Data; let newVerifyKey: Data; let newEncKey: Data; let newCipherSuite: CipherSuite; let signature: Data }
@@ -196,7 +196,7 @@ private final class FakeShareRelay: ShareRelay {
 
     func deleteRotation(id: UUID) async throws { deletedRotationIds.append(id) }
 
-    // Item 12
+    // Custodial heartbeat
     struct PushedHeartbeat: Equatable { let ownerKey: Data; let secretIds: [UUID]; let optedOut: Bool; let signature: Data }
     var pushedHeartbeats: [PushedHeartbeat] = []
     var heartbeatsToReturn: [CustodyHeartbeat] = []
@@ -463,7 +463,7 @@ private final class TwoRelayResolver: ShareRelayResolver {
     #expect(shareRepo.getAll().map(\.id) == [fromAliceId])
 }
 
-// MARK: - Identity recovery (item 8)
+// MARK: - Identity recovery
 
 private func makeServiceForRecoveryTest(relay: FakeShareRelay, contacts: [Contact] = [aliceContact]) throws -> (
     svc: ShareService, bob: IdentityService, shareRepo: FakeShareRepository,
@@ -491,7 +491,7 @@ private func makeServiceForRecoveryTest(relay: FakeShareRelay, contacts: [Contac
 }
 
 /// A self-approved inventory row, as the relay would hand it back — `state: .approved`
-/// and `respondedAt` set at creation, since this type has no consent phase (see item 8).
+/// and `respondedAt` set at creation, since this type has no consent phase.
 private func makeApprovedRecoveryMetadataRow(
     secretId: UUID, senderKey: Data, recipientKey: Data, signer: TestKeyPair,
     k: Int = 2, n: Int = 3, label: String = "recovered secret", createdAt: Date = Date()
@@ -574,7 +574,7 @@ private func makeApprovedRecoveryMetadataRow(
     #expect(relay.deletedRequestIds.isEmpty)
 }
 
-// MARK: - Item 9: rotation push (client primitive + receive-side) and withdraw tombstone
+// MARK: - Rotation push (client primitive + receive-side) and withdraw tombstone
 
 /// Builds a signed KeyRotation notice — the signing counterpart of `relay.pushRotation`.
 /// `signer` is the party whose signature is attached; pass something other than the keypair
@@ -636,7 +636,7 @@ private func makeSignedRotation(
     #expect(updated?.id == aliceContact.id) // updated in place, contactId preserved
     #expect(updated?.verifyKey == newEd)
     #expect(updated?.encKey == newX)
-    #expect(updated?.cipherSuite == .current) // item 14 — threaded through from the notice
+    #expect(updated?.cipherSuite == .current) // threaded through from the notice
     #expect(updated?.verificationLevel == .low)
     #expect(relay.deletedRotationIds == [notice.id])
 }
@@ -655,7 +655,7 @@ private func makeSignedRotation(
 
     try await svc.syncInbox()
 
-    // Continuity of key control is not a fresh personhood check (item 10) — it can never raise
+    // Continuity of key control is not a fresh personhood check — it can never raise
     // the level, only cap it at .low.
     #expect(contactRepo.getById(daveContact.id)?.verificationLevel == .veryLow)
 }
@@ -760,7 +760,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
     #expect(relay.deletedRequestIds.isEmpty)
 }
 
-// MARK: - Item 10: stolen-key revocation (compromised-key flag + key conflicts)
+// MARK: - Stolen-key revocation (compromised-key flag + key conflicts)
 
 @Test func syncInboxRefusesAutoAcceptAndCapturesAKeyConflictWhenTheOldKeyIsRevoked() async throws {
     let relay = FakeShareRelay()
@@ -851,7 +851,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
     #expect(repo.getById(aliceContact.id)?.keyChangedAt != nil)
 }
 
-// MARK: - Item 12: custodial-heartbeat push, deposit retention, freshness
+// MARK: - Custodial-heartbeat push, deposit retention, freshness
 
 @Test func depositRetainsAnEncryptedBlobPerHolder() async throws {
     let relay = FakeShareRelay()
@@ -1061,7 +1061,7 @@ private func makeSignedHeartbeat(holderKey: Data, ownerKey: Data, signer: TestKe
     }
 }
 
-// MARK: - Reconstruction integrity + fan-out targeting (item 13)
+// MARK: - Reconstruction integrity + fan-out targeting
 
 /// A holder contact with its own real keypair — reconstruct() tests need several distinct
 /// holders (unlike most of this file's single-contact fixtures), each independently able to
@@ -1237,7 +1237,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     #expect(relay.openedRequests.map(\.recipientKey) == [untouched.contact.verifyKey])
 }
 
-// MARK: - Identity regeneration (item 9's parked "regenerate my own identity" trigger)
+// MARK: - Identity regeneration (the "regenerate my own identity" trigger)
 
 @Test func regenerateIdentityPushesASignedRotationToEveryContactAndActivatesTheNewKeys() async throws {
     let relay = FakeShareRelay()

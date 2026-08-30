@@ -1,11 +1,10 @@
 import hexagon
 import Foundation
 
-/// Item 9's "reconstruct-and-re-split" repair flow — composes three already-existing primitives
+/// The "reconstruct-and-re-split" repair flow — composes three already-existing primitives
 /// (`reconstruct`, `deposit`, `discardSecret`) that were previously only reachable from three
-/// disconnected screens. See deposplit.com/CLAUDE.md "What is next" item 9 and item 11 (the
-/// primitives this composes) and item 12 (the freshness-gated health signal that now gives this
-/// flow a reason to be surfaced).
+/// disconnected screens. What gives the flow a reason to be surfaced is the freshness-gated
+/// health signal: a secret whose live holder count has fallen needs repairing, not discarding.
 @Observable
 final class RepairViewModel {
 
@@ -21,7 +20,7 @@ final class RepairViewModel {
         let contactId: UUID
         let pseudonym: String
         let requestState: ShareRequestState?
-        // Item 15 — the contact's actual pseudonym, shown as a secondary line, but only when
+        // The contact's actual pseudonym, shown as a secondary line, but only when
         // `pseudonym` above is actually a nickname; nil otherwise.
         var subtitle: String?
         var id: UUID { contactId }
@@ -38,7 +37,7 @@ final class RepairViewModel {
     var holderStatuses: [HolderRetrievalStatus] = []
     var approvedCount = 0
     var depositedHolderCount = 0
-    /// Item 13's integrity cross-check result, set once `reconstruct()` succeeds.
+    /// The integrity cross-check result, set once `reconstruct()` succeeds.
     var reconstructionIntegrity: ReconstructionIntegrity?
 
     /// The prefilled re-deposit form for the `.redeposit` phase — constructed (with the freshly

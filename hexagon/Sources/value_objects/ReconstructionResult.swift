@@ -1,6 +1,6 @@
 import Foundation
 
-/// Item 13 — the outcome of `ShareManagement.reconstruct`'s over-determination cross-check.
+/// The outcome of `ShareManagement.reconstruct`'s over-determination cross-check.
 /// `.noMargin` means exactly `k` shares were available (no surplus to check against — the
 /// "reconstructed without integrity margin" case). `.confirmed` means more than `k` were
 /// collected and all of them agreed. `.excludedSuspects` means more than `k` were collected, at

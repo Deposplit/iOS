@@ -68,7 +68,7 @@ final class QrScanViewModel {
     func handleScan(_ string: String) {
         guard !hasScanned else { return }
         // No version gate: `v` stays at 1 permanently (pre-launch, never decodes an old shape —
-        // see QrPayload.swift). A payload missing a required field like cipherSuite (item 14)
+        // see QrPayload.swift). A payload missing a required field like cipherSuite
         // already fails to decode on its own; checking `v` would add nothing.
         guard let payload = QrPayload.decode(string) else {
             error = String(localized: "Not a valid Deposplit QR code.")
@@ -84,9 +84,9 @@ final class QrScanViewModel {
         }
         do {
             // A QR scan defaults to in-person co-presence, the strongest assurance the current
-            // scan flow can claim (CLAUDE.md item 6). A remote/video-call scan is a weaker claim,
-            // but there's no UI step here to downgrade it yet — the user can always edit the
-            // contact's level later once item 6's on-device editing UI exists.
+            // scan flow can claim. A remote/video-call scan is a weaker claim, but there's no UI
+            // step here to downgrade it yet — the user can always edit the contact's level later
+            // once on-device level editing exists.
             try contactManagement.addFromQr(pseudonym: payload.pseudonym, verifyKey: verifyKey, encKey: encKey, cipherSuite: cipherSuite, verificationLevel: .veryHigh, relayBaseUrl: payload.relay, nickname: nil)
             hasScanned = true
             didSave = true

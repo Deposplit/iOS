@@ -8,12 +8,12 @@ public protocol ShareRelay {
     func deleteShareRequest(requestId: UUID) async throws
     func deleteShareRequests(senderKey: Data?, secretId: UUID?) async throws
 
-    /// Recipient-initiated unilateral withdrawal (item 9) — flips matching approved Deposit rows
+    /// Recipient-initiated unilateral withdrawal — flips matching approved Deposit rows
     /// to `.withdrawn` on the relay instead of deleting them, so the sender's next poll can
     /// observe the tombstone. Best-effort and fire-and-forget.
     func withdrawShareRequests(senderKey: Data?, secretId: UUID?) async throws
 
-    // Item 9's signed rotate(K_old -> K_new) push. Grouped onto this protocol rather than a
+    // The signed rotate(K_old -> K_new) push. Grouped onto this protocol rather than a
     // separate port: it's the same physical relay endpoint and the same BYOR per-contact routing
     // as every other ShareRelay call. deposplit.com's own backend keeps rotation pushes in a
     // dedicated `key_rotations` table/`KeyRotations` service for domain-purity reasons (no
@@ -29,7 +29,7 @@ public protocol ShareRelay {
     /// Deletes a rotation notice once consumed.
     func deleteRotation(id: UUID) async throws
 
-    // Item 12's signed custodial-heartbeat push — same "grouped onto this protocol" reasoning as
+    // The signed custodial-heartbeat push — same "grouped onto this protocol" reasoning as
     // the rotation push above: one physical relay, one BYOR routing scheme.
 
     /// Pushes (upserts) a signed heartbeat for one owner, replacing any previous heartbeat this

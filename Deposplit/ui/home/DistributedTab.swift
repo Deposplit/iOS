@@ -68,7 +68,7 @@ struct DistributedTab: View {
         contacts.first(where: { $0.id == contactId })?.displayName ?? String(localized: "Unknown contact")
     }
 
-    // Item 15 — the contact's pseudonym, shown as a secondary line, but only when contactName
+    // The contact's pseudonym, shown as a secondary line, but only when contactName
     // above is actually a nickname; nil otherwise.
     private func contactSubtitle(for contactId: UUID) -> String? {
         contacts.first(where: { $0.id == contactId }).flatMap { $0.nickname != nil ? $0.pseudonym : nil }
@@ -119,7 +119,7 @@ private struct SecretGroupRow: View {
                                 if let subtitle = contactSubtitle(holder.contactId) {
                                     Text(subtitle).font(.caption2).foregroundStyle(.secondary)
                                 }
-                                // Item 12 — early nudge, surfaced before the holder actually
+                                // Early nudge, surfaced before the holder actually
                                 // drops out of n_live.
                                 if holder.isGettingStale {
                                     Label("Getting stale", systemImage: "clock.badge.exclamationmark")

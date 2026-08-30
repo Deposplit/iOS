@@ -54,14 +54,14 @@ final class LocalContactRepository: ContactRepository {
         let relayBaseUrl: String?
         let revokedVerifyKeys: [String]
         let keyChangedAt: String?
-        // Item 12 — no optional/fallback decode shim: Deposplit is pre-launch, local stores are
+        // No optional/fallback decode shim: Deposplit is pre-launch, local stores are
         // wiped, not migrated.
         let heartbeatOptedOutAt: String?
         let lastHeartbeatSentAt: String?
         let heartbeatEmissionOptedOut: Bool
-        // Item 14 — same "no back-compat shim" precedent as above.
+        // Same "no back-compat shim" precedent as above.
         let cipherSuite: CipherSuite
-        // Item 15 — Optional, so Codable's synthesized decode already treats a missing key as
+        // Optional, so Codable's synthesized decode already treats a missing key as
         // nil for free; no shim needed even for a contacts.json written before this field existed.
         let nickname: String?
     }

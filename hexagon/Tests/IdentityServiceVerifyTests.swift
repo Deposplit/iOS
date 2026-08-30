@@ -62,7 +62,7 @@ private func newIdentity() throws -> IdentityService {
 }
 
 // -------------------------------------------------------------------------
-// generateNewKeyPair() / activateKeyPair() — item 9's identity-regen trigger
+// generateNewKeyPair() / activateKeyPair() — the identity-regeneration trigger
 // -------------------------------------------------------------------------
 
 @Test func generateNewKeyPairDoesNotTouchStorage() throws {
@@ -98,7 +98,7 @@ private func newIdentity() throws -> IdentityService {
 }
 
 // -------------------------------------------------------------------------
-// encrypt() / decrypt() — item 14's per-message TransportSuite tag
+// encrypt() / decrypt() — the per-message TransportSuite tag
 // -------------------------------------------------------------------------
 
 @Test func encryptThenDecryptRoundTrips() throws {

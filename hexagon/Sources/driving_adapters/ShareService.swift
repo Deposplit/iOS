@@ -135,7 +135,7 @@ public final class ShareService: ShareManagement {
                 senderSignature: senderSignature
             )
             try? shareMetadataRepository.save(ShareMetadata(id: req.id, secretId: secretId, contactId: contact.id))
-            // Item 12 — retained until this holder's pickup is confirmed (relay-observed or
+            // Retained until this holder's pickup is confirmed (relay-observed or
             // heartbeat-attested), then discarded. Safe to retain: this blob is encrypted to the
             // holder's X25519 key, so this device cannot decrypt it itself.
             try? retainedDepositRepository.save(RetainedDepositBlob(id: req.id, secretId: secretId, contactId: contact.id, label: label, secretCreatedAt: createdAt, ciphertext: ciphertext, k: threshold, n: contacts.count))
@@ -157,7 +157,7 @@ public final class ShareService: ShareManagement {
             let reqs = (try? await relay.listShareRequests(role: .sender, transactionType: .deposit, state: nil)) ?? []
             for req in reqs {
                 if req.state == .withdrawn {
-                    // Best-effort tombstone (item 9): the holder unilaterally stopped holding
+                    // Best-effort tombstone: the holder unilaterally stopped holding
                     // this share. Drop the local pointer so the health count reflects it, then
                     // clean up the relay row — it has served its purpose and needn't linger. Row
                     // *absence* is never itself a signal; only an *observed* withdrawn state
@@ -171,7 +171,7 @@ public final class ShareService: ShareManagement {
                 guard let contact = contactRepository.getByVerifyKey(req.recipientKey) else { continue }
                 let priorConfirmedAt = existingMetadata.first(where: { $0.id == req.id })?.lastConfirmedAt
                 if req.state == .approved, isRetentionStillPending(req.id) {
-                    // Item 12 — first-observed pickup confirmation (relay-observed channel): a
+                    // First-observed pickup confirmation (relay-observed channel): a
                     // one-time transition, not "still approved therefore still fresh" — an
                     // unchanging Approved row on a later poll must not keep bumping freshness, or
                     // a long-dead holder would look perpetually confirmed. The retained blob's
@@ -183,7 +183,7 @@ public final class ShareService: ShareManagement {
                     try? shareMetadataRepository.save(ShareMetadata(id: req.id, secretId: req.secretId, contactId: contact.id, lastConfirmedAt: priorConfirmedAt))
                 }
             }
-            // Item 12 — a retrieve approval is also proof-of-custody. Polled here purely for that
+            // A retrieve approval is also proof-of-custody. Polled here purely for that
             // freshness side effect; the functional read path for these rows is reconstruct()/
             // listSentRequests(), unchanged.
             let retrievals = (try? await relay.listShareRequests(role: .sender, transactionType: .retrieval, state: .approved)) ?? []
@@ -203,7 +203,7 @@ public final class ShareService: ShareManagement {
     /// For every `.discarding` `Secret`, checks whether each remaining holder's fanned-out
     /// `removal` request has been approved; approved ones are cleaned up (relay row deleted, local
     /// `ShareMetadata` removed). Once a `.discarding` secret has no `ShareMetadata` rows left, its
-    /// `Secret` record itself is removed. See item 11's two-state lifecycle.
+    /// `Secret` record itself is removed — the Active/Discarding two-state lifecycle.
     private func reconcileDiscarding() async {
         let secrets = (try? secretRepository.getAll()) ?? []
         let discarding = secrets.filter { $0.state == .discarding }
@@ -238,11 +238,11 @@ public final class ShareService: ShareManagement {
         return all.filter { $0.transactionType != .deposit }
     }
 
-    // Item 13 — a holder is worth prioritizing for a fresh retrieval ask when item 12's own
-    // "still counts toward n_live" freshness rule already trusts them: an unexpired
+    // A holder is worth prioritizing for a fresh retrieval ask when the custody-freshness rule
+    // that decides "still counts toward n_live" already trusts them: an unexpired
     // proof-of-custody and no standing opt-out. Recomputed here (not shared with the UI layer's
     // own FreshnessBucket, which serves display, not targeting) — a small, deliberate duplication
-    // of a threshold check rather than restructuring already-shipped item-12 UI code.
+    // of a threshold check rather than restructuring the already-shipped freshness UI.
     private func isConfirmed(_ meta: ShareMetadata) -> Bool {
         guard let contact = contactRepository.getById(meta.contactId), contact.heartbeatOptedOutAt == nil,
             let lastConfirmedAt = meta.lastConfirmedAt else { return false }
@@ -257,7 +257,7 @@ public final class ShareService: ShareManagement {
         for relay in allRelays() {
             existing += (try? await relay.listShareRequests(role: .sender, transactionType: .retrieval, state: nil)) ?? []
         }
-        // Item 13 — fan out to the health-informed fresh set first; widen to everyone only when
+        // Fan out to the health-informed fresh set first; widen to everyone only when
         // there aren't enough confirmed holders to reach k. A retrieval request exists solely to
         // feed an eventual reconstruct(), so this targeting applies here rather than as a
         // separate method.
@@ -266,11 +266,10 @@ public final class ShareService: ShareManagement {
         for meta in targets {
             guard let contact = contactRepository.getById(meta.contactId) else { continue }
             // Matched on secretId plus the holder's key. Not the local shareId — a recovered
-            // ShareMetadata's id is a freshly generated local UUID with no relay-row counterpart
-            // (see item 8). And not secretId alone — every holder of a secret shares it, so one
-            // standing row would silence the whole fan-out. A holder who rotated keys since the
-            // row was opened no longer matches, which is right: that row is unreachable under
-            // the new key anyway.
+            // ShareMetadata's id is a freshly generated local UUID with no relay-row counterpart.
+            // And not secretId alone — every holder of a secret shares it, so one standing row
+            // would silence the whole fan-out. A holder who rotated keys since the row was opened
+            // no longer matches, which is right: that row is unreachable under the new key anyway.
             let hasActive = existing.contains {
                 $0.secretId == meta.secretId && $0.recipientKey == contact.verifyKey
                     && ($0.state == .pending || $0.state == .approved)
@@ -322,7 +321,7 @@ public final class ShareService: ShareManagement {
         )
     }
 
-    /// Pure read (item 11): collects and decrypts `k` approved retrieval shares, but never tears
+    /// Pure read: collects and decrypts `k` approved retrieval shares, but never tears
     /// down local `ShareMetadata` or relay rows. Use `discardSecret` for teardown — reconstruct is
     /// now a *step* toward a possible re-split, not an implicit "I'm done with this" signal.
     public func reconstruct(secretId: UUID) async throws -> ReconstructionResult {
@@ -342,7 +341,7 @@ public final class ShareService: ShareManagement {
         guard approved.count >= secret.k else {
             throw ShareServiceError.notEnoughApprovedShares(have: approved.count, need: secret.k)
         }
-        // Item 13 — each decrypted share is kept paired with its originating contact so an
+        // Each decrypted share is kept paired with its originating contact so an
         // excluded index (from combineWithIntegrity) reports back as a suspect contact, not a
         // meaningless array position.
         var decryptedShares: [[UInt8]] = []
@@ -369,7 +368,7 @@ public final class ShareService: ShareManagement {
     }
 
     /// Fans out a sender-initiated `removal` to every known holder of `secretId` and flips the
-    /// `Secret` to `.discarding` immediately, before any holder has responded — see item 11.
+    /// `Secret` to `.discarding` immediately, before any holder has responded.
     public func discardSecret(secretId: UUID) async throws {
         guard let secret = (try? secretRepository.getAll())?.first(where: { $0.id == secretId }) else {
             throw ShareServiceError.secretNotFound
@@ -383,7 +382,7 @@ public final class ShareService: ShareManagement {
 
     /// Local-only teardown for a `.discarding` secret whose holders won't all respond (e.g. a
     /// permanently dark holder) — removes the `Secret` and its remaining `ShareMetadata` rows
-    /// without waiting for relay confirmation. See item 11.
+    /// without waiting for relay confirmation.
     public func forceForgetSecret(secretId: UUID) throws {
         let shares = ((try? shareMetadataRepository.getAll()) ?? []).filter { $0.secretId == secretId }
         for share in shares {
@@ -431,7 +430,7 @@ public final class ShareService: ShareManagement {
         await emitHeartbeats()
     }
 
-    /// Item 12, holder side — opportunistically piggybacks this same inbox poll: for each
+    /// Holder side — opportunistically piggybacks this same inbox poll: for each
     /// distinct sender this device currently holds at least one share from, pushes one coalesced
     /// heartbeat (or opt-out notice) once the per-sender emission interval has elapsed. Each push
     /// is independently best-effort so one unreachable BYOR relay doesn't block heartbeating
@@ -463,7 +462,7 @@ public final class ShareService: ShareManagement {
         }
     }
 
-    /// Item 12, owner side — auto-verifies each holder's latest heartbeat (or opt-out notice)
+    /// Owner side — auto-verifies each holder's latest heartbeat (or opt-out notice)
     /// against a known contact's trusted key, then updates local freshness/opt-out state. Never
     /// deletes a heartbeat row — see `CustodyHeartbeat` for why it's a standing status, not a
     /// one-shot delivery. Unknown senders and forged signatures are silently skipped, same
@@ -522,13 +521,12 @@ public final class ShareService: ShareManagement {
         ))
     }
 
-    /// Item 9, receiving side — auto-verifies a signed rotation notice against the trusted old
+    /// Receiving side — auto-verifies a signed rotation notice against the trusted old
     /// key already on file for a known contact, downgrades the verification level to at most
-    /// `.low` per item 10's unifying rule (a signed rotation proves continuity of key control,
-    /// not a fresh personhood check, so it can never carry a higher level forward), and updates
-    /// the contact record in place, preserving `contactId`. Unknown senders and
-    /// forged/mismatched signatures are silently skipped — a stranger's notice must never mutate
-    /// a real contact.
+    /// `.low` (a signed rotation proves continuity of key control, not a fresh personhood check,
+    /// so it can never carry a higher level forward), and updates the contact record in place,
+    /// preserving `contactId`. Unknown senders and forged/mismatched signatures are silently
+    /// skipped — a stranger's notice must never mutate a real contact.
     private func processRotations() async {
         for relay in allRelays() {
             let notices = (try? await relay.listRotations()) ?? []
@@ -536,7 +534,7 @@ public final class ShareService: ShareManagement {
                 guard let contact = contactRepository.getByVerifyKey(notice.oldVerifyKey) else { continue }
                 let canon = PayloadCanonical.forRotation(recipientKey: notice.recipientKey, newVerifyKey: notice.newVerifyKey, newEncKey: notice.newEncKey, newCipherSuite: notice.newCipherSuite)
                 guard identity.verify(canon, signature: notice.signature, publicKey: notice.oldVerifyKey) else { continue }
-                // Item 10 — a stolen key can't revoke itself, but a locally-flagged one blocks
+                // A stolen key can't revoke itself, but a locally-flagged one blocks
                 // auto-accept here: capture the offer as a conflict for manual resolution instead
                 // of trusting a signature the attacker is fully capable of producing. Captured
                 // locally *before* deleting the relay row — the relay is best-effort and may GC
@@ -549,7 +547,7 @@ public final class ShareService: ShareManagement {
                     try? await relay.deleteRotation(id: notice.id)
                     continue
                 }
-                // Item 14 — a cipher-suite-only change is likewise "continuity of key control, not
+                // A cipher-suite-only change is likewise "continuity of key control, not
                 // a personhood assurance," so it downgrades exactly like a plain key rotation.
                 let downgraded = min(contact.verificationLevel, .low)
                 try? contactManagement.updateContact(contactId: contact.id, verifyKey: notice.newVerifyKey, encKey: notice.newEncKey, newCipherSuite: notice.newCipherSuite, verificationLevel: downgraded)
@@ -566,7 +564,7 @@ public final class ShareService: ShareManagement {
         try keyConflictRepository.delete(id: id)
     }
 
-    /// Item 9, sending side (client primitive only — see `ShareManagement.pushRotation`). Signs
+    /// Sending side (client primitive only — see `ShareManagement.pushRotation`). Signs
     /// the new keys with the device's *current* identity, which becomes `oldVerifyKey` on the
     /// wire, proving continuity of key control to the recipient.
     public func pushRotation(contactId: UUID, newVerifyKey: Data, newEncKey: Data, newCipherSuite: CipherSuite) async throws {
@@ -578,13 +576,13 @@ public final class ShareService: ShareManagement {
         try await relay(for: contact).pushRotation(recipientKey: contact.verifyKey, newVerifyKey: newVerifyKey, newEncKey: newEncKey, newCipherSuite: newCipherSuite, signature: signature)
     }
 
-    /// Item 9's identity-regen trigger. Order matters: the drain and the rotation pushes must both
-    /// happen *before* `activateKeyPair`, since `pushRotation` (and the drain's own relay calls)
+    /// The identity-regeneration trigger. Order matters: the drain and the rotation pushes must
+    /// both happen *before* `activateKeyPair`, since `pushRotation` (and the drain's own calls)
     /// sign with whatever identity is currently persisted — that's what proves continuity from the
     /// old key to each contact. If the app dies partway through, the old identity is still active
     /// (nothing was persisted yet), so a retry simply regenerates and re-pushes from scratch; any
     /// contact who received an orphaned first attempt auto-corrects on the next successful push,
-    /// per item 9's existing `K_old`-signed auto-accept rule.
+    /// per the existing `K_old`-signed auto-accept rule.
     public func regenerateIdentity() async throws -> RegenerateIdentityResult {
         try? await syncInbox()
         try? await syncDistributed()
@@ -603,10 +601,10 @@ public final class ShareService: ShareManagement {
         return RegenerateIdentityResult(notifiedContacts: notified, totalContacts: contacts.count)
     }
 
-    /// Identity recovery (item 8) — sender/owner side. Consumes pending `recoveryMetadata` pushes
+    /// Identity recovery — sender/owner side. Consumes pending `recoveryMetadata` pushes
     /// addressed to this device, rebuilding `Secret`/`ShareMetadata` records from what each holder
     /// reports. A push is trusted only once its `senderSignature` verifies against a *known*
-    /// contact — the holder must already have been re-added out-of-band (item 8 step 1) before
+    /// contact — the holder must already have been re-added out-of-band before
     /// their push is honored. Consumed rows are deleted from the relay once processed.
     private func processRecoveryMetadata() async {
         for relay in allRelays() {
@@ -671,13 +669,13 @@ public final class ShareService: ShareManagement {
         let ciphertext: Data?
         if approved && request.transactionType == .retrieval {
             // Matched on secretId, not the sender's local shareId — that id is meaningless to
-            // this device once identities can be rebuilt independently after recovery (item 8).
+            // this device once identities can be rebuilt independently after recovery.
             guard let plaintext = shareRepository.getPlaintextShare(secretId: request.secretId) else {
                 throw ShareServiceError.shareNotFound
             }
             // Re-encrypt to the requester's *current* X25519 key — looked up live, not pinned at
             // deposit time. This is what lets reconstruction survive a sender key rotation/
-            // recovery (item 7's core reason for existing).
+            // recovery — the core reason the holder decrypts at pickup.
             guard let requesterContact = contactRepository.getByVerifyKey(request.senderKey) else {
                 throw ShareServiceError.contactNotFound
             }
@@ -695,7 +693,7 @@ public final class ShareService: ShareManagement {
         }
     }
 
-    /// Unilateral, no approval needed — but as of item 9 not purely silent: best-effort notifies
+    /// Unilateral, no approval needed — but not purely silent: best-effort notifies
     /// the sender via a withdraw tombstone before the local record is dropped, so a courtesy
     /// notice is attempted even if this method throws or the network call fails. The relay call
     /// is fire-and-forget; local deletion always proceeds regardless of its outcome.

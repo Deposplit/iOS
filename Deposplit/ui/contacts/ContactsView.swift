@@ -65,7 +65,6 @@ struct ContactsView: View {
                                 if contact.nickname != nil {
                                     // The only name value that ever left the counterparty's
                                     // device — kept visible so it can actually be cross-checked.
-                                    // See CLAUDE.md item 15.
                                     Text(contact.pseudonym)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
@@ -91,7 +90,7 @@ struct ContactsView: View {
                                 } label: {
                                     Label("Mark Key Compromised", systemImage: "exclamationmark.shield")
                                 }
-                                // Item 12 — low-stakes and reversible, no confirmation dialog.
+                                // Low-stakes and reversible, no confirmation dialog.
                                 Button {
                                     viewModel.toggleHeartbeatEmission(contact)
                                 } label: {

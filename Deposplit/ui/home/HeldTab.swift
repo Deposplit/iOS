@@ -35,7 +35,7 @@ struct HeldTab: View {
             ?? share.senderPseudonym
     }
 
-    // Item 15 — the contact's pseudonym, shown as a secondary line, but only when senderName
+    // The contact's pseudonym, shown as a secondary line, but only when senderName
     // above is actually a nickname; nil otherwise (including when there's no local Contact at
     // all, in which case senderName already falls back to HeldShare's own senderPseudonym).
     private func senderSubtitle(for share: HeldShare) -> String? {

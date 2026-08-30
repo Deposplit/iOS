@@ -153,7 +153,7 @@ import Testing
 }
 
 // -------------------------------------------------------------------------
-// combineWithIntegrity() — item 13 (reconstruction integrity via over-determination)
+// combineWithIntegrity() — reconstruction integrity via over-determination
 // -------------------------------------------------------------------------
 
 /// Corrupts every secret byte of a share (leaving its x-coordinate intact), simulating a
@@ -185,7 +185,7 @@ private func tamper(_ share: [UInt8]) -> [UInt8] {
 }
 
 @Test func combineWithIntegrityAtMargin1WithOneBadShareDetectsButCannotCorrect() throws {
-    // threshold+1 collected, one bad: can only *detect* a problem exists (CLAUDE.md item 13),
+    // threshold+1 collected, one bad: can only *detect* that a problem exists,
     // never identify which side is at fault — must throw rather than guess.
     let secret: [UInt8] = Array("margin one".utf8)
     var shares = try split(secret: secret, shares: 5, threshold: 4)

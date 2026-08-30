@@ -1,13 +1,13 @@
 import Foundation
 
 /// The KDF + AEAD construction a ciphertext blob was sealed with — a lightweight, per-message tag
-/// distinct from `CipherSuite` (deposplit.com/CLAUDE.md "What is next" item 14). Only the KDF/AEAD
+/// distinct from `CipherSuite`. Only the KDF/AEAD
 /// pair needs an in-band tag: the key-agreement algorithm is already unambiguous by the time
 /// encryption starts (the sender can't perform key agreement without first knowing the
 /// recipient's `CipherSuite`, and the recipient already knows its own current keypair's
 /// algorithm), so only "which KDF/AEAD did the sender's software happen to apply" is genuinely
-/// new information. Needs no persistent state or trust mechanism at all — item 7 already
-/// re-derives each deposit/retrieval leg fresh, so a device just always encrypts with its current
+/// new information. Needs no persistent state or trust mechanism at all — each deposit and
+/// retrieval leg is re-derived fresh, so a device just always encrypts with its current
 /// preferred suite and a decrypting device dispatches on the tag it reads.
 public enum TransportSuite: UInt8, Sendable {
     /// X25519 key agreement -> HKDF-SHA-256 -> ChaCha20-Poly1305. The only construction that

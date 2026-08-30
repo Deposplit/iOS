@@ -12,28 +12,28 @@ public enum Role: String {
 public enum ShareTransactionType: String {
     case deposit, retrieval, removal
     // A holder-initiated metadata-only push during identity recovery — not consent-gated, unlike
-    // the other three. See deposplit.com/CLAUDE.md "What is next" item 8.
+    // the other three.
     case inventory
 }
 
 public enum ShareRequestState: String {
     case pending, approved, denied
-    /// Deposit-only (item 9): the recipient unilaterally stopped holding the share. A best-effort
+    /// Deposit-only: the recipient unilaterally stopped holding the share. A best-effort
     /// tombstone, not authoritative — see `ShareRelay.withdrawShareRequests`.
     case withdrawn
 }
 
 /// Per-share record on the sender's device — one per holder of a `Secret`. Normalized to
 /// reference its parent `Secret` (by `secretId`) rather than duplicating `label`/
-/// `secretCreatedAt` — see deposplit.com/CLAUDE.md "What is next" item 11.
+/// `secretCreatedAt`.
 public struct ShareMetadata: Identifiable, Equatable, Hashable, Codable {
     public func hash(into hasher: inout Hasher) { hasher.combine(id) }
     public let id: UUID           // Deposit request ID
     public let secretId: UUID
     // The holder's stable local contact id — not their Ed25519 key — so this record survives a
-    // holder key rotation/recovery (see deposplit.com/CLAUDE.md "What is next" item 7).
+    // holder key rotation/recovery.
     public let contactId: UUID
-    // Item 12 — last proof-of-custody observed for this holder: a relay-observed pickup/retrieve
+    // Last proof-of-custody observed for this holder: a relay-observed pickup/retrieve
     // approval, or a processed heartbeat, whichever is most recent. `nil` until the first such
     // observation (e.g. right after deposit(), before the holder has picked up). Drives the
     // freshness-bucket health model — see `CustodyHeartbeatTuning`.
@@ -61,7 +61,6 @@ public struct ShareRequest: Identifiable, Equatable {
     public let respondedAt: Date?
     public let ciphertext: Data?
     // SSS threshold/share-count — populated for deposit/inventory, nil for retrieval/removal.
-    // See deposplit.com/CLAUDE.md "What is next" items 8 and 11.
     public let k: Int?
     public let n: Int?
     /// Ed25519 signature over `PayloadCanonical.forOpen` — see that type for what's signed.

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Optional catalog export/import (item 8) — a convenience backup of the *non-secret* catalog,
+/// Optional catalog export/import — a convenience backup of the *non-secret* catalog,
 /// never shares or private keys.
 public protocol CatalogManagement {
     func exportCatalog() throws -> Data

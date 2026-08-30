@@ -1,7 +1,7 @@
 import hexagon
 import SwiftUI
 
-/// Item 9's one-tap-ish repair flow: gather k approved retrievals → reconstruct → re-deposit
+/// The one-tap-ish repair flow: gather k approved retrievals → reconstruct → re-deposit
 /// (prefilled) → optionally discard the old distribution. A single screen with internal wizard
 /// state (`RepairViewModel.Phase`), not a chain of nav-graph destinations, so the reconstructed
 /// plaintext never leaves this one ViewModel's memory or gets serialized into a navigation route.

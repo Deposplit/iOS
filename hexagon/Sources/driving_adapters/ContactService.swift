@@ -36,7 +36,7 @@ public final class ContactService: ContactManagement {
         guard verifyKey.count == cipherSuite.verifyKeyLength else { throw ContactError.invalidKeySize }
         guard encKey.count == cipherSuite.encKeyLength else { throw ContactError.invalidKeySize }
         // Physical co-presence can't be asserted by typing a key in by hand — that's what the
-        // in-person QR scan flow is for. See CLAUDE.md item 6.
+        // in-person QR scan flow is for.
         guard verificationLevel != .veryHigh else { throw ContactError.veryHighRequiresInPersonScan }
         let now = Date()
         contactRepository.save(Contact(
@@ -75,7 +75,7 @@ public final class ContactService: ContactManagement {
 
     public func updateContact(contactId: UUID, verifyKey: Data?, encKey: Data?, newCipherSuite: CipherSuite?, verificationLevel: VerificationLevel?) throws {
         guard let existing = contactRepository.getById(contactId) else { throw ContactError.contactNotFound }
-        // Item 14 — a cipher-suite-only change (no key-value change) forces the same fresh-level
+        // A cipher-suite-only change (no key-value change) forces the same fresh-level
         // rule as a key change: an algorithm change is still continuity of key control, not a
         // personhood assurance.
         let changingIdentity = verifyKey != nil || encKey != nil || newCipherSuite != nil
@@ -102,7 +102,7 @@ public final class ContactService: ContactManagement {
         ))
     }
 
-    /// Item 15 — deliberately separate from `updateContact`: never touches keys, cipherSuite,
+    /// Deliberately separate from `updateContact`: never touches keys, cipherSuite,
     /// verificationLevel, verifiedAt, or keyChangedAt. Pass nil to clear an existing nickname.
     public func renameContact(contactId: UUID, nickname: String?) throws {
         guard let existing = contactRepository.getById(contactId) else { throw ContactError.contactNotFound }
@@ -152,7 +152,7 @@ public final class ContactService: ContactManagement {
         ))
     }
 
-    // Item 15 — trim, then collapse blank to nil. Lives here (not the UI layer) so every
+    // Trim, then collapse blank to nil. Lives here (not the UI layer) so every
     // caller — UI, tests, a future relink flow — gets consistent normalization for free.
     private static func normalizeNickname(_ nickname: String?) -> String? {
         guard let trimmed = nickname?.trimmingCharacters(in: .whitespaces), !trimmed.isEmpty else { return nil }

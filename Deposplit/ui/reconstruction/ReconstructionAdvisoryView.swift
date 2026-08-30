@@ -1,7 +1,7 @@
 import hexagon
 import SwiftUI
 
-/// A one-line advisory summarizing item 13's integrity cross-check result, shown wherever a
+/// A one-line advisory summarizing the reconstruction integrity cross-check, shown wherever a
 /// reconstructed secret is displayed (`ShareDetailView`, `RepairView`).
 struct ReconstructionAdvisoryView: View {
     let integrity: ReconstructionIntegrity

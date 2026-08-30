@@ -30,8 +30,8 @@ private let fixtureSecretCreatedAt: Date = {
     return f.date(from: "2026-01-01T00:00:00Z")!
 }()
 private let fixtureCiphertext = Data([1, 2, 3, 4, 5])
-// k/n (item 8) — appended at the end of the field sequence, so the pre-item-8 fields above are
-// byte-identical to the original vector; only the two new trailing lines are new.
+// k/n — appended at the end of the field sequence, so the fields above are byte-identical to
+// the original vector; only the two new trailing lines are new.
 private let fixtureK = 2
 private let fixtureN = 3
 
@@ -90,12 +90,12 @@ private func base64URLEncode(_ data: Data) -> String {
 }
 
 // ---------------------------------------------------------------------------
-// forRotation (items 9/14) — same cross-platform-interop purpose as forOpen above, using the
+// forRotation — same cross-platform-interop purpose as forOpen above, using the
 // same fixed private key seed. Identical fixture checked into
 // deposplit.com/hexagons/relay/src/test/scala/value_objects/PayloadCanonicalVectorTests.scala
 // and Android's PayloadCanonicalVectorTest.kt. Closes the gap this file's own comment used to
-// flag ("forRotation's vector was never added here when item 9 shipped") — item 14's appended
-// newCipherSuite field made recomputing this vector unavoidable, so it's added properly now.
+// flag: forRotation's vector was never added here when the rotation push shipped, and the
+// appended newCipherSuite field made recomputing it unavoidable, so it is added properly now.
 // ---------------------------------------------------------------------------
 
 private let fixtureRotationRecipientKey = Data(repeating: 0x03, count: 32)
@@ -118,7 +118,7 @@ private let expectedRotationSignatureBase64Url = "EH45bL4chGQALZ6J9IDhfUAtPNovGH
 }
 
 // ---------------------------------------------------------------------------
-// forHeartbeat (item 12) — same cross-platform-interop purpose as forOpen above, using the same
+// forHeartbeat — same cross-platform-interop purpose as forOpen above, using the same
 // fixed private key seed. Identical fixture checked into
 // deposplit.com/hexagons/relay/src/test/scala/value_objects/PayloadCanonicalVectorTests.scala.
 // ---------------------------------------------------------------------------

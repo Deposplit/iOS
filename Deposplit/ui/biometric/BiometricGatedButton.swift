@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Wraps a reconstruct action behind Face ID/Touch ID (item 1) — shared by `ShareDetailView` and
+/// Wraps a reconstruct action behind Face ID/Touch ID — shared by `ShareDetailView` and
 /// `RepairView` so both reconstruct call sites gate identically. When biometrics are unavailable,
 /// shows an explanatory message in place of the button rather than blocking reconstruction
 /// outright, mirroring Android's `BiometricGate.kt`-driven per-availability messaging.

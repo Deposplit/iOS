@@ -1,7 +1,7 @@
 import Testing
 @testable import hexagon
 
-// Item 14 ("crypto agility") — CipherSuite's wire round-trip, mirroring ShareTransactionType's
+// CipherSuite's wire round-trip, mirroring ShareTransactionType's
 // existing String-raw-value pattern.
 
 @Test func cipherSuiteWireValueRoundTrips() {

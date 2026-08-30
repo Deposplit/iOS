@@ -1,8 +1,8 @@
 import hexagon
 import Foundation
 
-/// Item 12's three-bucket freshness model — see `CustodyHeartbeatTuning` for the underlying
-/// windows and deposplit.com/CLAUDE.md "What is next" item 12 for the rationale.
+/// The three-bucket custody-freshness model — see `CustodyHeartbeatTuning` for the underlying
+/// windows and the reasoning behind them.
 enum FreshnessBucket {
     /// Proof-of-custody (heartbeat, pickup, or retrieve approval) observed within
     /// `CustodyHeartbeatTuning.lossThreshold`. Counts toward `n_live`.
@@ -31,7 +31,7 @@ struct HolderStatus: Identifiable {
         return .silentOverdue
     }
 
-    /// Item 12's early nudge — surfaced before a holder actually drops out of `n_live`, while
+    /// The early nudge — surfaced before a holder actually drops out of `n_live`, while
     /// still comfortably `.confirmed`.
     var isGettingStale: Bool {
         guard freshnessBucket == .confirmed, let lastConfirmedAt else { return false }
@@ -42,7 +42,7 @@ struct HolderStatus: Identifiable {
 enum SecretHealth {
     case healthy, caution, critical, lost
     /// `state == .discarding` suppresses the health alarm entirely — a dropping holder count is
-    /// the goal, not a problem. See deposplit.com/CLAUDE.md "What is next" item 11.
+    /// the goal, not a problem.
     case discarding
 }
 
@@ -51,7 +51,7 @@ struct SecretGroup: Identifiable {
     let holders: [HolderStatus]
     var id: UUID { secret.id }
 
-    /// Item 12 — `n_live` is now the freshness-gated `.confirmed` count, not a raw
+    /// `n_live` is the freshness-gated `.confirmed` count, not a raw
     /// `ShareMetadata`-row count: an `.unmonitored` holder never alarms, and a `.silentOverdue`
     /// one drops out (reversibly) instead of being counted as still-live.
     var health: SecretHealth {

@@ -39,7 +39,7 @@ final class LocalShareMetadataRepository: ShareMetadataRepository {
         let id: String
         let secretId: String
         let contactId: String
-        // Item 12 — no optional/fallback decode shim: Deposplit is pre-launch, local stores are
+        // No optional/fallback decode shim: Deposplit is pre-launch, local stores are
         // wiped, not migrated.
         let lastConfirmedAt: String?
     }

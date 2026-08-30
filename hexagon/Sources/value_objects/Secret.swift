@@ -1,6 +1,6 @@
 import Foundation
 
-/// Two-state lifecycle — see deposplit.com/CLAUDE.md "What is next" item 11. No `discarded`
+/// Two-state lifecycle. No `discarded`
 /// tombstone: once every holder confirms deletion (or the sender force-forgets), the `Secret`
 /// record is removed outright.
 public enum SecretState: String, Codable, Sendable, Equatable {
@@ -9,7 +9,7 @@ public enum SecretState: String, Codable, Sendable, Equatable {
 
 /// Sender-side per-secret aggregate — the single source of truth for `k`/`n`/`label`/
 /// `secretCreatedAt`, keyed by `secretId`. `ShareMetadata` rows reference this rather than
-/// duplicating its fields. See deposplit.com/CLAUDE.md "What is next" item 11.
+/// duplicating its fields.
 public struct Secret: Identifiable, Equatable, Hashable, Codable {
     public let id: UUID
     public let label: String

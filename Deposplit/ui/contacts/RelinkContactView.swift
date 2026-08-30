@@ -2,7 +2,7 @@ import hexagon
 import SwiftUI
 import VisionKit
 
-/// Holder-side "this contact's key changed" flow (deposplit.com/CLAUDE.md "What is next" item 8).
+/// Holder-side "this contact's key changed" flow, used to relink a re-presented identity.
 /// Scans the contact's re-presented QR code, updates the existing contact record **in place**
 /// (preserving `contactId` — see `ContactManagement.updateContact`), then pushes a metadata-only
 /// recovery report for every share held from them, so a recovering owner on a fresh device can
@@ -105,7 +105,7 @@ final class RelinkContactViewModel {
     func handleScan(_ string: String) {
         guard !hasScanned else { return }
         // No version gate: `v` stays at 1 permanently (pre-launch, never decodes an old shape —
-        // see QrPayload.swift). A payload missing a required field like cipherSuite (item 14)
+        // see QrPayload.swift). A payload missing a required field like cipherSuite
         // already fails to decode on its own; checking `v` would add nothing.
         guard let payload = QrPayload.decode(string) else {
             error = String(localized: "Not a valid Deposplit QR code.")
@@ -123,8 +123,8 @@ final class RelinkContactViewModel {
         pendingVerifyKey = verifyKey
         pendingEncKey = encKey
         pendingCipherSuite = cipherSuite
-        // In-person re-scan is the strongest assurance this flow can claim (item 6) — defaulted,
-        // but always shown for confirmation since a key change forces a fresh choice (item 8).
+        // In-person re-scan is the strongest assurance this flow can claim — defaulted, but
+        // always shown for confirmation since a key change forces a fresh choice.
         pendingLevel = .veryHigh
     }
 

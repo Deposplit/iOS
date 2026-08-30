@@ -8,7 +8,7 @@ final class SettingsViewModel {
     var catalogExportURL: URL?
     var catalogImportMessage: String?
 
-    /// Item 9's identity-regen trigger. `contactCount` is pre-fetched so the confirmation dialog
+    /// The identity-regeneration trigger. `contactCount` is pre-fetched so the confirmation dialog
     /// can tell the user how many contacts will be notified before they commit.
     private(set) var contactCount = 0
     private(set) var isRegeneratingIdentity = false
@@ -40,7 +40,7 @@ final class SettingsViewModel {
 
     /// Writes a fresh catalog export to a temp file and returns its URL for `ShareLink` — a
     /// self-managed, non-secret backup (contacts, verification levels, `ShareMetadata`/`Secret`
-    /// records; never shares or private keys). See item 8.
+    /// records; never shares or private keys).
     func prepareCatalogExport() {
         do {
             let data = try catalogManagement.exportCatalog()
@@ -52,7 +52,7 @@ final class SettingsViewModel {
         }
     }
 
-    /// Item 9's identity-regen trigger. Best-effort drains pending relay state under the *old*
+    /// The identity-regeneration trigger. Best-effort drains pending relay state under the *old*
     /// identity, notifies every contact of the new key, then activates it — see
     /// `ShareService.regenerateIdentity`'s doc comment for why the ordering matters. Any request
     /// still pending with a counterparty at this exact moment may become unreachable afterward

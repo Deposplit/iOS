@@ -22,8 +22,8 @@ private func makeContact() -> Contact {
     )
 }
 
-// updateContact (item 8) — contact-update-in-place, preserving contactId, used both for
-// benign key rotation and holder-driven recovery relinking. See deposplit.com/CLAUDE.md item 8.
+// updateContact — contact-update-in-place, preserving contactId, used both for benign key
+// rotation and holder-driven recovery relinking.
 
 @Test func updateContactPreservesContactIdWhileChangingKeysAndLevel() throws {
     let repo = InMemoryContactRepositoryForContactServiceTest()
@@ -82,7 +82,7 @@ private func makeContact() -> Contact {
     }
 }
 
-// Item 14 ("crypto agility") — cipher-suite-only changes and suite-driven key-length validation.
+// Crypto agility — cipher-suite-only changes and suite-driven key-length validation.
 
 @Test func updateContactRequiresAFreshLevelOnACipherSuiteOnlyChangeWithNoKeyValueChange() throws {
     let repo = InMemoryContactRepositoryForContactServiceTest()
@@ -125,9 +125,8 @@ private func makeContact() -> Contact {
     #expect(repo.getAll().first?.cipherSuite == .current)
 }
 
-// Item 15 ("local contact nicknames") — renameContact never touches
-// verificationLevel/keyChangedAt/verifiedAt/keys, matching CLAUDE.md's requirement that a
-// rename is not an identity change.
+// Local contact nicknames — renameContact never touches
+// verificationLevel/keyChangedAt/verifiedAt/keys, because a rename is not an identity change.
 
 @Test func renameContactSetsANicknameWithoutTouchingKeysLevelOrKeyChangedAt() throws {
     let repo = InMemoryContactRepositoryForContactServiceTest()

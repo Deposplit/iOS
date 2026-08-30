@@ -6,7 +6,7 @@ import Foundation
 public protocol ShareEncryption {
     /// Encrypts `plaintext` to `recipientEncKey` via the current `TransportSuite` (today:
     /// X25519+HKDF-SHA-256+ChaCha20-Poly1305). Returns suiteTag(1) || nonce(12) || ciphertext+tag
-    /// — item 14's per-message transport tag rides for free inside this already-opaque blob.
+    /// — the per-message transport-suite tag rides for free inside this already-opaque blob.
     func encrypt(_ plaintext: Data, recipientEncKey: Data) throws -> Data
     /// Decrypts `data` (suiteTag(1) || nonce(12) || ciphertext+tag) using `recipientEncKey`,
     /// dispatching on the leading `TransportSuite` tag. Throws `TransportSuiteError.unsupported`

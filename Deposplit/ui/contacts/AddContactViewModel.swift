@@ -13,7 +13,7 @@ final class AddContactViewModel {
     var error: String?
 
     /// `.veryHigh` requires physical co-presence, which manual key entry can't assert — that's
-    /// what the in-person QR scan flow is for. See CLAUDE.md item 6.
+    /// what the in-person QR scan flow is for.
     let selectableLevels = VerificationLevel.allCases.filter { $0 != .veryHigh }
 
     private let contactManagement: any ContactManagement

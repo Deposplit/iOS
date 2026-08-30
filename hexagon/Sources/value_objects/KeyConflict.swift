@@ -1,7 +1,7 @@
 import Foundation
 
 /// A signed rotation notice that arrived claiming continuity from a key the local contact record
-/// already flags as compromised (item 10). Persisted locally the moment it's detected — the
+/// already flags as compromised. Persisted locally the moment it's detected — the
 /// relay is a best-effort mailbox that may garbage-collect the underlying notice at any time, so
 /// this durable local record, not the relay, is what the conflict UI reads from. Never
 /// auto-resolved: the only paths forward are a human `dismiss` (this was a false alarm, or the

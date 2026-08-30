@@ -65,7 +65,7 @@ struct RecipientRequestsTab: View {
 private struct RequestCard: View {
     let request: ShareRequest
     let senderName: String
-    // Item 15 — the sender's pseudonym, shown only when senderName above is actually a nickname.
+    // The sender's pseudonym, shown only when senderName above is actually a nickname.
     let senderSubtitle: String?
     let keyChangedDaysAgo: Int?
     let isResponding: Bool
@@ -89,7 +89,7 @@ private struct RequestCard: View {
                 Text(subtitle).font(.caption).foregroundStyle(.secondary)
             }
 
-            // Item 10's retrieve-approval hardening — the attack signature is key change
+            // Retrieve-approval hardening — the attack signature is key change
             // followed by a quick retrieval request, so nudge toward a fresh out-of-band check.
             if let days = keyChangedDaysAgo {
                 Label("\(senderName)'s key changed \(days) days ago — verify fresh before approving", systemImage: "exclamationmark.triangle")
@@ -118,7 +118,7 @@ private struct RequestCard: View {
     }
 }
 
-/// Item 10 — never auto-resolved. Resolving "yes, this really was them" goes through the
+/// Never auto-resolved. Resolving "yes, this really was them" goes through the
 /// existing Relink flow (a fresh human-verified re-scan) on the Contacts screen, not through
 /// anything here; this card only warns and lets the user acknowledge (dismiss) the alert.
 private struct KeyConflictCard: View {

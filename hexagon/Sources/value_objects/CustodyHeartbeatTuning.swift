@@ -1,8 +1,9 @@
 import Foundation
 
-/// Item 12's cadence/staleness numbers — UI tuning, not load-bearing spec (see
-/// deposplit.com/CLAUDE.md "What is next" item 12: "the load-bearing part is not the interval
-/// number ... but two guarantees"). Shared between `ShareService` (emission cadence, on the
+/// The custodial-heartbeat cadence/staleness numbers — UI tuning, not load-bearing spec. The
+/// load-bearing part is not any interval number but the two guarantees the heartbeat makes:
+/// silence eventually reads as loss, and an opt-out says so explicitly. Shared between
+/// `ShareService` (emission cadence, on the
 /// holder side) and the app layer's health/freshness display (on the owner side) so both halves
 /// agree on the same numbers.
 public enum CustodyHeartbeatTuning {
@@ -15,6 +16,6 @@ public enum CustodyHeartbeatTuning {
     public static let lossThreshold: TimeInterval = emissionInterval * 3 // 9 days
 
     /// Below `lossThreshold` but past this point, the UI nudges "getting stale" — the early
-    /// warning called for in item 12, surfaced before a holder actually drops out of `n_live`.
+    /// warning, surfaced before a holder actually drops out of `n_live`.
     public static let staleWarningThreshold: TimeInterval = emissionInterval * 2 // 6 days
 }

@@ -5,7 +5,7 @@ import Foundation
 // mechanism BYOR uses (deposplit.com/CLAUDE.md "BYOR"). nil means "use the scanning device's own
 // default relay".
 //
-// `cipherSuite` (item 14 — "crypto agility") is the wire value of the signing + key-agreement
+// `cipherSuite` is the wire value of the signing + key-agreement
 // algorithm pairing `verifyKey`/`encKey` use. Required, not optional/defaulted like `relay` —
 // every exchange unambiguously has exactly one cipher suite in effect. Field names spelled out in
 // full (not abbreviated to `ed`/`x`), matching the vocabulary used everywhere else in the codebase.
