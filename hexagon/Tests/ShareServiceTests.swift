@@ -1096,6 +1096,17 @@ private func makeApprovedRetrievalRow(secretId: UUID, holder: HolderFixture, cip
     )
 }
 
+/// A still-`.pending` retrieval row, as a previous `requestAll` would have left it — no
+/// `recipientSignature`, because a pending row has had no response phase yet.
+private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> ShareRequest {
+    ShareRequest(
+        id: UUID(), secretId: secretId, senderKey: Data(), recipientKey: recipientKey, label: "s",
+        secretCreatedAt: Date(), transactionType: .retrieval, state: .pending, shareId: UUID(),
+        requestedAt: Date(), respondedAt: nil, ciphertext: nil, k: nil, n: nil,
+        senderSignature: Data(), recipientSignature: nil
+    )
+}
+
 @Test func reconstructWithExactlyKApprovedSharesHasNoIntegrityMargin() async throws {
     let relay = FakeShareRelay()
     let holders = (0..<4).map { makeHolderFixture(pseudonym: "holder\($0)") }
@@ -1204,6 +1215,26 @@ private func makeApprovedRetrievalRow(secretId: UUID, holder: HolderFixture, cip
 
     let targeted = Set(relay.openedRequests.map(\.recipientKey))
     #expect(targeted == Set([fresh.contact.verifyKey, stale1.contact.verifyKey, stale2.contact.verifyKey]))
+}
+
+@Test func requestAllStillAsksAHolderWhoseSiblingAlreadyHasAnOutstandingRequest() async throws {
+    let relay = FakeShareRelay()
+    let standing = makeHolderFixture(pseudonym: "standing")
+    let untouched = makeHolderFixture(pseudonym: "untouched")
+    let (svc, _, _, secretRepo, metaRepo, _) = try makeServiceForRecoveryTest(
+        relay: relay, contacts: [standing.contact, untouched.contact]
+    )
+    let secretId = UUID()
+    try secretRepo.save(Secret(id: secretId, label: "s", k: 2, n: 2, secretCreatedAt: Date(), state: .active))
+    try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: standing.contact.id, lastConfirmedAt: nil))
+    try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: untouched.contact.id, lastConfirmedAt: nil))
+    // Neither holder is confirmed, so targeting widens to both — the case the per-secret skip
+    // used to blank out entirely.
+    relay.pending = [makePendingRetrievalRow(secretId: secretId, recipientKey: standing.contact.verifyKey)]
+
+    try await svc.requestAll(secretId: secretId)
+
+    #expect(relay.openedRequests.map(\.recipientKey) == [untouched.contact.verifyKey])
 }
 
 // MARK: - Identity regeneration (item 9's parked "regenerate my own identity" trigger)

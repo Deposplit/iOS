@@ -265,10 +265,15 @@ public final class ShareService: ShareManagement {
         let targets = confirmed.count >= secret.k ? confirmed : forSecret
         for meta in targets {
             guard let contact = contactRepository.getById(meta.contactId) else { continue }
-            // Matched on secretId, not the local shareId — a recovered ShareMetadata's id is a
-            // freshly generated local UUID with no relay-row counterpart. See item 8.
+            // Matched on secretId plus the holder's key. Not the local shareId — a recovered
+            // ShareMetadata's id is a freshly generated local UUID with no relay-row counterpart
+            // (see item 8). And not secretId alone — every holder of a secret shares it, so one
+            // standing row would silence the whole fan-out. A holder who rotated keys since the
+            // row was opened no longer matches, which is right: that row is unreachable under
+            // the new key anyway.
             let hasActive = existing.contains {
-                $0.secretId == meta.secretId && ($0.state == .pending || $0.state == .approved)
+                $0.secretId == meta.secretId && $0.recipientKey == contact.verifyKey
+                    && ($0.state == .pending || $0.state == .approved)
             }
             if !hasActive {
                 let canon = PayloadCanonical.forOpen(secretId: meta.secretId, transactionType: .retrieval, recipientKey: contact.verifyKey, label: secret.label, secretCreatedAt: secret.secretCreatedAt, shareId: meta.id, ciphertext: nil)
