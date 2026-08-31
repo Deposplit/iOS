@@ -403,26 +403,35 @@ public final class ShareService: ShareManagement {
                 // ShareRequestsService) — skip defensively rather than store a share we can't
                 // later report thresholds for during recovery.
                 guard let k = req.k, let n = req.n else { continue }
+                // Order is load-bearing: approving is what clears the relay's only copy of the
+                // ciphertext, so it is the last step of pickup and never the first. Decrypting and
+                // storing first means a failure leaves the row pending with the relay's copy
+                // intact, and the next poll simply retries. The ciphertext is already in hand and
+                // already authenticated — verifyOpen above covers it — so the approval response's
+                // echoed copy adds nothing.
                 if shareRepository.getPlaintextShare(secretId: req.secretId) == nil {
-                    let canon = PayloadCanonical.forRespond(requestId: req.id, approved: true, ciphertext: nil)
-                    guard let recipientSignature = try? identity.sign(canon) else { continue }
-                    if let responded = try? await relay.respondToShareRequest(requestId: req.id, approved: true, ciphertext: nil, recipientSignature: recipientSignature),
-                       let ct = responded.ciphertext,
-                       let plaintext = try? encryption.decrypt(ct, recipientEncKey: senderContact.encKey) {
-                        shareRepository.save(HeldShare(
-                            id: req.id,
-                            secretId: req.secretId,
-                            label: req.label,
-                            contactId: senderContact.id,
-                            senderPseudonym: senderContact.pseudonym,
-                            createdAt: req.secretCreatedAt,
-                            pickedUpAt: Date(),
-                            plaintextShare: plaintext,
-                            k: k,
-                            n: n
-                        ))
-                    }
+                    guard let ct = req.ciphertext,
+                          let plaintext = try? encryption.decrypt(ct, recipientEncKey: senderContact.encKey)
+                    else { continue }
+                    shareRepository.save(HeldShare(
+                        id: req.id,
+                        secretId: req.secretId,
+                        label: req.label,
+                        contactId: senderContact.id,
+                        senderPseudonym: senderContact.pseudonym,
+                        createdAt: req.secretCreatedAt,
+                        pickedUpAt: Date(),
+                        plaintextShare: plaintext,
+                        k: k,
+                        n: n
+                    ))
                 }
+                // Sent even when an earlier poll already stored the share but failed to acknowledge
+                // it: without the approval the sender never observes the pickup and keeps her
+                // retained blob forever.
+                let canon = PayloadCanonical.forRespond(requestId: req.id, approved: true, ciphertext: nil)
+                guard let recipientSignature = try? identity.sign(canon) else { continue }
+                _ = try? await relay.respondToShareRequest(requestId: req.id, approved: true, ciphertext: nil, recipientSignature: recipientSignature)
             }
         }
         await processRecoveryMetadata()

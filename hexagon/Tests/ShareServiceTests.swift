@@ -109,6 +109,13 @@ private struct NoOpShareEncryption: ShareEncryption {
     func decrypt(_ noncePlusCiphertext: Data, recipientEncKey: Data) throws -> Data { noncePlusCiphertext }
 }
 
+/// Stands in for the real failure at pickup: a share sealed to a key this device no longer holds.
+private struct FailingShareEncryption: ShareEncryption {
+    struct SimulatedFailure: Error {}
+    func encrypt(_ plaintext: Data, recipientEncKey: Data) throws -> Data { plaintext }
+    func decrypt(_ noncePlusCiphertext: Data, recipientEncKey: Data) throws -> Data { throw SimulatedFailure() }
+}
+
 /// In-memory ShareRelay test double. `listShareRequests` filters by `transactionType`/`state`
 /// (role is ignored — every fixture row here is already addressed correctly) since `syncInbox`
 /// now issues two differently-filtered queries per relay (deposit/pending, then
@@ -230,7 +237,11 @@ private let aliceContact = Contact(
     verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date()
 )
 
-private func makeService(relay: FakeShareRelay, contacts: [Contact] = [aliceContact]) throws -> (
+private func makeService(
+    relay: FakeShareRelay,
+    contacts: [Contact] = [aliceContact],
+    encryption: any ShareEncryption = NoOpShareEncryption()
+) throws -> (
     svc: ShareService, bob: IdentityService, shareRepo: FakeShareRepository, contactRepo: FakeContactRepository,
     metaRepo: FakeShareMetadataRepository, conflictRepo: FakeKeyConflictRepository, retainedRepo: FakeRetainedDepositRepository
 ) {
@@ -243,7 +254,7 @@ private func makeService(relay: FakeShareRelay, contacts: [Contact] = [aliceCont
     let retainedRepo = FakeRetainedDepositRepository()
     let svc = ShareService(
         relayResolver: FixedShareRelayResolver(relay),
-        encryption: NoOpShareEncryption(),
+        encryption: encryption,
         shareRepository: shareRepo,
         shareMetadataRepository: metaRepo,
         secretRepository: FakeSecretRepository(),
@@ -298,6 +309,24 @@ private func makeSignedRow(
 
     #expect(relay.respondCalls == [id])
     #expect(shareRepo.getAll().map(\.id) == [id])
+}
+
+@Test func syncInboxLeavesADepositPendingWhenTheShareCannotBeDecrypted() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, shareRepo, _, _, _, _) = try makeService(relay: relay, encryption: FailingShareEncryption())
+    let id = UUID()
+    let row = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: aliceKeys)
+    relay.pending = [row]
+    relay.byId[id] = row
+
+    try await svc.syncInbox()
+
+    // Approving is what clears the relay's only copy of the ciphertext, so a pickup that couldn't
+    // be stored locally must leave the row pending for the next poll to retry — approving first
+    // would consume the share and lose it silently.
+    #expect(relay.respondCalls.isEmpty)
+    #expect(shareRepo.getAll().isEmpty)
+    #expect(relay.byId[id]?.state == .pending)
 }
 
 @Test func syncInboxSkipsADepositWhoseSenderSignatureDoesNotVerifyAgainstTheClaimedSender() async throws {
