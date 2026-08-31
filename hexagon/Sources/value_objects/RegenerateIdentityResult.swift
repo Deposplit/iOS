@@ -7,9 +7,18 @@ import Foundation
 public struct RegenerateIdentityResult: Equatable {
     public let notifiedContacts: Int
     public let totalContacts: Int
+    /// Whether the pre-rotation drain — collecting anything still addressed to the old identity —
+    /// completed. Rotation proceeds either way, deliberately: an unreachable relay must not be able
+    /// to block a user who is rotating precisely because they think their key is compromised.
+    ///
+    /// Reported rather than silently dropped so the UI can say what was skipped. It is a warning,
+    /// not a loss: the displaced `decKey` is retained one generation, so a deposit that was not
+    /// drained still opens on a later poll.
+    public let drainSucceeded: Bool
 
-    public init(notifiedContacts: Int, totalContacts: Int) {
+    public init(notifiedContacts: Int, totalContacts: Int, drainSucceeded: Bool) {
         self.notifiedContacts = notifiedContacts
         self.totalContacts = totalContacts
+        self.drainSucceeded = drainSucceeded
     }
 }

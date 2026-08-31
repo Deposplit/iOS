@@ -78,7 +78,7 @@ struct SettingsView: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This creates a new key pair and notifies \(viewModel.contactCount) contact(s). Any request currently pending with someone else may be lost.")
+                Text("This creates a new key pair and notifies \(viewModel.contactCount) contact(s). A share already on its way to you can still be collected afterwards; a contact who cannot be reached now will not learn of the new key.")
             }
             .fileImporter(isPresented: $showImporter, allowedContentTypes: [.json]) { result in
                 if case .success(let url) = result {

@@ -10,6 +10,7 @@ final class KeychainIdentityStore: IdentityStore {
         static let signKeyAccount = "sign.private"
         static let encKeyAccount = "enc.public"
         static let decKeyAccount = "dec.private"
+        static let previousDecKeyAccount = "dec.private.previous"
         static let service = "com.deposplit.Deposplit"
     }
 
@@ -22,8 +23,28 @@ final class KeychainIdentityStore: IdentityStore {
         try saveToKeychain(verifyKey, account: Keys.verifyKeyAccount)
         try saveToKeychain(decKey, account: Keys.decKeyAccount)
         try saveToKeychain(encKey, account: Keys.encKeyAccount)
+        deleteFromKeychain(account: Keys.previousDecKeyAccount)
         UserDefaults.standard.set(pseudonym, forKey: Keys.pseudonymKey)
         UserDefaults.standard.set(true, forKey: Keys.registered)
+    }
+
+    /// The displaced `decKey` is written first: a crash between the two writes leaves a previous
+    /// slot that merely duplicates the current key, which decrypts nothing extra. Writing it last
+    /// would risk the opposite — a rotated identity with no fallback at all.
+    func rotate(verifyKey: Data, signKey: Data, encKey: Data, decKey: Data) throws {
+        if let displaced = try? loadFromKeychain(account: Keys.decKeyAccount) {
+            try saveToKeychain(displaced, account: Keys.previousDecKeyAccount)
+        } else {
+            deleteFromKeychain(account: Keys.previousDecKeyAccount)
+        }
+        try saveToKeychain(signKey, account: Keys.signKeyAccount)
+        try saveToKeychain(verifyKey, account: Keys.verifyKeyAccount)
+        try saveToKeychain(decKey, account: Keys.decKeyAccount)
+        try saveToKeychain(encKey, account: Keys.encKeyAccount)
+    }
+
+    func previousDecKey() -> Data? {
+        try? loadFromKeychain(account: Keys.previousDecKeyAccount)
     }
 
     var pseudonym: String {
@@ -46,13 +67,17 @@ final class KeychainIdentityStore: IdentityStore {
         try loadFromKeychain(account: Keys.decKeyAccount)
     }
 
-    private func saveToKeychain(_ data: Data, account: String) throws {
+    private func deleteFromKeychain(account: String) {
         let deleteQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Keys.service,
             kSecAttrAccount as String: account,
         ]
         SecItemDelete(deleteQuery as CFDictionary)
+    }
+
+    private func saveToKeychain(_ data: Data, account: String) throws {
+        deleteFromKeychain(account: account)
 
         let addQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

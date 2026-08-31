@@ -10,6 +10,7 @@ private final class InMemoryIdentityStore: IdentityStore {
     private var _signKey = Data()
     private var _encKey = Data()
     private var _decKey = Data()
+    private var _previousDecKey: Data?
 
     var pseudonym: String { _pseudonym }
     var verifyKey: Data { _verifyKey }
@@ -21,11 +22,21 @@ private final class InMemoryIdentityStore: IdentityStore {
         self._signKey = signKey
         self._encKey = encKey
         self._decKey = decKey
+        self._previousDecKey = nil
         self.isRegistered = true
+    }
+
+    func rotate(verifyKey: Data, signKey: Data, encKey: Data, decKey: Data) throws {
+        self._previousDecKey = _decKey
+        self._verifyKey = verifyKey
+        self._signKey = signKey
+        self._encKey = encKey
+        self._decKey = decKey
     }
 
     func signKey() throws -> Data { _signKey }
     func decKey() throws -> Data { _decKey }
+    func previousDecKey() -> Data? { _previousDecKey }
 }
 
 private func newIdentity() throws -> IdentityService {
@@ -84,6 +95,65 @@ private func newIdentity() throws -> IdentityService {
     #expect(alice.verifyKey == candidate.verifyKey)
     #expect(alice.encKey == candidate.encKey)
     #expect(alice.pseudonym == "test")
+}
+
+// A share is sealed to whichever encKey the holder advertised at deposit time. If rotating
+// destroyed the matching decKey outright, a holder who rotates between a deposit and their pickup
+// could never collect it — the row would stay pending and every later poll would fail identically.
+
+@Test func decryptFallsBackToTheDecKeyDisplacedByTheLastRotation() throws {
+    let alice = try newIdentity()
+    let bob = try newIdentity()
+    let sealedToAlicesOldKey = try bob.encrypt(Data("one share".utf8), recipientEncKey: alice.encKey)
+
+    try alice.activateKeyPair(alice.generateNewKeyPair())
+
+    #expect(try alice.decrypt(sealedToAlicesOldKey, recipientEncKey: bob.encKey) == Data("one share".utf8))
+}
+
+@Test func decryptDoesNotReachBackPastOneGeneration() throws {
+    let alice = try newIdentity()
+    let bob = try newIdentity()
+    let sealedToAlicesOldestKey = try bob.encrypt(Data("one share".utf8), recipientEncKey: alice.encKey)
+
+    try alice.activateKeyPair(alice.generateNewKeyPair())
+    try alice.activateKeyPair(alice.generateNewKeyPair())
+
+    // Deliberate: one generation covers the deposit-to-pickup window, and no more key material
+    // than that lingers at rest.
+    #expect(throws: (any Error).self) {
+        try alice.decrypt(sealedToAlicesOldestKey, recipientEncKey: bob.encKey)
+    }
+}
+
+@Test func encryptNeverSealsUnderTheDisplacedKey() throws {
+    let alice = try newIdentity()
+    let bob = try newIdentity()
+    let alicesOldEncKey = alice.encKey
+    try alice.activateKeyPair(alice.generateNewKeyPair())
+
+    let sealed = try alice.encrypt(Data("outgoing".utf8), recipientEncKey: bob.encKey)
+
+    #expect(try bob.decrypt(sealed, recipientEncKey: alice.encKey) == Data("outgoing".utf8))
+    #expect(throws: (any Error).self) {
+        try bob.decrypt(sealed, recipientEncKey: alicesOldEncKey)
+    }
+}
+
+@Test func registeringAFreshIdentityDropsTheRetainedKey() throws {
+    let store = InMemoryIdentityStore()
+    let alice = IdentityService(identityStore: store)
+    try alice.register(pseudonym: "test")
+    let bob = try newIdentity()
+    let sealedToAlicesOldKey = try bob.encrypt(Data("one share".utf8), recipientEncKey: alice.encKey)
+    try alice.activateKeyPair(alice.generateNewKeyPair())
+
+    // Registration is a new identity, not a continuation of the old one, so nothing carries over.
+    try alice.register(pseudonym: "test")
+
+    #expect(throws: (any Error).self) {
+        try alice.decrypt(sealedToAlicesOldKey, recipientEncKey: bob.encKey)
+    }
 }
 
 @Test func signAfterActivateKeyPairVerifiesAgainstTheNewKeyNotTheOld() throws {

@@ -26,6 +26,7 @@ private final class InMemoryIdentityStoreForShareServiceTest: IdentityStore {
     private var _signKey = Data()
     private var _encKey = Data()
     private var _decKey = Data()
+    private var _previousDecKey: Data?
 
     var pseudonym: String { _pseudonym }
     var verifyKey: Data { _verifyKey }
@@ -37,11 +38,21 @@ private final class InMemoryIdentityStoreForShareServiceTest: IdentityStore {
         self._signKey = signKey
         self._encKey = encKey
         self._decKey = decKey
+        self._previousDecKey = nil
         self.isRegistered = true
+    }
+
+    func rotate(verifyKey: Data, signKey: Data, encKey: Data, decKey: Data) throws {
+        self._previousDecKey = _decKey
+        self._verifyKey = verifyKey
+        self._signKey = signKey
+        self._encKey = encKey
+        self._decKey = decKey
     }
 
     func signKey() throws -> Data { _signKey }
     func decKey() throws -> Data { _decKey }
+    func previousDecKey() -> Data? { _previousDecKey }
 }
 
 /// A genuinely mutable in-memory store (not a no-op) — the rotation-processing tests need to
@@ -1317,6 +1328,76 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     let sig = try #require(approved.recipientSignature)
     let canon = PayloadCanonical.forRespond(requestId: depositId, approved: true, ciphertext: nil)
     #expect(bob.verify(canon, signature: sig, publicKey: oldVerifyKey))
+}
+
+// The mid-flight rotation case, end to end: a share sealed to the encKey this device advertised at
+// deposit time is still collectable after the device has rotated away from it. Uses the real
+// IdentityService on both sides rather than NoOpShareEncryption, because the whole point is which
+// private key the key agreement runs against.
+
+@Test func syncInboxStillPicksUpADepositSealedToTheEncKeyRotatedAwayFrom() async throws {
+    let aliceIdentity = IdentityService(identityStore: InMemoryIdentityStoreForShareServiceTest())
+    try aliceIdentity.register(pseudonym: "alice")
+    let bobIdentity = IdentityService(identityStore: InMemoryIdentityStoreForShareServiceTest())
+    try bobIdentity.register(pseudonym: "bob")
+    // Alice signs with the fixture keypair but agrees with her real X25519 key — the two keypairs
+    // are independent, exactly as they are in production.
+    let alice = Contact(
+        id: UUID(), pseudonym: "alice", verifyKey: aliceKeys.publicKey, encKey: aliceIdentity.encKey,
+        verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date()
+    )
+    let relay = FakeShareRelay()
+    let contactRepo = FakeContactRepository([alice])
+    let shareRepo = FakeShareRepository()
+    let svc = ShareService(
+        relayResolver: FixedShareRelayResolver(relay),
+        encryption: bobIdentity,
+        shareRepository: shareRepo,
+        shareMetadataRepository: FakeShareMetadataRepository(),
+        secretRepository: FakeSecretRepository(),
+        contactRepository: contactRepo,
+        contactManagement: ContactService(contactRepository: contactRepo),
+        keyConflictRepository: FakeKeyConflictRepository(),
+        retainedDepositRepository: FakeRetainedDepositRepository(),
+        identity: bobIdentity
+    )
+
+    let id = UUID()
+    let share = Data("bob's share".utf8)
+    let sealedToBobsOldKey = try aliceIdentity.encrypt(share, recipientEncKey: bobIdentity.encKey)
+    let row = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bobIdentity.verifyKey, signer: aliceKeys, ciphertext: sealedToBobsOldKey)
+
+    try bobIdentity.activateKeyPair(bobIdentity.generateNewKeyPair())
+    relay.pending = [row]
+    relay.byId[id] = row
+
+    try await svc.syncInbox()
+
+    #expect(shareRepo.getAll().map(\.plaintextShare) == [share])
+    #expect(relay.respondCalls == [id])
+}
+
+@Test func regenerateIdentityReportsADrainThatCouldNotReachEveryRelay() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, _, _, _, _, _) = try makeService(relay: relay)
+    let oldVerifyKey = bob.verifyKey
+    relay.unreachable = true
+
+    let result = try await svc.regenerateIdentity()
+
+    // Reported, not dropped — but the rotation still completes: an unreachable relay must not be
+    // able to block someone rotating precisely because they think the old key is compromised.
+    #expect(!result.drainSucceeded)
+    #expect(bob.verifyKey != oldVerifyKey)
+}
+
+@Test func regenerateIdentityReportsACompleteDrainWhenEveryRelayAnswers() async throws {
+    let relay = FakeShareRelay()
+    let (svc, _, _, _, _, _, _) = try makeService(relay: relay)
+
+    let result = try await svc.regenerateIdentity()
+
+    #expect(result.drainSucceeded)
 }
 
 @Test func regenerateIdentityStillActivatesTheNewKeysWhenOneContactsRelayIsUnreachable() async throws {

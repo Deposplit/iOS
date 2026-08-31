@@ -54,15 +54,20 @@ final class SettingsViewModel {
 
     /// The identity-regeneration trigger. Best-effort drains pending relay state under the *old*
     /// identity, notifies every contact of the new key, then activates it — see
-    /// `ShareService.regenerateIdentity`'s doc comment for why the ordering matters. Any request
-    /// still pending with a counterparty at this exact moment may become unreachable afterward
-    /// (surfaced in the confirmation copy, not repeated here).
+    /// `ShareService.regenerateIdentity`'s doc comment for why the ordering matters. A drain that
+    /// could not reach every relay is reported rather than swallowed: it no longer risks losing a
+    /// share, since the displaced key is retained one generation, but the user is told what was
+    /// skipped instead of the rotation quietly deciding for them.
     func regenerateIdentity() async {
         isRegeneratingIdentity = true
         defer { isRegeneratingIdentity = false }
         do {
             let result = try await shareManagement.regenerateIdentity()
-            regenerateIdentityMessage = String(localized: "Notified \(result.notifiedContacts) of \(result.totalContacts) contact(s).")
+            var message = String(localized: "Notified \(result.notifiedContacts) of \(result.totalContacts) contact(s).")
+            if !result.drainSucceeded {
+                message += " " + String(localized: "Some relays could not be reached, so transfers still in progress were not collected first — they will arrive on a later sync.")
+            }
+            regenerateIdentityMessage = message
         } catch {
             regenerateIdentityMessage = error.localizedDescription
         }

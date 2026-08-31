@@ -29,8 +29,7 @@ public final class IdentityService: Identity, ShareEncryption {
     }
 
     public func activateKeyPair(_ keyPair: KeyPairMaterial) throws {
-        try identityStore.save(
-            pseudonym: identityStore.pseudonym,
+        try identityStore.rotate(
             verifyKey: keyPair.verifyKey,
             signKey: keyPair.signKey,
             encKey: keyPair.encKey,
@@ -77,6 +76,13 @@ public final class IdentityService: Identity, ShareEncryption {
         return Data([TransportSuite.current.rawValue]) + sealedBox.combined
     }
 
+    /// Falls back to the `decKey` displaced by the last rotation when the current one cannot open
+    /// the box. A share is sealed to whichever `encKey` the holder advertised at deposit time, so a
+    /// holder who rotates between a deposit and their pickup would otherwise never be able to
+    /// collect it: the row stays pending and every later poll fails identically. One generation is
+    /// enough to cover that window without keeping a keyring.
+    ///
+    /// Never used for `encrypt` — this device always seals under its current key.
     public func decrypt(_ noncePlusCiphertext: Data, recipientEncKey: Data) throws -> Data {
         guard let tagByte = noncePlusCiphertext.first,
               let suite = TransportSuite(rawValue: tagByte) else {
@@ -86,8 +92,20 @@ public final class IdentityService: Identity, ShareEncryption {
         case .x25519HkdfSha256ChaCha20Poly1305:
             break
         }
-        let rawKey = try identityStore.decKey()
-        let myKey = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: rawKey)
+        do {
+            return try Self.open(noncePlusCiphertext, recipientEncKey: recipientEncKey, decKey: try identityStore.decKey())
+        } catch {
+            // The current key's failure is the one worth reporting — the fallback missing or
+            // failing too just means there was no earlier generation this box belongs to.
+            guard let previous = identityStore.previousDecKey(),
+                  let plaintext = try? Self.open(noncePlusCiphertext, recipientEncKey: recipientEncKey, decKey: previous)
+            else { throw error }
+            return plaintext
+        }
+    }
+
+    private static func open(_ noncePlusCiphertext: Data, recipientEncKey: Data, decKey: Data) throws -> Data {
+        let myKey = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: decKey)
         let theirKey = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: recipientEncKey)
         let sharedSecret = try myKey.sharedSecretFromKeyAgreement(with: theirKey)
 

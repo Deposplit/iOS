@@ -1454,6 +1454,16 @@
         }
       }
     },
+    "Some relays could not be reached, so transfers still in progress were not collected first — they will arrive on a later sync." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einige Relays waren nicht erreichbar, daher wurden noch offene Übertragungen nicht vorab eingesammelt — sie kommen bei einer späteren Synchronisierung an."
+          }
+        }
+      }
+    },
     "Split & Share" : {
       "localizations" : {
         "de" : {
@@ -1464,12 +1474,12 @@
         }
       }
     },
-    "This creates a new key pair and notifies %lld contact(s). Any request currently pending with someone else may be lost." : {
+    "This creates a new key pair and notifies %lld contact(s). A share already on its way to you can still be collected afterwards; a contact who cannot be reached now will not learn of the new key." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dies erzeugt ein neues Schlüsselpaar und benachrichtigt %lld Kontakt(e). Jede Anfrage, die gerade bei jemand anderem aussteht, könnte verloren gehen."
+            "value" : "Dies erzeugt ein neues Schlüsselpaar und benachrichtigt %lld Kontakt(e). Ein bereits an dich unterwegs befindlicher Anteil kann danach weiterhin abgeholt werden; ein jetzt nicht erreichbarer Kontakt erfährt nichts vom neuen Schlüssel."
           }
         }
       }

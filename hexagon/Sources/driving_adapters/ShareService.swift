@@ -585,6 +585,20 @@ public final class ShareService: ShareManagement {
         try await relay(for: contact).pushRotation(recipientKey: contact.verifyKey, newVerifyKey: newVerifyKey, newEncKey: newEncKey, newCipherSuite: newCipherSuite, signature: signature)
     }
 
+    /// Whether every relay this device knows of answered. `syncInbox` and `syncDistributed`
+    /// soft-fail per relay on purpose — one dark BYOR relay must not blank out results from the
+    /// others — which also means neither can tell its caller that a relay went unheard. Rotation is
+    /// the one caller that needs to know, because it is about to retire the identity those rows are
+    /// addressed to, so it asks separately rather than the fan-out growing a return value that
+    /// every other caller would ignore.
+    private func allRelaysAnswered() async -> Bool {
+        for relay in allRelays() {
+            let answered = try? await relay.listShareRequests(role: .recipient, transactionType: .deposit, state: .pending)
+            if answered == nil { return false }
+        }
+        return true
+    }
+
     /// The identity-regeneration trigger. Order matters: the drain and the rotation pushes must
     /// both happen *before* `activateKeyPair`, since `pushRotation` (and the drain's own calls)
     /// sign with whatever identity is currently persisted — that's what proves continuity from the
@@ -595,6 +609,7 @@ public final class ShareService: ShareManagement {
     public func regenerateIdentity() async throws -> RegenerateIdentityResult {
         try? await syncInbox()
         try? await syncDistributed()
+        let drainSucceeded = await allRelaysAnswered()
         let newKeys = identity.generateNewKeyPair()
         let contacts = contactRepository.getAll()
         var notified = 0
@@ -607,7 +622,7 @@ public final class ShareService: ShareManagement {
             }
         }
         try identity.activateKeyPair(newKeys)
-        return RegenerateIdentityResult(notifiedContacts: notified, totalContacts: contacts.count)
+        return RegenerateIdentityResult(notifiedContacts: notified, totalContacts: contacts.count, drainSucceeded: drainSucceeded)
     }
 
     /// Identity recovery — sender/owner side. Consumes pending `recoveryMetadata` pushes

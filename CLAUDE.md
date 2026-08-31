@@ -55,7 +55,9 @@ placed under `Deposplit/` is compiled automatically.** Adding an adapter or a vi
   P256, and Deposplit needs Curve25519 — so software Keychain it is:
   `kSecClassGenericPassword`, service `com.deposplit.Deposplit`, accessibility
   `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`.
-- **Account strings**: `verify.public`, `enc.public`, `sign.private`, `dec.private`. The
+- **Account strings**: `verify.public`, `enc.public`, `sign.private`, `dec.private`, plus
+  `dec.private.previous` — the key-agreement key displaced by the last rotation, kept one
+  generation so a share sealed before the rotation can still be opened at pickup. The
   pseudonym and the `registered` flag live in `UserDefaults`, not the Keychain.
 - **Share encryption uses CryptoKit**: X25519 key agreement →
   `sharedSecret.hkdfDerivedSymmetricKey(using: SHA256.self, salt: nonce, sharedInfo: "deposplit-share", outputByteCount: 32)`
@@ -112,7 +114,7 @@ equivalent for a purchase entitlement.
 ```bash
 # from hexagon/ — no simulator needed, this is what CI runs
 swift build
-swift test                                  # 112 tests
+swift test                                  # 119 tests
 swift test --filter ShareServiceTests
 
 # from the repo root — the app target
