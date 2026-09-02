@@ -234,12 +234,32 @@
         }
       }
     },
+    "Choose File…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei auswählen…"
+          }
+        }
+      }
+    },
+    "Choose Photo…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Foto auswählen…"
+          }
+        }
+      }
+    },
     "Close" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schließen"
+            "value" : "Schliessen"
           }
         }
       }
@@ -625,7 +645,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Erzeugt ein brandneues Schlüsselpaar für dieses Gerät und benachrichtigt automatisch alle deine Kontakte. Anfragen, die gerade noch bei jemand anderem ausstehen, können danach unerreichbar werden — lass diese am besten vorher abschließen. Dies kann nicht rückgängig gemacht werden."
+            "value" : "Erzeugt ein brandneues Schlüsselpaar für dieses Gerät und benachrichtigt automatisch alle deine Kontakte. Anfragen, die gerade noch bei jemand anderem ausstehen, können danach unerreichbar werden — lass diese am besten vorher abschliessen. Dies kann nicht rückgängig gemacht werden."
           }
         }
       }
@@ -1043,7 +1063,17 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tue dies nur, wenn du außerhalb der App einen Grund hast anzunehmen, dass der Schlüssel von %@ gestohlen wurde. Deposplit wird künftig jede Schlüsseländerung, die Kontinuität von diesem Schlüssel beansprucht, nicht mehr automatisch akzeptieren — du musst die Person frisch verifizieren, persönlich oder über einen vertrauenswürdigen Kanal, um die Verbindung wiederherzustellen."
+            "value" : "Tue dies nur, wenn du ausserhalb der App einen Grund hast anzunehmen, dass der Schlüssel von %@ gestohlen wurde. Deposplit wird künftig jede Schlüsseländerung, die Kontinuität von diesem Schlüssel beansprucht, nicht mehr automatisch akzeptieren — du musst die Person frisch verifizieren, persönlich oder über einen vertrauenswürdigen Kanal, um die Verbindung wiederherzustellen."
+          }
+        }
+      }
+    },
+    "Only PNG and JPEG images can be split." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur PNG- und JPEG-Bilder können aufgeteilt werden."
           }
         }
       }
@@ -1193,7 +1223,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Integritätsprüfung der Rekonstruktion fehlgeschlagen: Unter %1$lld gesammelten Anteilen wurde keine vertrauenswürdige Mehrheit gefunden (die größte konsistente Gruppe umfasste nur %2$lld)."
+            "value" : "Integritätsprüfung der Rekonstruktion fehlgeschlagen: Unter %1$lld gesammelten Anteilen wurde keine vertrauenswürdige Mehrheit gefunden (die grösste konsistente Gruppe umfasste nur %2$lld)."
           }
         },
         "en" : {
@@ -1280,6 +1310,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Entfernung"
+          }
+        }
+      }
+    },
+    "Remove" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entfernen"
           }
         }
       }
@@ -1444,6 +1484,16 @@
         }
       }
     },
+    "Selected image" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausgewähltes Bild"
+          }
+        }
+      }
+    },
     "Settings" : {
       "localizations" : {
         "de" : {
@@ -1500,6 +1550,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Teilen & Verteilen"
+          }
+        }
+      }
+    },
+    "That image is %@. The largest secret Deposplit can split is %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Bild ist %1$@ gross. Das grösste Geheimnis, das Deposplit aufteilen kann, ist %2$@."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "That image is %1$@. The largest secret Deposplit can split is %2$@."
           }
         }
       }

@@ -15,7 +15,10 @@ import hexagon
 /// time it is read, `k` holders have already consented and the plaintext is already here.
 enum ReconstructedSecret {
     case text(String)
-    case image(UIImage)
+    /// Carries the payload beside the decoded image, because the decoded image is *not* the secret:
+    /// re-encoding it would hand back different bytes under the original type's name. Export uses
+    /// `original`; only the display uses the `UIImage`.
+    case image(UIImage, original: Data)
     case binary(Data)
 
     init(secret: Data, mimeType: MimeType) {
@@ -26,7 +29,7 @@ enum ReconstructedSecret {
             // throwing on malformed input — which is the fall-through this relies on. No image
             // library is bundled, deliberately: attacker-chosen bytes reaching a decoder is the one
             // real risk a bad mimeType creates.
-            self = .image(image)
+            self = .image(image, original: secret)
         } else {
             self = .binary(secret)
         }

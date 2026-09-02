@@ -26,13 +26,15 @@ struct ReconstructedSecretView: View {
                 }
                 .font(.caption)
 
-            case .image(let image):
+            case .image(let image, let original):
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFit()
                     .frame(maxHeight: 320)
                     .accessibilityLabel("Reconstructed image")
-                exportLink(data: image.pngData() ?? Data())
+                // The payload, not `image.pngData()` — re-encoding would export bytes that are not
+                // the secret, under a filename claiming the original's type.
+                exportLink(data: original)
 
             case .binary(let data):
                 // `verbatim:` because both halves are data, not copy — an interpolated

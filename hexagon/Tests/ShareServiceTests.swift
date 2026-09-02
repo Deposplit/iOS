@@ -1467,6 +1467,56 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     #expect(targeted == Set([optedOutContact.verifyKey, other.contact.verifyKey]))
 }
 
+// MARK: - secret size and format
+
+@Test func depositAcceptsASecretExactlyAtTheLimit() async throws {
+    let relay = FakeShareRelay()
+    let holderKeys = TestKeyPair()
+    let holderContact = Contact(
+        id: UUID(), pseudonym: "holder", verifyKey: holderKeys.publicKey,
+        encKey: Data(repeating: 0x03, count: 32), verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date()
+    )
+    let (svc, _, _, _, _, _, _) = try makeService(relay: relay, contacts: [aliceContact, holderContact])
+    let secret = Data(repeating: 0x41, count: SecretLimits.maxSecretBytes)
+
+    try await svc.deposit(secret: secret, label: "s", contacts: [aliceContact, holderContact], threshold: 2)
+
+    #expect(relay.openedRequests.count == 2)
+}
+
+@Test func depositRefusesASecretOneByteOverTheLimit() async throws {
+    let relay = FakeShareRelay()
+    let holderKeys = TestKeyPair()
+    let holderContact = Contact(
+        id: UUID(), pseudonym: "holder", verifyKey: holderKeys.publicKey,
+        encKey: Data(repeating: 0x03, count: 32), verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date()
+    )
+    let (svc, _, _, _, _, _, _) = try makeService(relay: relay, contacts: [aliceContact, holderContact])
+    let secret = Data(repeating: 0x41, count: SecretLimits.maxSecretBytes + 1)
+
+    await #expect(throws: ShareServiceError.self) {
+        try await svc.deposit(secret: secret, label: "s", contacts: [aliceContact, holderContact], threshold: 2)
+    }
+    // Nothing reached the relay — the guard runs before the split, not after it.
+    #expect(relay.openedRequests.isEmpty)
+}
+
+@Test func sniffedRecognisesPngAndJpegAndNothingElse() {
+    let png = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] + [0x00, 0x01])
+    let jpeg = Data([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10])
+    #expect(MimeType.sniffed(png) == .png)
+    #expect(MimeType.sniffed(jpeg) == .jpeg)
+    #expect(MimeType.sniffed(Data("hello".utf8)) == nil)
+    #expect(MimeType.sniffed(Data([0x47, 0x49, 0x46, 0x38])) == nil) // GIF is deliberately not accepted
+}
+
+@Test func sniffedDoesNotOverrunABufferShorterThanTheMagicBytes() {
+    #expect(MimeType.sniffed(Data()) == nil)
+    #expect(MimeType.sniffed(Data([0xFF])) == nil)
+    #expect(MimeType.sniffed(Data([0xFF, 0xD8])) == nil)
+    #expect(MimeType.sniffed(Data([0x89, 0x50, 0x4E])) == nil)
+}
+
 // MARK: - mimeType
 
 @Test func depositRecordsTheMimeTypeOnTheSecretAndSignsItIntoEveryDepositRow() async throws {

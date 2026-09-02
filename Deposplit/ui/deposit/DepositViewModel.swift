@@ -35,10 +35,18 @@ final class DepositViewModel {
     var error: String?
     var depositedSuccessfully = false
 
-    /// Everything the app can compose today is typed text; a prefill is the only way this becomes
-    /// anything else, and only by carrying through what a reconstruction produced.
+    /// Text unless an image was picked, or a prefill carried something else through from a
+    /// reconstruction.
     private(set) var payload: Payload = .text
     private(set) var mimeType: MimeType = .default
+
+    /// Set when a pick was refused, so the form can say why. Cleared by the next successful pick.
+    var pickError: String?
+
+    /// True when the opaque payload arrived from a repair rather than from the picker. The two look
+    /// the same to `deposit`, but not to the user: one is something to explain, the other something
+    /// to undo.
+    private(set) var isCarriedThrough = false
 
     private let shareManagement: any ShareManagement
     private let contactManagement: any ContactManagement
@@ -58,6 +66,7 @@ final class DepositViewModel {
                 self.payload = .text
             } else {
                 self.payload = .opaque(prefill.secret)
+                self.isCarriedThrough = true
             }
         }
     }
@@ -72,10 +81,47 @@ final class DepositViewModel {
         }
     }
 
-    /// True when the payload came through a repair and cannot be shown in the text field.
+    /// True when the payload is bytes rather than editable text — a picked image, or something a
+    /// repair carried through.
     var isOpaquePayload: Bool {
         if case .opaque = payload { return true }
         return false
+    }
+
+    /// Takes a picked file as the secret, or refuses it and says why.
+    ///
+    /// Both checks happen here rather than at deposit time so the answer arrives while the user is
+    /// still looking at the picker's result. The domain re-checks the size regardless — this is the
+    /// courteous half, not the enforcing one.
+    ///
+    /// The declared type comes from the bytes, never from the picker's claim or the file's name, so
+    /// what gets signed cannot disagree with what got split.
+    func usePickedFile(_ data: Data) {
+        guard let sniffed = MimeType.sniffed(data) else {
+            pickError = String(localized: "Only PNG and JPEG images can be split.")
+            return
+        }
+        guard data.count <= SecretLimits.maxSecretBytes else {
+            pickError = String(
+                localized: "That image is \(byteCountFormatted(data.count)). The largest secret Deposplit can split is \(byteCountFormatted(SecretLimits.maxSecretBytes))."
+            )
+            return
+        }
+        pickError = nil
+        // Copied rather than retained: a file picker's bytes may be memory-mapped from a
+        // security-scoped URL that stops being readable the moment the picker's callback returns.
+        payload = .opaque(Data(data))
+        mimeType = sniffed
+        isCarriedThrough = false
+    }
+
+    /// Drops a picked image and returns the form to text entry. The text that was typed before the
+    /// pick is still in `secretText`, so it comes back rather than being lost.
+    func clearPickedFile() {
+        pickError = nil
+        payload = .text
+        mimeType = .default
+        isCarriedThrough = false
     }
 
     var canDeposit: Bool {

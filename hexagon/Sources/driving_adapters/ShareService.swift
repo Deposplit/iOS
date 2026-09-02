@@ -7,6 +7,9 @@ public enum ShareServiceError: Error, LocalizedError {
     case notEnoughApprovedShares(have: Int, need: Int)
     case signatureVerificationFailed(String)
     case shareRequestNotFoundOnAnyRelay(UUID)
+    /// Carries the numbers rather than a sentence, so a caller can say what happened in its own
+    /// language — `errorDescription` here is not localised.
+    case secretTooLarge(bytes: Int, limit: Int)
     public var errorDescription: String? {
         switch self {
         case .contactNotFound: "Contact not found — cannot decrypt share."
@@ -15,6 +18,7 @@ public enum ShareServiceError: Error, LocalizedError {
         case .notEnoughApprovedShares(let have, let need): "Need at least \(need) approved shares (have \(have))."
         case .signatureVerificationFailed(let detail): "Signature verification failed: \(detail)"
         case .shareRequestNotFoundOnAnyRelay(let id): "Share request \(id) not found on any known relay."
+        case .secretTooLarge(let bytes, let limit): "Secret is \(bytes) bytes; the limit is \(limit)."
         }
     }
 }
@@ -115,6 +119,9 @@ public final class ShareService: ShareManagement {
     // MARK: - Sender flows
 
     public func deposit(secret: Data, label: String, contacts: [Contact], threshold: Int, mimeType: MimeType = .default) async throws {
+        guard secret.count <= SecretLimits.maxSecretBytes else {
+            throw ShareServiceError.secretTooLarge(bytes: secret.count, limit: SecretLimits.maxSecretBytes)
+        }
         let shares = try split(secret: Array(secret), shares: contacts.count, threshold: threshold)
         let secretId = UUID()
         let createdAt = Date()

@@ -114,7 +114,7 @@ equivalent for a purchase entitlement.
 ```bash
 # from hexagon/ — no simulator needed, this is what CI runs
 swift build
-swift test                                  # 127 tests
+swift test                                  # 131 tests
 swift test --filter ShareServiceTests
 
 # from the repo root — the app target
