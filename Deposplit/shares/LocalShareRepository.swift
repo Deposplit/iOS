@@ -50,6 +50,7 @@ final class LocalShareRepository: ShareRepository {
         let plaintextShare: String   // standard base64
         let k: Int
         let n: Int
+        let mimeType: String
     }
 
     private func load() throws -> [HeldShare] {
@@ -66,7 +67,8 @@ final class LocalShareRepository: ShareRepository {
                 pickedUpAt: _localISO8601.date(from: json.pickedUpAt)!,
                 plaintextShare: Data(base64Encoded: json.plaintextShare)!,
                 k: json.k,
-                n: json.n
+                n: json.n,
+                mimeType: MimeType(json.mimeType)
             )
         }
     }
@@ -83,7 +85,8 @@ final class LocalShareRepository: ShareRepository {
                 pickedUpAt: _localISO8601.string(from: s.pickedUpAt),
                 plaintextShare: s.plaintextShare.base64EncodedString(),
                 k: s.k,
-                n: s.n
+                n: s.n,
+                mimeType: s.mimeType.value
             )
         }
         let data = try JSONEncoder().encode(items)

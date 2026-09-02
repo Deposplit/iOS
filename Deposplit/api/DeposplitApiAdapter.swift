@@ -20,7 +20,7 @@ final class DeposplitApiAdapter: ShareRelay {
 
     // MARK: - ShareRelay
 
-    func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, transactionType: ShareTransactionType, shareId: UUID?, ciphertext: Data?, k: Int?, n: Int?, senderSignature: Data) async throws -> ShareRequest {
+    func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, transactionType: ShareTransactionType, shareId: UUID?, ciphertext: Data?, k: Int?, n: Int?, mimeType: MimeType?, senderSignature: Data) async throws -> ShareRequest {
         let body = OpenShareRequestJSON(
             secretId: secretId.uuidString,
             recipientKey: recipientKey.base64URLEncoded,
@@ -31,6 +31,7 @@ final class DeposplitApiAdapter: ShareRelay {
             ciphertext: ciphertext?.base64EncodedString(),
             k: k,
             n: n,
+            mimeType: mimeType?.value,
             senderSignature: senderSignature.base64URLEncoded
         )
         let data = try await execute("POST", path: "/share-requests", body: body)
@@ -177,6 +178,7 @@ final class DeposplitApiAdapter: ShareRelay {
         let ciphertext: String?
         let k: Int?
         let n: Int?
+        let mimeType: String?
         let senderSignature: String
     }
 
@@ -201,6 +203,7 @@ final class DeposplitApiAdapter: ShareRelay {
         let ciphertext: String?
         let k: Int?
         let n: Int?
+        let mimeType: String?
         let senderSignature: String
         let recipientSignature: String?
 
@@ -218,7 +221,7 @@ final class DeposplitApiAdapter: ShareRelay {
                 requestedAt: parseISO8601(requestedAt),
                 respondedAt: respondedAt.map { parseISO8601($0) },
                 ciphertext: ciphertext.flatMap { Data(base64Encoded: $0) },
-                k: k, n: n,
+                k: k, n: n, mimeType: mimeType.map(MimeType.init),
                 senderSignature: Data(base64URLEncoded: senderSignature) ?? Data(),
                 recipientSignature: recipientSignature.flatMap { Data(base64URLEncoded: $0) }
             )

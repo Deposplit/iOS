@@ -138,6 +138,7 @@ private final class FakeShareRelay: ShareRelay {
         let transactionType: ShareTransactionType
         let k: Int?
         let n: Int?
+        let mimeType: MimeType?
     }
 
     var pending: [ShareRequest] = []
@@ -157,15 +158,15 @@ private final class FakeShareRelay: ShareRelay {
     var throwOnWithdraw = false
     var throwOnPushRotation = false
 
-    func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, transactionType: ShareTransactionType, shareId: UUID?, ciphertext: Data?, k: Int?, n: Int?, senderSignature: Data) async throws -> ShareRequest {
-        openedRequests.append(OpenedRequest(secretId: secretId, recipientKey: recipientKey, transactionType: transactionType, k: k, n: n))
+    func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, transactionType: ShareTransactionType, shareId: UUID?, ciphertext: Data?, k: Int?, n: Int?, mimeType: MimeType?, senderSignature: Data) async throws -> ShareRequest {
+        openedRequests.append(OpenedRequest(secretId: secretId, recipientKey: recipientKey, transactionType: transactionType, k: k, n: n, mimeType: mimeType))
         let now = Date()
         let selfApproved = transactionType == .inventory
         return ShareRequest(
             id: UUID(), secretId: secretId, senderKey: Data(), recipientKey: recipientKey, label: label,
             secretCreatedAt: secretCreatedAt, transactionType: transactionType, state: selfApproved ? .approved : .pending,
             shareId: shareId, requestedAt: now, respondedAt: selfApproved ? now : nil,
-            ciphertext: nil, k: k, n: n, senderSignature: senderSignature, recipientSignature: nil
+            ciphertext: nil, k: k, n: n, mimeType: mimeType, senderSignature: senderSignature, recipientSignature: nil
         )
     }
 
@@ -285,20 +286,21 @@ private func makeSignedRow(
     id: UUID, senderKey: Data, recipientKey: Data, signer: TestKeyPair,
     transactionType: ShareTransactionType = .deposit, shareId: UUID? = nil, ciphertext: Data? = Data([1, 2, 3]),
     label: String = "test secret", createdAt: Date = Date(),
-    k: Int? = nil, n: Int? = nil
+    k: Int? = nil, n: Int? = nil, mimeType: MimeType? = nil
 ) throws -> ShareRequest {
     let secretId = UUID()
-    // k/n are required on deposit/inventory rows and forbidden otherwise — default them
+    // k/n/mimeType are required on deposit/inventory rows and forbidden otherwise — default them
     // here (like production's relay-side validation would) so deposit fixtures don't need every
-    // call site updated just to keep passing syncInbox's k/n guard.
+    // call site updated just to keep passing syncInbox's guard.
     let isRoot = transactionType == .deposit || transactionType == .inventory
     let (kk, nn): (Int?, Int?) = isRoot ? (k ?? 2, n ?? 3) : (nil, nil)
-    let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: transactionType, recipientKey: recipientKey, label: label, secretCreatedAt: createdAt, shareId: shareId, ciphertext: ciphertext, k: kk, n: nn)
+    let mt: MimeType? = isRoot ? (mimeType ?? .default) : nil
+    let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: transactionType, recipientKey: recipientKey, label: label, secretCreatedAt: createdAt, shareId: shareId, ciphertext: ciphertext, k: kk, n: nn, mimeType: mt)
     let sig = try signer.sign(canon)
     return ShareRequest(
         id: id, secretId: secretId, senderKey: senderKey, recipientKey: recipientKey, label: label,
         secretCreatedAt: createdAt, transactionType: transactionType, state: .pending, shareId: shareId,
-        requestedAt: Date(), respondedAt: nil, ciphertext: ciphertext, k: kk, n: nn, senderSignature: sig, recipientSignature: nil
+        requestedAt: Date(), respondedAt: nil, ciphertext: ciphertext, k: kk, n: nn, mimeType: mt, senderSignature: sig, recipientSignature: nil
     )
 }
 
@@ -535,15 +537,16 @@ private func makeServiceForRecoveryTest(relay: FakeShareRelay, contacts: [Contac
 /// and `respondedAt` set at creation, since this type has no consent phase.
 private func makeApprovedRecoveryMetadataRow(
     secretId: UUID, senderKey: Data, recipientKey: Data, signer: TestKeyPair,
-    k: Int = 2, n: Int = 3, label: String = "recovered secret", createdAt: Date = Date()
+    k: Int = 2, n: Int = 3, mimeType: MimeType = .default,
+    label: String = "recovered secret", createdAt: Date = Date()
 ) throws -> ShareRequest {
-    let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: .inventory, recipientKey: recipientKey, label: label, secretCreatedAt: createdAt, shareId: nil, ciphertext: nil, k: k, n: n)
+    let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: .inventory, recipientKey: recipientKey, label: label, secretCreatedAt: createdAt, shareId: nil, ciphertext: nil, k: k, n: n, mimeType: mimeType)
     let sig = try signer.sign(canon)
     let now = Date()
     return ShareRequest(
         id: UUID(), secretId: secretId, senderKey: senderKey, recipientKey: recipientKey, label: label,
         secretCreatedAt: createdAt, transactionType: .inventory, state: .approved, shareId: nil,
-        requestedAt: now, respondedAt: now, ciphertext: nil, k: k, n: n, senderSignature: sig, recipientSignature: nil
+        requestedAt: now, respondedAt: now, ciphertext: nil, k: k, n: n, mimeType: mimeType, senderSignature: sig, recipientSignature: nil
     )
 }
 
@@ -554,7 +557,7 @@ private func makeApprovedRecoveryMetadataRow(
     shareRepo.save(HeldShare(
         id: UUID(), secretId: secretId, label: "test secret", contactId: aliceContact.id,
         senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([9]),
-        k: 2, n: 3
+        k: 2, n: 3, mimeType: .default
     ))
 
     try await svc.pushRecoveryMetadata(contactId: aliceContact.id)
@@ -731,7 +734,7 @@ private func makeSignedRotation(
     let (svc, _, shareRepo, _, _, _, _) = try makeService(relay: relay)
     let secretId = UUID()
     let shareId = UUID()
-    shareRepo.save(HeldShare(id: shareId, secretId: secretId, label: "x", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3))
+    shareRepo.save(HeldShare(id: shareId, secretId: secretId, label: "x", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3, mimeType: .default))
 
     try await svc.deleteHeldShare(shareId: shareId)
 
@@ -742,8 +745,8 @@ private func makeSignedRotation(
 @Test func deleteAllHeldFromSenderWithdrawsBySenderKeyThenDeletesAllLocally() async throws {
     let relay = FakeShareRelay()
     let (svc, _, shareRepo, _, _, _, _) = try makeService(relay: relay)
-    shareRepo.save(HeldShare(id: UUID(), secretId: UUID(), label: "x", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3))
-    shareRepo.save(HeldShare(id: UUID(), secretId: UUID(), label: "y", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([2]), k: 2, n: 3))
+    shareRepo.save(HeldShare(id: UUID(), secretId: UUID(), label: "x", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3, mimeType: .default))
+    shareRepo.save(HeldShare(id: UUID(), secretId: UUID(), label: "y", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([2]), k: 2, n: 3, mimeType: .default))
 
     try await svc.deleteAllHeldFromSender(contactId: aliceContact.id)
 
@@ -756,7 +759,7 @@ private func makeSignedRotation(
     relay.throwOnWithdraw = true
     let (svc, _, shareRepo, _, _, _, _) = try makeService(relay: relay)
     let shareId = UUID()
-    shareRepo.save(HeldShare(id: shareId, secretId: UUID(), label: "x", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3))
+    shareRepo.save(HeldShare(id: shareId, secretId: UUID(), label: "x", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3, mimeType: .default))
 
     try await svc.deleteHeldShare(shareId: shareId)
 
@@ -915,7 +918,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
     let (svc, _, _, _, metaRepo, _, retainedRepo) = try makeService(relay: relay)
     let depositId = UUID()
     let secretId = UUID()
-    try retainedRepo.save(RetainedDepositBlob(id: depositId, secretId: secretId, contactId: aliceContact.id, label: "s", secretCreatedAt: Date(), ciphertext: Data([1]), k: 2, n: 3))
+    try retainedRepo.save(RetainedDepositBlob(id: depositId, secretId: secretId, contactId: aliceContact.id, label: "s", secretCreatedAt: Date(), ciphertext: Data([1]), k: 2, n: 3, mimeType: .default))
     relay.pending = [makeDepositRow(id: depositId, secretId: secretId, recipientKey: aliceContact.verifyKey, state: .approved)]
 
     try await svc.syncDistributed()
@@ -930,7 +933,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
     let (svc, _, _, _, metaRepo, _, retainedRepo) = try makeService(relay: relay)
     let depositId = UUID()
     let secretId = UUID()
-    try retainedRepo.save(RetainedDepositBlob(id: depositId, secretId: secretId, contactId: aliceContact.id, label: "s", secretCreatedAt: Date(), ciphertext: Data([1]), k: 2, n: 3))
+    try retainedRepo.save(RetainedDepositBlob(id: depositId, secretId: secretId, contactId: aliceContact.id, label: "s", secretCreatedAt: Date(), ciphertext: Data([1]), k: 2, n: 3, mimeType: .default))
     relay.pending = [makeDepositRow(id: depositId, secretId: secretId, recipientKey: aliceContact.verifyKey, state: .approved)]
     try await svc.syncDistributed()
     let firstConfirmedAt = try metaRepo.getAll().first { $0.id == depositId }?.lastConfirmedAt
@@ -966,7 +969,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
     let relay = FakeShareRelay()
     let (svc, bob, shareRepo, _, _, _, _) = try makeService(relay: relay)
     let secretId = UUID()
-    shareRepo.save(HeldShare(id: UUID(), secretId: secretId, label: "x", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3))
+    shareRepo.save(HeldShare(id: UUID(), secretId: secretId, label: "x", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3, mimeType: .default))
 
     try await svc.syncInbox()
 
@@ -987,7 +990,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
         lastHeartbeatSentAt: Date()
     )
     let (svc, _, shareRepo, _, _, _, _) = try makeService(relay: relay, contacts: [recentlyHeartbeatedAlice])
-    shareRepo.save(HeldShare(id: UUID(), secretId: UUID(), label: "x", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3))
+    shareRepo.save(HeldShare(id: UUID(), secretId: UUID(), label: "x", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3, mimeType: .default))
 
     try await svc.syncInbox()
 
@@ -1002,7 +1005,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
         heartbeatEmissionOptedOut: true
     )
     let (svc, _, shareRepo, _, _, _, _) = try makeService(relay: relay, contacts: [optedOutAlice])
-    shareRepo.save(HeldShare(id: UUID(), secretId: UUID(), label: "x", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3))
+    shareRepo.save(HeldShare(id: UUID(), secretId: UUID(), label: "x", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3, mimeType: .default))
 
     try await svc.syncInbox()
 
@@ -1014,7 +1017,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
     let relay = FakeShareRelay()
     relay.throwOnPushHeartbeat = true
     let (svc, _, shareRepo, contactRepo, _, _, _) = try makeService(relay: relay)
-    shareRepo.save(HeldShare(id: UUID(), secretId: UUID(), label: "x", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3))
+    shareRepo.save(HeldShare(id: UUID(), secretId: UUID(), label: "x", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3, mimeType: .default))
 
     try await svc.syncInbox()
 
@@ -1036,7 +1039,7 @@ private func makeSignedHeartbeat(holderKey: Data, ownerKey: Data, signer: TestKe
     let depositId = UUID()
     let secretId = UUID()
     try metaRepo.save(ShareMetadata(id: depositId, secretId: secretId, contactId: aliceContact.id))
-    try retainedRepo.save(RetainedDepositBlob(id: depositId, secretId: secretId, contactId: aliceContact.id, label: "s", secretCreatedAt: Date(), ciphertext: Data([1]), k: 2, n: 3))
+    try retainedRepo.save(RetainedDepositBlob(id: depositId, secretId: secretId, contactId: aliceContact.id, label: "s", secretCreatedAt: Date(), ciphertext: Data([1]), k: 2, n: 3, mimeType: .default))
     relay.heartbeatsToReturn = [try makeSignedHeartbeat(holderKey: aliceKeys.publicKey, ownerKey: bob.verifyKey, signer: aliceKeys, secretIds: [secretId])]
 
     try await svc.syncDistributed()
@@ -1155,7 +1158,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     let secretBytes: [UInt8] = Array("no margin test secret".utf8)
     let shares = try split(secret: secretBytes, shares: 4, threshold: 4)
     let secretId = UUID()
-    try secretRepo.save(Secret(id: secretId, label: "s", k: 4, n: 4, secretCreatedAt: Date(), state: .active))
+    try secretRepo.save(Secret(id: secretId, label: "s", mimeType: .default, k: 4, n: 4, secretCreatedAt: Date(), state: .active))
     relay.pending = try zip(holders, shares).map { try makeApprovedRetrievalRow(secretId: secretId, holder: $0, ciphertext: Data($1)) }
 
     let result = try await svc.reconstruct(secretId: secretId)
@@ -1171,7 +1174,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     let secretBytes: [UInt8] = Array("surplus confirmed test secret".utf8)
     let shares = try split(secret: secretBytes, shares: 5, threshold: 4)
     let secretId = UUID()
-    try secretRepo.save(Secret(id: secretId, label: "s", k: 4, n: 5, secretCreatedAt: Date(), state: .active))
+    try secretRepo.save(Secret(id: secretId, label: "s", mimeType: .default, k: 4, n: 5, secretCreatedAt: Date(), state: .active))
     relay.pending = try zip(holders, shares).map { try makeApprovedRetrievalRow(secretId: secretId, holder: $0, ciphertext: Data($1)) }
 
     let result = try await svc.reconstruct(secretId: secretId)
@@ -1189,7 +1192,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     // Simulate a compromised/corrupted holder — every secret byte wrong, x-coordinate untouched.
     for i in 0..<(shares[2].count - 1) { shares[2][i] = shares[2][i] &+ 1 }
     let secretId = UUID()
-    try secretRepo.save(Secret(id: secretId, label: "s", k: 4, n: 6, secretCreatedAt: Date(), state: .active))
+    try secretRepo.save(Secret(id: secretId, label: "s", mimeType: .default, k: 4, n: 6, secretCreatedAt: Date(), state: .active))
     relay.pending = try zip(holders, shares).map { try makeApprovedRetrievalRow(secretId: secretId, holder: $0, ciphertext: Data($1)) }
 
     let result = try await svc.reconstruct(secretId: secretId)
@@ -1206,7 +1209,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     var shares = try split(secret: secretBytes, shares: 5, threshold: 4)
     for i in 0..<(shares[0].count - 1) { shares[0][i] = shares[0][i] &+ 1 }
     let secretId = UUID()
-    try secretRepo.save(Secret(id: secretId, label: "s", k: 4, n: 5, secretCreatedAt: Date(), state: .active))
+    try secretRepo.save(Secret(id: secretId, label: "s", mimeType: .default, k: 4, n: 5, secretCreatedAt: Date(), state: .active))
     relay.pending = try zip(holders, shares).map { try makeApprovedRetrievalRow(secretId: secretId, holder: $0, ciphertext: Data($1)) }
 
     do {
@@ -1226,7 +1229,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
         relay: relay, contacts: [fresh1.contact, fresh2.contact, stale.contact]
     )
     let secretId = UUID()
-    try secretRepo.save(Secret(id: secretId, label: "s", k: 2, n: 3, secretCreatedAt: Date(), state: .active))
+    try secretRepo.save(Secret(id: secretId, label: "s", mimeType: .default, k: 2, n: 3, secretCreatedAt: Date(), state: .active))
     let now = Date()
     try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: fresh1.contact.id, lastConfirmedAt: now))
     try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: fresh2.contact.id, lastConfirmedAt: now))
@@ -1247,7 +1250,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
         relay: relay, contacts: [fresh.contact, stale1.contact, stale2.contact]
     )
     let secretId = UUID()
-    try secretRepo.save(Secret(id: secretId, label: "s", k: 2, n: 3, secretCreatedAt: Date(), state: .active))
+    try secretRepo.save(Secret(id: secretId, label: "s", mimeType: .default, k: 2, n: 3, secretCreatedAt: Date(), state: .active))
     try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: fresh.contact.id, lastConfirmedAt: Date()))
     try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: stale1.contact.id, lastConfirmedAt: nil))
     try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: stale2.contact.id, lastConfirmedAt: nil))
@@ -1266,7 +1269,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
         relay: relay, contacts: [standing.contact, untouched.contact]
     )
     let secretId = UUID()
-    try secretRepo.save(Secret(id: secretId, label: "s", k: 2, n: 2, secretCreatedAt: Date(), state: .active))
+    try secretRepo.save(Secret(id: secretId, label: "s", mimeType: .default, k: 2, n: 2, secretCreatedAt: Date(), state: .active))
     try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: standing.contact.id, lastConfirmedAt: nil))
     try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: untouched.contact.id, lastConfirmedAt: nil))
     // Neither holder is confirmed, so targeting widens to both — the case the per-secret skip
@@ -1453,7 +1456,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
         relay: relay, contacts: [optedOutContact, other.contact]
     )
     let secretId = UUID()
-    try secretRepo.save(Secret(id: secretId, label: "s", k: 2, n: 2, secretCreatedAt: Date(), state: .active))
+    try secretRepo.save(Secret(id: secretId, label: "s", mimeType: .default, k: 2, n: 2, secretCreatedAt: Date(), state: .active))
     try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: optedOutContact.id, lastConfirmedAt: Date()))
     try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: other.contact.id, lastConfirmedAt: nil))
 
@@ -1462,4 +1465,136 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     // Only 1 of 2 holders is genuinely confirmed (< k=2), so targeting widens to everyone.
     let targeted = Set(relay.openedRequests.map(\.recipientKey))
     #expect(targeted == Set([optedOutContact.verifyKey, other.contact.verifyKey]))
+}
+
+// MARK: - mimeType
+
+@Test func depositRecordsTheMimeTypeOnTheSecretAndSignsItIntoEveryDepositRow() async throws {
+    let relay = FakeShareRelay()
+    let holderKeys = TestKeyPair()
+    let holderContact = Contact(
+        id: UUID(), pseudonym: "holder", verifyKey: holderKeys.publicKey,
+        encKey: Data(repeating: 0x03, count: 32), verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date()
+    )
+    let (svc, _, _, _, _, _, retainedRepo) = try makeService(relay: relay, contacts: [aliceContact, holderContact])
+
+    try await svc.deposit(secret: Data([1, 2, 3]), label: "s", contacts: [aliceContact, holderContact], threshold: 2, mimeType: MimeType("image/png"))
+
+    #expect(relay.openedRequests.allSatisfy { $0.mimeType == MimeType("image/png") })
+    #expect(try retainedRepo.getAll().allSatisfy { $0.mimeType == MimeType("image/png") })
+}
+
+@Test func syncInboxCarriesTheDepositedMimeTypeOntoTheHeldShare() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, shareRepo, _, _, _, _) = try makeService(relay: relay)
+    let id = UUID()
+    let row = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: aliceKeys, mimeType: MimeType("image/png"))
+    relay.pending = [row]
+    relay.byId = [id: row]
+
+    try await svc.syncInbox()
+
+    #expect(shareRepo.getAll().map(\.mimeType) == [MimeType("image/png")])
+}
+
+/// A deposit whose `mimeType` is absent cannot come from a conforming relay, and storing the share
+/// without one would leave the holder unable to report it during the owner's recovery — so the
+/// pickup is skipped and retried, exactly as it is for a missing `k`/`n`.
+@Test func syncInboxLeavesADepositPendingWhenTheMimeTypeIsMissing() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, shareRepo, _, _, _, _) = try makeService(relay: relay)
+    let id = UUID()
+    let signed = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: aliceKeys)
+    // Re-sign without the mimeType so the row is internally consistent and only the guard rejects it.
+    let canon = PayloadCanonical.forOpen(secretId: signed.secretId, transactionType: .deposit, recipientKey: signed.recipientKey, label: signed.label, secretCreatedAt: signed.secretCreatedAt, shareId: nil, ciphertext: signed.ciphertext, k: signed.k, n: signed.n, mimeType: nil)
+    let row = ShareRequest(
+        id: id, secretId: signed.secretId, senderKey: signed.senderKey, recipientKey: signed.recipientKey,
+        label: signed.label, secretCreatedAt: signed.secretCreatedAt, transactionType: .deposit, state: .pending,
+        shareId: nil, requestedAt: Date(), respondedAt: nil, ciphertext: signed.ciphertext,
+        k: signed.k, n: signed.n, mimeType: nil, senderSignature: try aliceKeys.sign(canon), recipientSignature: nil
+    )
+    relay.pending = [row]
+    relay.byId = [id: row]
+
+    try await svc.syncInbox()
+
+    #expect(relay.respondCalls.isEmpty)
+    #expect(shareRepo.getAll().isEmpty)
+}
+
+@Test func pushRecoveryMetadataReportsTheMimeTypeOfTheShareItHolds() async throws {
+    let relay = FakeShareRelay()
+    let (svc, _, shareRepo, _, _, _) = try makeServiceForRecoveryTest(relay: relay)
+    shareRepo.save(HeldShare(
+        id: UUID(), secretId: UUID(), label: "test secret", contactId: aliceContact.id,
+        senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([9]),
+        k: 2, n: 3, mimeType: MimeType("image/jpeg")
+    ))
+
+    try await svc.pushRecoveryMetadata(contactId: aliceContact.id)
+
+    #expect(relay.openedRequests.first?.mimeType == MimeType("image/jpeg"))
+}
+
+@Test func syncInboxRebuildsASecretWithTheMimeTypeTheHolderReports() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, _, secretRepo, _, _) = try makeServiceForRecoveryTest(relay: relay)
+    let secretId = UUID()
+    relay.pending = [try makeApprovedRecoveryMetadataRow(secretId: secretId, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: aliceKeys, mimeType: MimeType("image/png"))]
+
+    try await svc.syncInbox()
+
+    #expect(try secretRepo.getAll().map(\.mimeType) == [MimeType("image/png")])
+}
+
+@Test func reconstructReportsTheMimeTypeTheOwnerRecordedForTheSecret() async throws {
+    let relay = FakeShareRelay()
+    let holders = (0..<2).map { makeHolderFixture(pseudonym: "holder\($0)") }
+    let (svc, _, _, secretRepo, _, _) = try makeServiceForRecoveryTest(relay: relay, contacts: holders.map(\.contact))
+    let secretBytes: [UInt8] = Array("mime round trip".utf8)
+    let shares = try split(secret: secretBytes, shares: 2, threshold: 2)
+    let secretId = UUID()
+    try secretRepo.save(Secret(id: secretId, label: "s", mimeType: MimeType("image/png"), k: 2, n: 2, secretCreatedAt: Date(), state: .active))
+    relay.pending = try zip(holders, shares).map { try makeApprovedRetrievalRow(secretId: secretId, holder: $0, ciphertext: Data($1)) }
+
+    let result = try await svc.reconstruct(secretId: secretId)
+
+    #expect(Array(result.secret) == secretBytes)
+    #expect(result.mimeType == MimeType("image/png"))
+}
+
+/// `mimeType` rides inside `senderSignature`, so a relay that rewrote it — pointing a text secret at
+/// an image decoder, say — invalidates the row rather than changing how it renders. The holder skips
+/// it silently, as it does any deposit whose signature does not verify.
+@Test func syncInboxSkipsADepositWhoseMimeTypeWasAlteredAfterSigning() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, shareRepo, _, _, _, _) = try makeService(relay: relay)
+    let id = UUID()
+    let signed = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: aliceKeys)
+    let tampered = ShareRequest(
+        id: signed.id, secretId: signed.secretId, senderKey: signed.senderKey, recipientKey: signed.recipientKey,
+        label: signed.label, secretCreatedAt: signed.secretCreatedAt, transactionType: .deposit, state: .pending,
+        shareId: nil, requestedAt: signed.requestedAt, respondedAt: nil, ciphertext: signed.ciphertext,
+        k: signed.k, n: signed.n, mimeType: MimeType("image/png"),
+        senderSignature: signed.senderSignature, recipientSignature: nil
+    )
+    relay.pending = [tampered]
+    relay.byId = [id: tampered]
+
+    try await svc.syncInbox()
+
+    #expect(relay.respondCalls.isEmpty)
+    #expect(shareRepo.getAll().isEmpty)
+}
+
+/// Classification tolerates the shapes a real `Content-Type` takes — parameters and casing — while
+/// the value itself stays byte-exact, because it is what the sender signed.
+@Test func mimeTypeClassifiesIgnoringCaseAndParametersWithoutRewritingItsValue() {
+    let declared = MimeType("Text/Plain; charset=utf-8")
+    #expect(declared.isText)
+    #expect(!declared.isImage)
+    #expect(declared.value == "Text/Plain; charset=utf-8")
+    #expect(MimeType("image/PNG").isImage)
+    #expect(!MimeType("application/octet-stream").isText)
+    #expect(!MimeType("application/octet-stream").isImage)
 }

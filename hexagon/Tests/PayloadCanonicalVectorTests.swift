@@ -20,7 +20,7 @@ import CryptoKit
 // Private key seed: bytes 0x00..0x1f. Not a real identity — a fixed, reproducible fixture.
 private let privateKeySeed = Data((0..<32).map { UInt8($0) })
 private let expectedPublicKeyBase64Url = "A6EHv_POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg"
-private let expectedSignatureBase64Url = "49sMax0jpKfyXdIIiwi6xeKKyK5MZwGOur9I499SXiTneVBYc5Juv215DTDcHhpphU2YGZpqMYRZKNFVILw7AA"
+private let expectedSignatureBase64Url = "AlvZLAx0pmA8B5C4JMcib_35wt0HIjtWWjQtj-f0dED0c6FVoJvdlMX0-pqnZmOhtSEnmB7IWe5s3dRIXkgvAw"
 
 private let fixtureSecretId = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
 private let fixtureRecipientKey = Data(repeating: 0x02, count: 32)
@@ -30,10 +30,11 @@ private let fixtureSecretCreatedAt: Date = {
     return f.date(from: "2026-01-01T00:00:00Z")!
 }()
 private let fixtureCiphertext = Data([1, 2, 3, 4, 5])
-// k/n — appended at the end of the field sequence, so the fields above are byte-identical to
-// the original vector; only the two new trailing lines are new.
+// k/n, then mimeType — each appended at the end of the field sequence in turn, so the fields
+// above are byte-identical to the vector that predates them.
 private let fixtureK = 2
 private let fixtureN = 3
+private let fixtureMimeType = MimeType("text/plain")
 
 private func base64URLDecode(_ string: String) -> Data {
     var s = string.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
@@ -53,9 +54,9 @@ private func base64URLEncode(_ data: Data) -> String {
     let canon = PayloadCanonical.forOpen(
         secretId: fixtureSecretId, transactionType: .deposit, recipientKey: fixtureRecipientKey,
         label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, shareId: nil, ciphertext: fixtureCiphertext,
-        k: fixtureK, n: fixtureN
+        k: fixtureK, n: fixtureN, mimeType: fixtureMimeType
     )
-    let expected = "11111111-1111-1111-1111-111111111111\ndeposit\nAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI\ncross-platform test vector\n1767225600000\n\nAQIDBAU=\n2\n3"
+    let expected = "11111111-1111-1111-1111-111111111111\ndeposit\nAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI\ncross-platform test vector\n1767225600000\n\nAQIDBAU=\n2\n3\ntext/plain"
     #expect(String(data: canon, encoding: .utf8) == expected)
 }
 
@@ -69,7 +70,7 @@ private func base64URLEncode(_ data: Data) -> String {
     let canon = PayloadCanonical.forOpen(
         secretId: fixtureSecretId, transactionType: .deposit, recipientKey: fixtureRecipientKey,
         label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, shareId: nil, ciphertext: fixtureCiphertext,
-        k: fixtureK, n: fixtureN
+        k: fixtureK, n: fixtureN, mimeType: fixtureMimeType
     )
     let privateKey = try Curve25519.Signing.PrivateKey(rawRepresentation: privateKeySeed)
     #expect(base64URLEncode(privateKey.publicKey.rawRepresentation) == expectedPublicKeyBase64Url)
@@ -82,7 +83,7 @@ private func base64URLEncode(_ data: Data) -> String {
     let canon = PayloadCanonical.forOpen(
         secretId: fixtureSecretId, transactionType: .deposit, recipientKey: fixtureRecipientKey,
         label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, shareId: nil, ciphertext: fixtureCiphertext,
-        k: fixtureK, n: fixtureN
+        k: fixtureK, n: fixtureN, mimeType: fixtureMimeType
     )
     let publicKey = try Curve25519.Signing.PublicKey(rawRepresentation: base64URLDecode(expectedPublicKeyBase64Url))
     let signature = base64URLDecode(expectedSignatureBase64Url)

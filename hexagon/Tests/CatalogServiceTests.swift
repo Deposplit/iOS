@@ -50,7 +50,7 @@ private func makeContact(_ name: String) -> Contact {
 
     let contact = makeContact("alice")
     contactRepo.save(contact)
-    let secret = Secret(id: UUID(), label: "test", k: 2, n: 3, secretCreatedAt: Date(), state: .active)
+    let secret = Secret(id: UUID(), label: "test", mimeType: .default, k: 2, n: 3, secretCreatedAt: Date(), state: .active)
     try secretRepo.save(secret)
     let meta = ShareMetadata(id: UUID(), secretId: secret.id, contactId: contact.id)
     try metaRepo.save(meta)

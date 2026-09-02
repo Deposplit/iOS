@@ -38,17 +38,15 @@ struct ShareDetailView: View {
                         label: "Reconstruct secret…",
                         reason: String(localized: "Authenticate to reconstruct your secret")
                     ) {
-                        _ = await viewModel.reconstruct()
+                        await viewModel.reconstruct()
                     }
                 case .reconstructed(let secret, let integrity):
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(secret)
-                            .font(.system(.body, design: .monospaced))
-                            .textSelection(.enabled)
-                        Button("Copy", systemImage: "doc.on.doc") {
-                            UIPasteboard.general.string = secret
-                        }
-                        .font(.caption)
+                        ReconstructedSecretView(
+                            secret: secret,
+                            mimeType: viewModel.mimeType,
+                            label: viewModel.label
+                        )
                         ReconstructionAdvisoryView(integrity: integrity, contactName: viewModel.contactName)
                     }
                 case .failed(let msg):

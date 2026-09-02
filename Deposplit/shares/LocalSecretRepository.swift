@@ -40,6 +40,7 @@ final class LocalSecretRepository: SecretRepository {
         let label: String
         let k: Int
         let n: Int
+        let mimeType: String
         let secretCreatedAt: String
         let state: String
     }
@@ -51,7 +52,7 @@ final class LocalSecretRepository: SecretRepository {
             guard let id = UUID(uuidString: json.id),
                   let secretCreatedAt = _secretISO8601.date(from: json.secretCreatedAt),
                   let state = SecretState(rawValue: json.state) else { return nil }
-            return Secret(id: id, label: json.label, k: json.k, n: json.n, secretCreatedAt: secretCreatedAt, state: state)
+            return Secret(id: id, label: json.label, mimeType: MimeType(json.mimeType), k: json.k, n: json.n, secretCreatedAt: secretCreatedAt, state: state)
         }
     }
 
@@ -62,6 +63,7 @@ final class LocalSecretRepository: SecretRepository {
                 label: s.label,
                 k: s.k,
                 n: s.n,
+                mimeType: s.mimeType.value,
                 secretCreatedAt: _secretISO8601.string(from: s.secretCreatedAt),
                 state: s.state.rawValue
             )

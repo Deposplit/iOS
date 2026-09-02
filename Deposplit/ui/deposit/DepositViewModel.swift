@@ -7,11 +7,24 @@ final class DepositViewModel {
     /// Seeds the form's initial state — used by the Repair flow to pre-fill a reconstructed
     /// secret's label/value/holders/threshold into an otherwise-ordinary deposit. All fields
     /// stay editable afterward; this only affects the starting values.
+    ///
+    /// The secret arrives as **bytes**, not a `String`. Round-tripping it through text is what
+    /// used to corrupt a non-text secret on re-split: it was decoded lossily (or to base64) and
+    /// then re-encoded, so the repair wrote back something other than what it reconstructed.
     struct Prefill {
         let label: String
-        let secretText: String
+        let secret: Data
+        let mimeType: MimeType
         let selectedContacts: Set<UUID>
         let threshold: Int
+    }
+
+    /// What this form will actually split. Text is edited in the field; anything else is carried
+    /// through verbatim, because there is no sensible way to edit it in a text field and
+    /// re-encoding it as a `String` is exactly the corruption above.
+    enum Payload {
+        case text
+        case opaque(Data)
     }
 
     var label = ""
@@ -22,6 +35,11 @@ final class DepositViewModel {
     var error: String?
     var depositedSuccessfully = false
 
+    /// Everything the app can compose today is typed text; a prefill is the only way this becomes
+    /// anything else, and only by carrying through what a reconstruction produced.
+    private(set) var payload: Payload = .text
+    private(set) var mimeType: MimeType = .default
+
     private let shareManagement: any ShareManagement
     private let contactManagement: any ContactManagement
 
@@ -30,17 +48,39 @@ final class DepositViewModel {
         self.contactManagement = contactManagement
         if let prefill {
             self.label = prefill.label
-            self.secretText = prefill.secretText
             self.selectedContacts = prefill.selectedContacts
             self.threshold = prefill.threshold
+            self.mimeType = prefill.mimeType
+            // Editable only when it really is text — a declared text type whose bytes are not
+            // valid UTF-8 is carried through opaquely rather than mangled into the field.
+            if prefill.mimeType.isText, let text = String(data: prefill.secret, encoding: .utf8) {
+                self.secretText = text
+                self.payload = .text
+            } else {
+                self.payload = .opaque(prefill.secret)
+            }
         }
     }
 
     var allContacts: [Contact] { (try? contactManagement.listContacts()) ?? [] }
 
+    /// The bytes this form will split — the edited text, or the prefilled payload untouched.
+    var secretBytes: Data {
+        switch payload {
+        case .text: Data(secretText.utf8)
+        case .opaque(let data): data
+        }
+    }
+
+    /// True when the payload came through a repair and cannot be shown in the text field.
+    var isOpaquePayload: Bool {
+        if case .opaque = payload { return true }
+        return false
+    }
+
     var canDeposit: Bool {
         !label.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !secretText.isEmpty &&
+        !secretBytes.isEmpty &&
         selectedContacts.count >= 2 &&
         threshold >= 2 &&
         threshold <= selectedContacts.count
@@ -82,10 +122,11 @@ final class DepositViewModel {
         do {
             let chosen = allContacts.filter { selectedContacts.contains($0.id) }
             try await shareManagement.deposit(
-                secret: Data(secretText.utf8),
+                secret: secretBytes,
                 label: label.trimmingCharacters(in: .whitespaces),
                 contacts: chosen,
-                threshold: threshold
+                threshold: threshold,
+                mimeType: mimeType
             )
             depositedSuccessfully = true
         } catch {

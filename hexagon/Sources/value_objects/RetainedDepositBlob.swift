@@ -22,8 +22,9 @@ public struct RetainedDepositBlob: Identifiable, Equatable {
     public let ciphertext: Data
     public let k: Int
     public let n: Int
+    public let mimeType: MimeType
 
-    public init(id: UUID, secretId: UUID, contactId: UUID, label: String, secretCreatedAt: Date, ciphertext: Data, k: Int, n: Int) {
+    public init(id: UUID, secretId: UUID, contactId: UUID, label: String, secretCreatedAt: Date, ciphertext: Data, k: Int, n: Int, mimeType: MimeType) {
         self.id = id
         self.secretId = secretId
         self.contactId = contactId
@@ -32,5 +33,6 @@ public struct RetainedDepositBlob: Identifiable, Equatable {
         self.ciphertext = ciphertext
         self.k = k
         self.n = n
+        self.mimeType = mimeType
     }
 }

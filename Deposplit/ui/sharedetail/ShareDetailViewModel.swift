@@ -4,7 +4,7 @@ import Foundation
 enum ReconstructState {
     case unavailable(String)
     case ready
-    case reconstructed(String, integrity: ReconstructionIntegrity)
+    case reconstructed(ReconstructedSecret, integrity: ReconstructionIntegrity)
     case failed(String)
 }
 
@@ -19,6 +19,11 @@ final class ShareDetailViewModel {
 
     private let secret: Secret
     private let share: ShareMetadata
+
+    /// Surfaced for the render fork and the export filename — both belong to the secret, not to
+    /// the reconstruction, so they are readable before one has happened.
+    var mimeType: MimeType { secret.mimeType }
+    var label: String { secret.label }
     private let shareManagement: any ShareManagement
     private let contactManagement: any ContactManagement
     private var allContacts: [Contact] = []
@@ -65,21 +70,22 @@ final class ShareDetailViewModel {
         }
     }
 
-    func reconstruct() async -> String? {
+    /// The declared type decides how the bytes are shown, and `ReconstructedSecret` falls back to
+    /// a binary view whenever the type and the bytes disagree — so nothing here force-decodes, and
+    /// the original bytes survive whichever branch runs.
+    func reconstruct() async {
         do {
             let result = try await shareManagement.reconstruct(secretId: share.secretId)
-            let secretText = String(bytes: Array(result.secret), encoding: .utf8)
-                ?? result.secret.base64EncodedString()
-            reconstructState = .reconstructed(secretText, integrity: result.integrity)
-            return secretText
+            reconstructState = .reconstructed(
+                ReconstructedSecret(secret: result.secret, mimeType: result.mimeType),
+                integrity: result.integrity
+            )
         } catch let ShamirError.reconstructionIntegrityFailed(largestConsistentGroup, totalShares) {
             reconstructState = .failed(String(
                 localized: "Reconstruction integrity check failed: no trustworthy majority found among \(totalShares) collected shares (largest consistent group was only \(largestConsistentGroup))."
             ))
-            return nil
         } catch {
             reconstructState = .failed(error.localizedDescription)
-            return nil
         }
     }
 

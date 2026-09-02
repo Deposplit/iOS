@@ -44,9 +44,25 @@ struct DepositFormContent<LeadingToolbar: ToolbarContent>: View {
             }
 
             Section("Secret") {
-                TextEditor(text: $viewModel.secretText)
-                    .frame(minHeight: 80)
+                if viewModel.isOpaquePayload {
+                    // Reconstructed as something other than text, so it is re-split exactly as it
+                    // came back rather than edited through a text field.
+                    // `verbatim:` because both halves are data, not copy — an interpolated
+                    // LocalizedStringKey here would register "%@ · %@" as a translatable string.
+                    Label {
+                        Text(verbatim: "\(viewModel.mimeType.value) · \(byteCountFormatted(viewModel.secretBytes.count))")
+                    } icon: {
+                        Image(systemName: "doc")
+                    }
                     .font(.system(.body, design: .monospaced))
+                    Text("Carried through unchanged — this secret is not text and cannot be edited here.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    TextEditor(text: $viewModel.secretText)
+                        .frame(minHeight: 80)
+                        .font(.system(.body, design: .monospaced))
+                }
             }
 
             Section("Recipients") {

@@ -47,6 +47,7 @@ final class LocalRetainedDepositRepository: RetainedDepositRepository {
         let ciphertext: String
         let k: Int
         let n: Int
+        let mimeType: String
     }
 
     private func load() throws -> [RetainedDepositBlob] {
@@ -58,7 +59,7 @@ final class LocalRetainedDepositRepository: RetainedDepositRepository {
                   let contactId = UUID(uuidString: json.contactId),
                   let secretCreatedAt = Self.isoFormatter.date(from: json.secretCreatedAt),
                   let ciphertext = Data(base64Encoded: json.ciphertext) else { return nil }
-            return RetainedDepositBlob(id: id, secretId: secretId, contactId: contactId, label: json.label, secretCreatedAt: secretCreatedAt, ciphertext: ciphertext, k: json.k, n: json.n)
+            return RetainedDepositBlob(id: id, secretId: secretId, contactId: contactId, label: json.label, secretCreatedAt: secretCreatedAt, ciphertext: ciphertext, k: json.k, n: json.n, mimeType: MimeType(json.mimeType))
         }
     }
 
@@ -67,7 +68,7 @@ final class LocalRetainedDepositRepository: RetainedDepositRepository {
             RetainedDepositBlobJSON(
                 id: b.id.uuidString, secretId: b.secretId.uuidString, contactId: b.contactId.uuidString,
                 label: b.label, secretCreatedAt: Self.isoFormatter.string(from: b.secretCreatedAt),
-                ciphertext: b.ciphertext.base64EncodedString(), k: b.k, n: b.n
+                ciphertext: b.ciphertext.base64EncodedString(), k: b.k, n: b.n, mimeType: b.mimeType.value
             )
         }
         let data = try JSONEncoder().encode(items)

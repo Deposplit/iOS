@@ -204,6 +204,16 @@
         }
       }
     },
+    "Carried through unchanged — this secret is not text and cannot be edited here." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unverändert übernommen — dieses Geheimnis ist kein Text und kann hier nicht bearbeitet werden."
+          }
+        }
+      }
+    },
     "Catalog Backup" : {
       "localizations" : {
         "de" : {
@@ -576,6 +586,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Katalog exportieren…"
+          }
+        }
+      }
+    },
+    "Export…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportieren…"
           }
         }
       }
@@ -1158,6 +1178,16 @@
         }
       }
     },
+    "Reconstructed image" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rekonstruiertes Bild"
+          }
+        }
+      }
+    },
     "Reconstruction integrity check failed: no trustworthy majority found among %lld collected shares (largest consistent group was only %lld)." : {
       "localizations" : {
         "de" : {
@@ -1510,6 +1540,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dieser QR-Code verwendet ein Verschlüsselungsschema, das diese App-Version nicht unterstützt."
+          }
+        }
+      }
+    },
+    "This secret is not text that can be shown here. Export it to open it elsewhere." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Geheimnis ist kein Text und kann hier nicht angezeigt werden. Exportiere es, um es woanders zu öffnen."
           }
         }
       }

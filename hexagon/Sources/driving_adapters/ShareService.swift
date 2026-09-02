@@ -94,7 +94,7 @@ public final class ShareService: ShareManagement {
         let canon = PayloadCanonical.forOpen(
             secretId: req.secretId, transactionType: req.transactionType, recipientKey: req.recipientKey,
             label: req.label, secretCreatedAt: req.secretCreatedAt, shareId: req.shareId, ciphertext: req.ciphertext,
-            k: req.k, n: req.n
+            k: req.k, n: req.n, mimeType: req.mimeType
         )
         return identity.verify(canon, signature: req.senderSignature, publicKey: contact.verifyKey)
     }
@@ -114,13 +114,13 @@ public final class ShareService: ShareManagement {
 
     // MARK: - Sender flows
 
-    public func deposit(secret: Data, label: String, contacts: [Contact], threshold: Int) async throws {
+    public func deposit(secret: Data, label: String, contacts: [Contact], threshold: Int, mimeType: MimeType = .default) async throws {
         let shares = try split(secret: Array(secret), shares: contacts.count, threshold: threshold)
         let secretId = UUID()
         let createdAt = Date()
         for (contact, share) in zip(contacts, shares) {
             let ciphertext = try encryption.encrypt(Data(share), recipientEncKey: contact.encKey)
-            let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: .deposit, recipientKey: contact.verifyKey, label: label, secretCreatedAt: createdAt, shareId: nil, ciphertext: ciphertext, k: threshold, n: contacts.count)
+            let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: .deposit, recipientKey: contact.verifyKey, label: label, secretCreatedAt: createdAt, shareId: nil, ciphertext: ciphertext, k: threshold, n: contacts.count, mimeType: mimeType)
             let senderSignature = try identity.sign(canon)
             let req = try await relay(for: contact).openShareRequest(
                 secretId: secretId,
@@ -132,15 +132,16 @@ public final class ShareService: ShareManagement {
                 ciphertext: ciphertext,
                 k: threshold,
                 n: contacts.count,
+                mimeType: mimeType,
                 senderSignature: senderSignature
             )
             try? shareMetadataRepository.save(ShareMetadata(id: req.id, secretId: secretId, contactId: contact.id))
             // Retained until this holder's pickup is confirmed (relay-observed or
             // heartbeat-attested), then discarded. Safe to retain: this blob is encrypted to the
             // holder's X25519 key, so this device cannot decrypt it itself.
-            try? retainedDepositRepository.save(RetainedDepositBlob(id: req.id, secretId: secretId, contactId: contact.id, label: label, secretCreatedAt: createdAt, ciphertext: ciphertext, k: threshold, n: contacts.count))
+            try? retainedDepositRepository.save(RetainedDepositBlob(id: req.id, secretId: secretId, contactId: contact.id, label: label, secretCreatedAt: createdAt, ciphertext: ciphertext, k: threshold, n: contacts.count, mimeType: mimeType))
         }
-        try? secretRepository.save(Secret(id: secretId, label: label, k: threshold, n: contacts.count, secretCreatedAt: createdAt, state: .active))
+        try? secretRepository.save(Secret(id: secretId, label: label, mimeType: mimeType, k: threshold, n: contacts.count, secretCreatedAt: createdAt, state: .active))
     }
 
     public func listSecrets() throws -> [Secret] {
@@ -287,6 +288,7 @@ public final class ShareService: ShareManagement {
                         ciphertext: nil,
                         k: nil,
                         n: nil,
+                        mimeType: nil,
                         senderSignature: senderSignature
                     )
                 }
@@ -317,6 +319,7 @@ public final class ShareService: ShareManagement {
             ciphertext: nil,
             k: nil,
             n: nil,
+            mimeType: nil,
             senderSignature: senderSignature
         )
     }
@@ -364,7 +367,7 @@ public final class ShareService: ShareManagement {
         } else {
             integrity = .excludedSuspects(excludedContactIds: Set(result.excludedIndices.map { contactIds[$0] }))
         }
-        return ReconstructionResult(secret: Data(result.secret), integrity: integrity)
+        return ReconstructionResult(secret: Data(result.secret), integrity: integrity, mimeType: secret.mimeType)
     }
 
     /// Fans out a sender-initiated `removal` to every known holder of `secretId` and flips the
@@ -373,7 +376,7 @@ public final class ShareService: ShareManagement {
         guard let secret = (try? secretRepository.getAll())?.first(where: { $0.id == secretId }) else {
             throw ShareServiceError.secretNotFound
         }
-        try secretRepository.save(Secret(id: secret.id, label: secret.label, k: secret.k, n: secret.n, secretCreatedAt: secret.secretCreatedAt, state: .discarding))
+        try secretRepository.save(Secret(id: secret.id, label: secret.label, mimeType: secret.mimeType, k: secret.k, n: secret.n, secretCreatedAt: secret.secretCreatedAt, state: .discarding))
         let shares = ((try? shareMetadataRepository.getAll()) ?? []).filter { $0.secretId == secretId }
         for share in shares {
             _ = try? await openRequest(shareId: share.id, type: .removal)
@@ -399,10 +402,10 @@ public final class ShareService: ShareManagement {
             // Unknown sender or unverified senderSignature: skip silently, do not auto-approve.
             for req in pending where verifyOpen(req) {
                 guard let senderContact = contactRepository.getByVerifyKey(req.senderKey) else { continue }
-                // A deposit without valid k/n can't happen against a conforming relay (required by
-                // ShareRequestsService) — skip defensively rather than store a share we can't
-                // later report thresholds for during recovery.
-                guard let k = req.k, let n = req.n else { continue }
+                // A deposit without valid k/n/mimeType can't happen against a conforming relay
+                // (all three required by ShareRequestsService) — skip defensively rather than store
+                // a share we can't later report thresholds for during recovery.
+                guard let k = req.k, let n = req.n, let mimeType = req.mimeType else { continue }
                 // Order is load-bearing: approving is what clears the relay's only copy of the
                 // ciphertext, so it is the last step of pickup and never the first. Decrypting and
                 // storing first means a failure leaves the row pending with the relay's copy
@@ -423,7 +426,8 @@ public final class ShareService: ShareManagement {
                         pickedUpAt: Date(),
                         plaintextShare: plaintext,
                         k: k,
-                        n: n
+                        n: n,
+                        mimeType: mimeType
                     ))
                 }
                 // Sent even when an earlier poll already stored the share but failed to acknowledge
@@ -635,10 +639,10 @@ public final class ShareService: ShareManagement {
             let pushes = (try? await relay.listShareRequests(role: .recipient, transactionType: .inventory, state: .approved)) ?? []
             for req in pushes where verifyOpen(req) {
                 guard let holderContact = contactRepository.getByVerifyKey(req.senderKey) else { continue }
-                guard let k = req.k, let n = req.n else { continue }
+                guard let k = req.k, let n = req.n, let mimeType = req.mimeType else { continue }
                 let existingSecrets = (try? secretRepository.getAll()) ?? []
                 if !existingSecrets.contains(where: { $0.id == req.secretId }) {
-                    try? secretRepository.save(Secret(id: req.secretId, label: req.label, k: k, n: n, secretCreatedAt: req.secretCreatedAt, state: .active))
+                    try? secretRepository.save(Secret(id: req.secretId, label: req.label, mimeType: mimeType, k: k, n: n, secretCreatedAt: req.secretCreatedAt, state: .active))
                 }
                 let existingMeta = (try? shareMetadataRepository.getAll()) ?? []
                 if !existingMeta.contains(where: { $0.secretId == req.secretId && $0.contactId == holderContact.id }) {
@@ -655,7 +659,7 @@ public final class ShareService: ShareManagement {
         }
         let heldFromContact = shareRepository.getAll().filter { $0.contactId == contactId }
         for share in heldFromContact {
-            let canon = PayloadCanonical.forOpen(secretId: share.secretId, transactionType: .inventory, recipientKey: contact.verifyKey, label: share.label, secretCreatedAt: share.createdAt, shareId: nil, ciphertext: nil, k: share.k, n: share.n)
+            let canon = PayloadCanonical.forOpen(secretId: share.secretId, transactionType: .inventory, recipientKey: contact.verifyKey, label: share.label, secretCreatedAt: share.createdAt, shareId: nil, ciphertext: nil, k: share.k, n: share.n, mimeType: share.mimeType)
             guard let senderSignature = try? identity.sign(canon) else { continue }
             _ = try? await relay(for: contact).openShareRequest(
                 secretId: share.secretId,
@@ -667,6 +671,7 @@ public final class ShareService: ShareManagement {
                 ciphertext: nil,
                 k: share.k,
                 n: share.n,
+                mimeType: share.mimeType,
                 senderSignature: senderSignature
             )
         }

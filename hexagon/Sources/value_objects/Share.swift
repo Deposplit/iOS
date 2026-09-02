@@ -59,9 +59,11 @@ public struct ShareRequest: Identifiable, Equatable {
     public let requestedAt: Date
     public let respondedAt: Date?
     public let ciphertext: Data?
-    // SSS threshold/share-count — populated for deposit/inventory, nil for retrieval/removal.
+    // SSS threshold/share-count and the sender's declared media type — all populated for
+    // deposit/inventory, nil for retrieval/removal.
     public let k: Int?
     public let n: Int?
+    public let mimeType: MimeType?
     /// Ed25519 signature over `PayloadCanonical.forOpen` — see that type for what's signed.
     public let senderSignature: Data
     /// Ed25519 signature over `PayloadCanonical.forRespond`; nil while pending.
@@ -72,7 +74,7 @@ public struct ShareRequest: Identifiable, Equatable {
         label: String, secretCreatedAt: Date,
         transactionType: ShareTransactionType, state: ShareRequestState,
         shareId: UUID?, requestedAt: Date, respondedAt: Date?, ciphertext: Data?,
-        k: Int? = nil, n: Int? = nil,
+        k: Int? = nil, n: Int? = nil, mimeType: MimeType? = nil,
         senderSignature: Data, recipientSignature: Data?
     ) {
         self.id = id
@@ -89,6 +91,7 @@ public struct ShareRequest: Identifiable, Equatable {
         self.ciphertext = ciphertext
         self.k = k
         self.n = n
+        self.mimeType = mimeType
         self.senderSignature = senderSignature
         self.recipientSignature = recipientSignature
     }

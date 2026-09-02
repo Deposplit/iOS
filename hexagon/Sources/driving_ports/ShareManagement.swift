@@ -2,7 +2,7 @@ import Foundation
 
 public protocol ShareManagement {
     // Sender
-    func deposit(secret: Data, label: String, contacts: [Contact], threshold: Int) async throws
+    func deposit(secret: Data, label: String, contacts: [Contact], threshold: Int, mimeType: MimeType) async throws
     func listSecrets() throws -> [Secret]
     func listDistributed() throws -> [ShareMetadata]
     func syncDistributed() async throws

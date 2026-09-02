@@ -22,8 +22,12 @@ public enum PayloadCanonical {
 
     /// Signed by the sender when opening a share request (`senderSignature`).
     ///
-    /// `k`/`n` are appended at the end of the sequence, keeping the existing field
-    /// order — and this construction's cross-platform byte-vector test — undisturbed.
+    /// `k`/`n`, then `mimeType`, are each appended at the end of the sequence in turn, keeping the
+    /// field order that predates them — and this construction's cross-platform byte-vector test —
+    /// undisturbed.
+    ///
+    /// A nil and an empty-string `mimeType` produce identical bytes here, which is why the relay
+    /// refuses to store an empty one.
     public static func forOpen(
         secretId: UUID,
         transactionType: ShareTransactionType,
@@ -33,7 +37,8 @@ public enum PayloadCanonical {
         shareId: UUID?,
         ciphertext: Data?,
         k: Int? = nil,
-        n: Int? = nil
+        n: Int? = nil,
+        mimeType: MimeType? = nil
     ) -> Data {
         let epochMs = Int64(secretCreatedAt.timeIntervalSince1970 * 1000)
         let parts = [
@@ -46,6 +51,7 @@ public enum PayloadCanonical {
             ciphertext?.base64EncodedString() ?? "",
             k.map(String.init) ?? "",
             n.map(String.init) ?? "",
+            mimeType?.value ?? "",
         ]
         return Data(parts.joined(separator: "\n").utf8)
     }

@@ -13,12 +13,17 @@ public enum ReconstructionIntegrity: Equatable {
     case excludedSuspects(excludedContactIds: Set<UUID>)
 }
 
+/// `mimeType` is the owner's own record of what she split, carried alongside the bytes so a caller
+/// deciding how to render them never has to go back to the `Secret` aggregate and risk pairing
+/// bytes with the wrong type.
 public struct ReconstructionResult: Equatable {
     public let secret: Data
     public let integrity: ReconstructionIntegrity
+    public let mimeType: MimeType
 
-    public init(secret: Data, integrity: ReconstructionIntegrity) {
+    public init(secret: Data, integrity: ReconstructionIntegrity, mimeType: MimeType) {
         self.secret = secret
         self.integrity = integrity
+        self.mimeType = mimeType
     }
 }

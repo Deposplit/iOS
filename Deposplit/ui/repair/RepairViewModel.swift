@@ -104,15 +104,17 @@ final class RepairViewModel {
         defer { isActing = false }
         do {
             let result = try await shareManagement.reconstruct(secretId: secret.id)
-            let secretText = String(bytes: Array(result.secret), encoding: .utf8) ?? result.secret.base64EncodedString()
             reconstructionIntegrity = result.integrity
             let currentHolderIds = Set(holderStatuses.map { $0.contactId })
+            // The bytes go through untouched. Decoding them to a String here and re-encoding them
+            // on deposit is what used to re-split a corrupted copy of a non-text secret.
             depositViewModel = DepositViewModel(
                 shareManagement: shareManagement,
                 contactManagement: contactManagement,
                 prefill: DepositViewModel.Prefill(
                     label: secret.label,
-                    secretText: secretText,
+                    secret: result.secret,
+                    mimeType: result.mimeType,
                     selectedContacts: currentHolderIds,
                     threshold: secret.k
                 )

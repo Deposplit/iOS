@@ -15,12 +15,14 @@ public struct HeldShare: Identifiable, Equatable {
     // The decrypted share, plaintext at rest: a single holder's share is
     // information-theoretically empty on its own, so this is safe to store unencrypted.
     public let plaintextShare: Data
-    // SSS threshold/share-count, carried on the deposit that produced this share — reported back
-    // during identity recovery so a recovering owner can rebuild her `Secret` record.
+    // SSS threshold/share-count and the sender's declared media type, all carried on the deposit
+    // that produced this share — reported back during identity recovery so a recovering owner can
+    // rebuild her `Secret` record.
     public let k: Int
     public let n: Int
+    public let mimeType: MimeType
 
-    public init(id: UUID, secretId: UUID, label: String, contactId: UUID, senderPseudonym: String, createdAt: Date, pickedUpAt: Date, plaintextShare: Data, k: Int, n: Int) {
+    public init(id: UUID, secretId: UUID, label: String, contactId: UUID, senderPseudonym: String, createdAt: Date, pickedUpAt: Date, plaintextShare: Data, k: Int, n: Int, mimeType: MimeType) {
         self.id = id
         self.secretId = secretId
         self.label = label
@@ -31,5 +33,6 @@ public struct HeldShare: Identifiable, Equatable {
         self.plaintextShare = plaintextShare
         self.k = k
         self.n = n
+        self.mimeType = mimeType
     }
 }
