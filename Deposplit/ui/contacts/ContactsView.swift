@@ -23,9 +23,11 @@ struct ContactsView: View {
     @Environment(\.dismiss) private var dismiss
 
     private let contactManagement: any ContactManagement
+    private let purchaseStore: StoreKitPurchaseStore
     private let shareManagement: any ShareManagement
 
-    init(contactManagement: any ContactManagement, shareManagement: any ShareManagement) {
+    init(contactManagement: any ContactManagement, shareManagement: any ShareManagement, purchaseStore: StoreKitPurchaseStore) {
+        self.purchaseStore = purchaseStore
         self.contactManagement = contactManagement
         self.shareManagement = shareManagement
         _viewModel = State(initialValue: ContactsViewModel(contactManagement: contactManagement, shareManagement: shareManagement))
@@ -131,7 +133,7 @@ struct ContactsView: View {
             }
             .onAppear { viewModel.load() }
             .sheet(isPresented: $showAddContact, onDismiss: { viewModel.load() }) {
-                AddContactView(contactManagement: contactManagement)
+                AddContactView(contactManagement: contactManagement, purchaseStore: purchaseStore)
             }
             .sheet(isPresented: $showQrScanner, onDismiss: { viewModel.load() }) {
                 QrScanView(contactManagement: contactManagement)

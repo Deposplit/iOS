@@ -7,16 +7,20 @@ struct DepositView: View {
     @State private var viewModel: DepositViewModel
     @Environment(\.dismiss) private var dismiss
 
-    init(shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
+    private let purchaseStore: StoreKitPurchaseStore
+
+    init(shareManagement: any ShareManagement, contactManagement: any ContactManagement, purchaseStore: StoreKitPurchaseStore) {
+        self.purchaseStore = purchaseStore
         _viewModel = State(initialValue: DepositViewModel(
             shareManagement: shareManagement,
-            contactManagement: contactManagement
+            contactManagement: contactManagement,
+            purchases: purchaseStore
         ))
     }
 
     var body: some View {
         NavigationStack {
-            DepositFormContent(viewModel: viewModel, title: "Split & Share") {
+            DepositFormContent(viewModel: viewModel, title: "Split & Share", purchaseStore: purchaseStore) {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
@@ -35,6 +39,8 @@ struct DepositView: View {
 struct DepositFormContent<LeadingToolbar: ToolbarContent>: View {
     @Bindable var viewModel: DepositViewModel
     let title: LocalizedStringKey
+    /// nil from the Repair flow, which is exempt from the cap and so never renders the link below.
+    var purchaseStore: StoreKitPurchaseStore?
     @ToolbarContentBuilder let leadingToolbar: () -> LeadingToolbar
 
     @State private var showWarningConfirmation = false
@@ -128,6 +134,19 @@ struct DepositFormContent<LeadingToolbar: ToolbarContent>: View {
                         in: 2...max(2, viewModel.selectedContacts.count))
             } footer: {
                 Text("At least \(viewModel.threshold) holder(s) must cooperate to reconstruct the secret.")
+            }
+
+            if viewModel.freeTierFull, let purchaseStore {
+                Section {
+                    NavigationLink {
+                        PaywallView(store: purchaseStore)
+                    } label: {
+                        Text("See Premium")
+                    }
+                } footer: {
+                    Text("\(viewModel.freeTierLimit) of \(viewModel.freeTierLimit) free secrets are in use. Discard one, or unlock Premium.")
+                        .foregroundStyle(.red)
+                }
             }
 
             if let error = viewModel.error {

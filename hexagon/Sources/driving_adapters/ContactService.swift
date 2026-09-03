@@ -6,6 +6,7 @@ public enum ContactError: Error, LocalizedError {
     case veryHighRequiresInPersonScan
     case contactNotFound
     case levelRequiredOnKeyChange
+    case premiumRequired
     public var errorDescription: String? {
         switch self {
         case .blankPseudonym: "Name must not be blank."
@@ -13,15 +14,18 @@ public enum ContactError: Error, LocalizedError {
         case .veryHighRequiresInPersonScan: "Very High verification requires an in-person QR scan."
         case .contactNotFound: "Contact not found."
         case .levelRequiredOnKeyChange: "A verification level must be chosen fresh whenever a contact's keys change."
+        case .premiumRequired: "This requires the Deposplit Premium unlock."
         }
     }
 }
 
 public final class ContactService: ContactManagement {
     private let contactRepository: any ContactRepository
+    private let purchases: any PurchaseRepository
 
-    public init(contactRepository: any ContactRepository) {
+    public init(contactRepository: any ContactRepository, purchases: any PurchaseRepository) {
         self.contactRepository = contactRepository
+        self.purchases = purchases
     }
 
     public func listContacts() throws -> [Contact] {
@@ -38,6 +42,11 @@ public final class ContactService: ContactManagement {
         // Physical co-presence can't be asserted by typing a key in by hand — that's what the
         // in-person QR scan flow is for.
         guard verificationLevel != .veryHigh else { throw ContactError.veryHighRequiresInPersonScan }
+        // Typing a relay by hand is the paid half of BYOR. Reading one out of a scanned QR code is
+        // not, and `addFromQr` below is deliberately left open: that URL is the contact stating
+        // where their own mailbox is, and refusing it would mean a free device simply cannot share
+        // with anyone who self-hosts.
+        if relayBaseUrl != nil, !purchases.isPremium() { throw ContactError.premiumRequired }
         let now = Date()
         contactRepository.save(Contact(
             id: UUID(),

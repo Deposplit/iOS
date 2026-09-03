@@ -54,6 +54,9 @@
       debugServiceExtension = "internal"
       allowLocationSimulation = "YES"
       queueDebuggingEnableBacktraceRecording = "Yes">
+      <StoreKitConfigurationFileReference
+         identifier = "../../../Deposplit.storekit">
+      </StoreKitConfigurationFileReference>
       <BuildableProductRunnable
          runnableDebuggingMode = "0">
          <BuildableReference

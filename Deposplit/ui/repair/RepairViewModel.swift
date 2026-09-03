@@ -29,6 +29,7 @@ final class RepairViewModel {
     let secret: Secret
     private let shareManagement: any ShareManagement
     private let contactManagement: any ContactManagement
+    private let purchases: any PurchaseRepository
 
     var phase: Phase = .gathering
     var isLoading = false
@@ -46,10 +47,11 @@ final class RepairViewModel {
     private(set) var depositViewModel: DepositViewModel?
     private var allContacts: [Contact] = []
 
-    init(secret: Secret, shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
+    init(secret: Secret, shareManagement: any ShareManagement, contactManagement: any ContactManagement, purchases: any PurchaseRepository) {
         self.secret = secret
         self.shareManagement = shareManagement
         self.contactManagement = contactManagement
+        self.purchases = purchases
     }
 
     var readyToReconstruct: Bool { approvedCount >= secret.k }
@@ -113,12 +115,14 @@ final class RepairViewModel {
             depositViewModel = DepositViewModel(
                 shareManagement: shareManagement,
                 contactManagement: contactManagement,
+                purchases: purchases,
                 prefill: DepositViewModel.Prefill(
                     label: secret.label,
                     secret: result.secret,
                     mimeType: result.mimeType,
                     selectedContacts: currentHolderIds,
-                    threshold: secret.k
+                    threshold: secret.k,
+                    replacing: secret.id
                 )
             )
             phase = .redeposit

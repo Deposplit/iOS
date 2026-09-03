@@ -2,7 +2,10 @@ import Foundation
 
 public protocol ShareManagement {
     // Sender
-    func deposit(secret: Data, label: String, contacts: [Contact], threshold: Int, mimeType: MimeType) async throws
+    /// `replacing` names the active secret this deposit supersedes — a repair's re-split, which
+    /// re-splits what already exists rather than adding to it, and is therefore exempt from the
+    /// free-tier cap. Everything else about the deposit is identical; nothing links the two records.
+    func deposit(secret: Data, label: String, contacts: [Contact], threshold: Int, mimeType: MimeType, replacing: UUID?) async throws
     func listSecrets() throws -> [Secret]
     func listDistributed() throws -> [ShareMetadata]
     func syncDistributed() async throws

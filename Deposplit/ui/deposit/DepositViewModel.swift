@@ -17,6 +17,9 @@ final class DepositViewModel {
         let mimeType: MimeType
         let selectedContacts: Set<UUID>
         let threshold: Int
+        /// The secret this re-split supersedes. A repair is not a fourth secret, so it is exempt
+        /// from the free-tier cap — see `ShareManagement.deposit`.
+        let replacing: UUID?
     }
 
     /// What this form will actually split. Text is edited in the field; anything else is carried
@@ -48,12 +51,27 @@ final class DepositViewModel {
     /// to undo.
     private(set) var isCarriedThrough = false
 
+    private let replacing: UUID?
+
+    /// Set when a free device already holds its allowance of active secrets and this deposit is not
+    /// a repair. The domain refuses such a deposit regardless — this is the courteous half, so the
+    /// form says so before anything is typed rather than after everything is.
+    private(set) var freeTierFull = false
+    let freeTierLimit = SecretLimits.freeTierMaxActiveSecrets
+
     private let shareManagement: any ShareManagement
     private let contactManagement: any ContactManagement
 
-    init(shareManagement: any ShareManagement, contactManagement: any ContactManagement, prefill: Prefill? = nil) {
+    init(shareManagement: any ShareManagement, contactManagement: any ContactManagement, purchases: any PurchaseRepository, prefill: Prefill? = nil) {
         self.shareManagement = shareManagement
         self.contactManagement = contactManagement
+        self.replacing = prefill?.replacing
+        // A repair never counts — it supersedes an active secret rather than adding one — so it is
+        // exempt here just as it is in the domain.
+        if prefill?.replacing == nil, !purchases.isPremium() {
+            let active = ((try? shareManagement.listSecrets()) ?? []).filter { $0.state == .active }.count
+            self.freeTierFull = active >= SecretLimits.freeTierMaxActiveSecrets
+        }
         if let prefill {
             self.label = prefill.label
             self.selectedContacts = prefill.selectedContacts
@@ -129,7 +147,8 @@ final class DepositViewModel {
         !secretBytes.isEmpty &&
         selectedContacts.count >= 2 &&
         threshold >= 2 &&
-        threshold <= selectedContacts.count
+        threshold <= selectedContacts.count &&
+        !freeTierFull
     }
 
     /// Non-blocking "Are you sure?" warnings across the three soft axes of choosing k and n —
@@ -172,9 +191,14 @@ final class DepositViewModel {
                 label: label.trimmingCharacters(in: .whitespaces),
                 contacts: chosen,
                 threshold: threshold,
-                mimeType: mimeType
+                mimeType: mimeType,
+                replacing: replacing
             )
             depositedSuccessfully = true
+        } catch ShareServiceError.freeTierLimitReached {
+            // A refusal by the cap is not a failure — it is an answer, and the form has somewhere
+            // to send the user.
+            freeTierFull = true
         } catch {
             self.error = error.localizedDescription
         }

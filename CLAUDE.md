@@ -104,17 +104,32 @@ Matching/Non-matching Face — which covers the same "test without biometric har
 with no bypass in app code. A Simulator without enrolment shows the same unavailable state a
 real device would.
 
-That precedent is biometric-specific and does **not** extend to the freemium gate. Once the
-Settings relay editor sits behind `isPremium()`, iOS will need a debug-only fake-Premium
-`PurchaseRepository` to keep local-relay testing possible — there is no Simulator-native
-equivalent for a purchase entitlement.
+## Purchases
+
+The freemium unlock is one non-consumable, `com.deposplit.premium`. `StoreKitPurchaseStore`
+owns products, purchase and restore; `UserDefaultsPurchaseRepository` is the cache it writes
+through, and the cache is what the hexagon's `PurchaseRepository` port reads — synchronously,
+so the domain needs neither `async` nor the network to know what this device owns.
+
+**StoreKit Testing in Xcode is the Simulator-native equivalent of the Face ID enrolment
+simulation above**, so iOS needs no fake-Premium build flag (Android does, because Google
+Play Billing has no offline mode at all). `Deposplit.storekit` at the repository root defines
+the product locally and is attached to the shared scheme as a
+`StoreKitConfigurationFileReference`, so **no App Store Connect record is required**: the
+unlock can be bought for real in the Simulator, and Debug → StoreKit → Manage Transactions
+deletes the transaction again to get back to the locked state. Local testing needs no In-App
+Purchase entitlement either.
+
+The App Store **Sandbox** — a sandbox Apple ID against Apple's servers — is a different
+thing, and does need a device and an App Store Connect record. That is a pre-ship rehearsal,
+not a development dependency.
 
 ## Build and test
 
 ```bash
 # from hexagon/ — no simulator needed, this is what CI runs
 swift build
-swift test                                  # 131 tests
+swift test                                  # 138 tests
 swift test --filter ShareServiceTests
 
 # from the repo root — the app target

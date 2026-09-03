@@ -5,7 +5,10 @@ struct AddContactView: View {
     @State private var viewModel: AddContactViewModel
     @Environment(\.dismiss) private var dismiss
 
-    init(contactManagement: any ContactManagement) {
+    private let purchaseStore: StoreKitPurchaseStore
+
+    init(contactManagement: any ContactManagement, purchaseStore: StoreKitPurchaseStore) {
+        self.purchaseStore = purchaseStore
         _viewModel = State(initialValue: AddContactViewModel(contactManagement: contactManagement))
     }
 
@@ -28,12 +31,26 @@ struct AddContactView: View {
                         .autocapitalization(.none)
                         .font(.system(.body, design: .monospaced))
                 }
-                Section("Relay override (optional, BYOR)") {
-                    TextField("https://…", text: $viewModel.relayBaseUrlInput)
-                        .autocorrectionDisabled()
-                        .autocapitalization(.none)
-                        .keyboardType(.URL)
-                        .font(.system(.body, design: .monospaced))
+                Section {
+                    if purchaseStore.isUnlocked {
+                        TextField("https://…", text: $viewModel.relayBaseUrlInput)
+                            .autocorrectionDisabled()
+                            .autocapitalization(.none)
+                            .keyboardType(.URL)
+                            .font(.system(.body, design: .monospaced))
+                    } else {
+                        NavigationLink {
+                            PaywallView(store: purchaseStore)
+                        } label: {
+                            Text("See Premium")
+                        }
+                    }
+                } header: {
+                    Text("Relay override (optional, BYOR)")
+                } footer: {
+                    if !purchaseStore.isUnlocked {
+                        Text("Naming a contact's relay by hand is part of Premium. A relay carried in a scanned QR code is always free.")
+                    }
                 }
                 Section("Nickname (optional)") {
                     TextField("Nickname", text: $viewModel.nicknameInput)

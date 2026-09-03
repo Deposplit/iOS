@@ -58,6 +58,16 @@
         }
       }
     },
+    "%lld of %lld free secrets are in use. Discard one, or unlock Premium." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld von %lld kostenlosen Geheimnissen sind belegt. Verwirf eines oder schalte Premium frei."
+          }
+        }
+      }
+    },
     "%lld of %lld is a relatively low threshold — a minority of holders could reconstruct this secret together." : {
       "localizations" : {
         "de" : {
@@ -134,6 +144,16 @@
         }
       }
     },
+    "As many secrets as you like" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beliebig viele Geheimnisse"
+          }
+        }
+      }
+    },
     "At least %lld holder(s) must cooperate to reconstruct the secret." : {
       "localizations" : {
         "de" : {
@@ -170,6 +190,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Biometrische Authentifizierung ist derzeit nicht verfügbar."
+          }
+        }
+      }
+    },
+    "Bring your own relay" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein eigenes Relay"
           }
         }
       }
@@ -380,6 +410,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deposplit"
+          }
+        }
+      }
+    },
+    "Deposplit Premium" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deposplit Premium"
           }
         }
       }
@@ -626,6 +666,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vergessen erzwingen"
+          }
+        }
+      }
+    },
+    "Free covers %lld secrets at a time. Discarding one frees its slot straight away." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kostenlos sind %lld Geheimnisse gleichzeitig. Ein verworfenes gibt seinen Platz sofort frei."
           }
         }
       }
@@ -900,6 +950,16 @@
         }
       }
     },
+    "Naming a contact's relay by hand is part of Premium. A relay carried in a scanned QR code is always free." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Relay eines Kontakts von Hand einzutragen gehört zu Premium. Ein Relay aus einem gescannten QR-Code ist immer kostenlos."
+          }
+        }
+      }
+    },
     "Need %lld approved retrieval(s) to reconstruct — %lld so far." : {
       "localizations" : {
         "de" : {
@@ -1026,6 +1086,16 @@
         }
       }
     },
+    "Not unlocked: %lld secrets at a time, and deposplit.com as the relay." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht freigeschaltet: %lld Geheimnisse gleichzeitig und deposplit.com als Relay."
+          }
+        }
+      }
+    },
     "Notified %lld of %lld contact(s)." : {
       "localizations" : {
         "de" : {
@@ -1038,6 +1108,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "Notified %1$lld of %2$lld contact(s)."
+          }
+        }
+      }
+    },
+    "One purchase, once. No subscription, no ads." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einmal kaufen, fertig. Kein Abo, keine Werbung."
           }
         }
       }
@@ -1118,12 +1198,32 @@
         }
       }
     },
+    "Point this device, or an individual contact, at a relay you run yourself. Accepting shares from someone else's relay stays free." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Richte dieses Gerät oder einzelne Kontakte auf ein Relay aus, das du selbst betreibst. Teile über das Relay anderer anzunehmen bleibt kostenlos."
+          }
+        }
+      }
+    },
     "Possible impersonation attempt" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Möglicher Identitätsbetrug"
+          }
+        }
+      }
+    },
+    "Premium is unlocked on this device." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium ist auf diesem Gerät freigeschaltet."
           }
         }
       }
@@ -1414,6 +1514,16 @@
         }
       }
     },
+    "Restore purchase" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kauf wiederherstellen"
+          }
+        }
+      }
+    },
     "Resume Heartbeats" : {
       "localizations" : {
         "de" : {
@@ -1480,6 +1590,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Geheimnis"
+          }
+        }
+      }
+    },
+    "See Premium" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium ansehen"
           }
         }
       }
@@ -1570,6 +1690,16 @@
         }
       }
     },
+    "The App Store did not answer, so there is nothing to buy right now." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der App Store hat nicht geantwortet, deshalb gibt es gerade nichts zu kaufen."
+          }
+        }
+      }
+    },
     "This creates a new key pair and notifies %lld contact(s). A share already on its way to you can still be collected afterwards; a contact who cannot be reached now will not learn of the new key." : {
       "localizations" : {
         "de" : {
@@ -1650,6 +1780,16 @@
         }
       }
     },
+    "Unlock Premium" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium freischalten"
+          }
+        }
+      }
+    },
     "Unmonitored by choice" : {
       "localizations" : {
         "de" : {
@@ -1676,6 +1816,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wird für Kontakte ohne BYOR-Override verwendet und in deinem eigenen QR-Code angegeben."
+          }
+        }
+      }
+    },
+    "Used for contacts without a BYOR override, and advertised in your own QR code. Choosing your own default relay is part of Premium." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird für Kontakte ohne eigenes BYOR-Relay verwendet und in deinem QR-Code mitgeteilt. Ein eigenes Standard-Relay zu wählen gehört zu Premium."
           }
         }
       }
@@ -1716,6 +1866,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verifizierungsschlüssel (base64url)"
+          }
+        }
+      }
+    },
+    "Whether Premium is unlocked is decided on this device. The relay never learns anything about it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ob Premium freigeschaltet ist, entscheidet dieses Gerät. Das Relay erfährt davon nichts."
           }
         }
       }

@@ -10,8 +10,8 @@ struct RepairView: View {
     @Environment(\.dismiss) private var dismiss
     let onFinished: () -> Void
 
-    init(secret: Secret, shareManagement: any ShareManagement, contactManagement: any ContactManagement, onFinished: @escaping () -> Void) {
-        _viewModel = State(initialValue: RepairViewModel(secret: secret, shareManagement: shareManagement, contactManagement: contactManagement))
+    init(secret: Secret, shareManagement: any ShareManagement, contactManagement: any ContactManagement, purchases: any PurchaseRepository, onFinished: @escaping () -> Void) {
+        _viewModel = State(initialValue: RepairViewModel(secret: secret, shareManagement: shareManagement, contactManagement: contactManagement, purchases: purchases))
         self.onFinished = onFinished
     }
 

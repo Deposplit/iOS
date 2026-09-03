@@ -7,6 +7,7 @@ struct HomeView: View {
     private let contactManagement: any ContactManagement
     private let catalogManagement: any CatalogManagement
     private let relaySettings: any RelaySettings
+    private let purchaseStore: StoreKitPurchaseStore
 
     @State private var homeViewModel: HomeViewModel
     @State private var requestsViewModel: RequestsViewModel
@@ -19,12 +20,13 @@ struct HomeView: View {
     @State private var selectedShareTarget: ShareDetailTarget?
     @State private var repairSecret: Secret?
 
-    init(auth: any Identity, shareManagement: any ShareManagement, contactManagement: any ContactManagement, catalogManagement: any CatalogManagement, relaySettings: any RelaySettings) {
+    init(auth: any Identity, shareManagement: any ShareManagement, contactManagement: any ContactManagement, catalogManagement: any CatalogManagement, relaySettings: any RelaySettings, purchaseStore: StoreKitPurchaseStore) {
         self.auth = auth
         self.shareManagement = shareManagement
         self.contactManagement = contactManagement
         self.catalogManagement = catalogManagement
         self.relaySettings = relaySettings
+        self.purchaseStore = purchaseStore
         _homeViewModel = State(initialValue: HomeViewModel(shareManagement: shareManagement, contactManagement: contactManagement))
         _requestsViewModel = State(initialValue: RequestsViewModel(
             shareManagement: shareManagement,
@@ -108,18 +110,18 @@ struct HomeView: View {
             }
         }
         .sheet(isPresented: $showContacts, onDismiss: { loadContacts() }) {
-            ContactsView(contactManagement: contactManagement, shareManagement: shareManagement)
+            ContactsView(contactManagement: contactManagement, shareManagement: shareManagement, purchaseStore: purchaseStore)
         }
         .sheet(isPresented: $showQrDisplay) {
             QrDisplayView(auth: auth, relaySettings: relaySettings)
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView(relaySettings: relaySettings, catalogManagement: catalogManagement, shareManagement: shareManagement, contactManagement: contactManagement)
+            SettingsView(relaySettings: relaySettings, catalogManagement: catalogManagement, shareManagement: shareManagement, contactManagement: contactManagement, purchaseStore: purchaseStore)
         }
         .sheet(isPresented: $showDeposit, onDismiss: {
             Task { await homeViewModel.load() }
         }) {
-            DepositView(shareManagement: shareManagement, contactManagement: contactManagement)
+            DepositView(shareManagement: shareManagement, contactManagement: contactManagement, purchaseStore: purchaseStore)
         }
         .sheet(item: $repairSecret, onDismiss: {
             Task { await homeViewModel.load() }
@@ -128,6 +130,7 @@ struct HomeView: View {
                 secret: secret,
                 shareManagement: shareManagement,
                 contactManagement: contactManagement,
+                purchases: purchaseStore,
                 onFinished: { repairSecret = nil }
             )
         }

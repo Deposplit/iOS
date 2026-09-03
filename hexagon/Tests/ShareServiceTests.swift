@@ -88,6 +88,13 @@ private final class FakeShareMetadataRepository: ShareMetadataRepository {
     func delete(shareId: UUID) throws { metas.removeAll { $0.id == shareId } }
 }
 
+/// Toggleable, like `FakeShareRelay.unreachable` — a test flips it to buy the unlock mid-run.
+private final class FakePurchaseRepository: PurchaseRepository {
+    var premium: Bool
+    init(premium: Bool = false) { self.premium = premium }
+    func isPremium() -> Bool { premium }
+}
+
 private final class FakeKeyConflictRepository: KeyConflictRepository {
     private var conflicts: [KeyConflict] = []
     func getAll() throws -> [KeyConflict] { conflicts }
@@ -252,7 +259,9 @@ private let aliceContact = Contact(
 private func makeService(
     relay: FakeShareRelay,
     contacts: [Contact] = [aliceContact],
-    encryption: any ShareEncryption = NoOpShareEncryption()
+    encryption: any ShareEncryption = NoOpShareEncryption(),
+    // Passed in rather than returned, so the existing tuple destructurings keep their arity.
+    purchases: FakePurchaseRepository = FakePurchaseRepository()
 ) throws -> (
     svc: ShareService, bob: IdentityService, shareRepo: FakeShareRepository, contactRepo: FakeContactRepository,
     metaRepo: FakeShareMetadataRepository, conflictRepo: FakeKeyConflictRepository, retainedRepo: FakeRetainedDepositRepository
@@ -271,10 +280,11 @@ private func makeService(
         shareMetadataRepository: metaRepo,
         secretRepository: FakeSecretRepository(),
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo),
+        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases),
         keyConflictRepository: conflictRepo,
         retainedDepositRepository: retainedRepo,
-        identity: bobIdentity
+        identity: bobIdentity,
+        purchases: purchases
     )
     return (svc, bobIdentity, shareRepo, contactRepo, metaRepo, conflictRepo, retainedRepo)
 }
@@ -437,6 +447,7 @@ private final class TwoRelayResolver: ShareRelayResolver {
     try bobIdentity.register(pseudonym: "bob")
     let shareRepo = FakeShareRepository()
     let contactRepo = FakeContactRepository([aliceContact, charlieContact])
+    let purchases = FakePurchaseRepository()
     let svc = ShareService(
         relayResolver: TwoRelayResolver(default: defaultRelay, byorUrl: byorUrl, byor: byorRelay),
         encryption: NoOpShareEncryption(),
@@ -444,10 +455,11 @@ private final class TwoRelayResolver: ShareRelayResolver {
         shareMetadataRepository: FakeShareMetadataRepository(),
         secretRepository: FakeSecretRepository(),
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo),
+        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases),
         keyConflictRepository: FakeKeyConflictRepository(),
         retainedDepositRepository: FakeRetainedDepositRepository(),
-        identity: bobIdentity
+        identity: bobIdentity,
+        purchases: purchases
     )
 
     let fromAliceId = UUID()
@@ -482,6 +494,7 @@ private final class TwoRelayResolver: ShareRelayResolver {
     try bobIdentity.register(pseudonym: "bob")
     let shareRepo = FakeShareRepository()
     let contactRepo = FakeContactRepository([aliceContact, charlieContact])
+    let purchases = FakePurchaseRepository()
     let svc = ShareService(
         relayResolver: TwoRelayResolver(default: defaultRelay, byorUrl: byorUrl, byor: byorRelay),
         encryption: NoOpShareEncryption(),
@@ -489,10 +502,11 @@ private final class TwoRelayResolver: ShareRelayResolver {
         shareMetadataRepository: FakeShareMetadataRepository(),
         secretRepository: FakeSecretRepository(),
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo),
+        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases),
         keyConflictRepository: FakeKeyConflictRepository(),
         retainedDepositRepository: FakeRetainedDepositRepository(),
-        identity: bobIdentity
+        identity: bobIdentity,
+        purchases: purchases
     )
 
     let fromAliceId = UUID()
@@ -518,6 +532,7 @@ private func makeServiceForRecoveryTest(relay: FakeShareRelay, contacts: [Contac
     let secretRepo = FakeSecretRepository()
     let metaRepo = FakeShareMetadataRepository()
     let contactRepo = FakeContactRepository(contacts)
+    let purchases = FakePurchaseRepository()
     let svc = ShareService(
         relayResolver: FixedShareRelayResolver(relay),
         encryption: NoOpShareEncryption(),
@@ -525,10 +540,11 @@ private func makeServiceForRecoveryTest(relay: FakeShareRelay, contacts: [Contac
         shareMetadataRepository: metaRepo,
         secretRepository: secretRepo,
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo),
+        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases),
         keyConflictRepository: FakeKeyConflictRepository(),
         retainedDepositRepository: FakeRetainedDepositRepository(),
-        identity: bobIdentity
+        identity: bobIdentity,
+        purchases: purchases
     )
     return (svc, bobIdentity, shareRepo, secretRepo, metaRepo, contactRepo)
 }
@@ -868,7 +884,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
 
 @Test func markKeyCompromisedFlagsTheContactsCurrentKeyByDefault() throws {
     let repo = FakeContactRepository([aliceContact])
-    let svc = ContactService(contactRepository: repo)
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepository())
 
     try svc.markKeyCompromised(contactId: aliceContact.id, verifyKey: nil)
 
@@ -877,7 +893,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
 
 @Test func markKeyCompromisedIsIdempotentForAnAlreadyFlaggedKey() throws {
     let repo = FakeContactRepository([aliceContact])
-    let svc = ContactService(contactRepository: repo)
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepository())
     try svc.markKeyCompromised(contactId: aliceContact.id, verifyKey: nil)
 
     try svc.markKeyCompromised(contactId: aliceContact.id, verifyKey: nil)
@@ -887,7 +903,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
 
 @Test func updateContactSetsKeyChangedAtOnlyWhenKeysActuallyChange() throws {
     let repo = FakeContactRepository([aliceContact])
-    let svc = ContactService(contactRepository: repo)
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepository())
     #expect(aliceContact.keyChangedAt == nil)
 
     try svc.updateContact(contactId: aliceContact.id, verifyKey: Data(repeating: 0x03, count: 32), encKey: nil, newCipherSuite: nil, verificationLevel: .low)
@@ -1352,6 +1368,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     let relay = FakeShareRelay()
     let contactRepo = FakeContactRepository([alice])
     let shareRepo = FakeShareRepository()
+    let purchases = FakePurchaseRepository()
     let svc = ShareService(
         relayResolver: FixedShareRelayResolver(relay),
         encryption: bobIdentity,
@@ -1359,10 +1376,11 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
         shareMetadataRepository: FakeShareMetadataRepository(),
         secretRepository: FakeSecretRepository(),
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo),
+        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases),
         keyConflictRepository: FakeKeyConflictRepository(),
         retainedDepositRepository: FakeRetainedDepositRepository(),
-        identity: bobIdentity
+        identity: bobIdentity,
+        purchases: purchases
     )
 
     let id = UUID()
@@ -1418,6 +1436,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     let bobIdentity = IdentityService(identityStore: InMemoryIdentityStoreForShareServiceTest())
     try bobIdentity.register(pseudonym: "bob")
     let contactRepo = FakeContactRepository([aliceContact, charlieContact])
+    let purchases = FakePurchaseRepository()
     let svc = ShareService(
         relayResolver: TwoRelayResolver(default: defaultRelay, byorUrl: byorUrl, byor: byorRelay),
         encryption: NoOpShareEncryption(),
@@ -1425,10 +1444,11 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
         shareMetadataRepository: FakeShareMetadataRepository(),
         secretRepository: FakeSecretRepository(),
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo),
+        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases),
         keyConflictRepository: FakeKeyConflictRepository(),
         retainedDepositRepository: FakeRetainedDepositRepository(),
-        identity: bobIdentity
+        identity: bobIdentity,
+        purchases: purchases
     )
     let oldVerifyKey = bobIdentity.verifyKey
 
@@ -1647,4 +1667,85 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     #expect(MimeType("image/PNG").isImage)
     #expect(!MimeType("application/octet-stream").isText)
     #expect(!MimeType("application/octet-stream").isImage)
+}
+
+// MARK: - free tier
+
+// The cap counts *active* secrets rather than lifetime deposits, so these care about what
+// `listSecrets` reports afterwards, not about how many rows the relay saw.
+
+private func holderPair() -> (Contact, Contact) {
+    let holderKeys = TestKeyPair()
+    let holder = Contact(
+        id: UUID(), pseudonym: "holder", verifyKey: holderKeys.publicKey,
+        encKey: Data(repeating: 0x03, count: 32), verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date()
+    )
+    return (aliceContact, holder)
+}
+
+@Test func depositRefusesOneSecretPastTheFreeTierCap() async throws {
+    let relay = FakeShareRelay()
+    let (alice, holder) = holderPair()
+    let (svc, _, _, _, _, _, _) = try makeService(relay: relay, contacts: [alice, holder])
+    for i in 0..<SecretLimits.freeTierMaxActiveSecrets {
+        try await svc.deposit(secret: Data([1, 2, 3]), label: "s\(i)", contacts: [alice, holder], threshold: 2)
+    }
+
+    do {
+        try await svc.deposit(secret: Data([4, 5, 6]), label: "one too many", contacts: [alice, holder], threshold: 2)
+        Issue.record("expected the free-tier cap to refuse a fourth secret")
+    } catch let ShareServiceError.freeTierLimitReached(active, limit) {
+        #expect(active == SecretLimits.freeTierMaxActiveSecrets)
+        #expect(limit == SecretLimits.freeTierMaxActiveSecrets)
+    }
+
+    #expect(try svc.listSecrets().count == SecretLimits.freeTierMaxActiveSecrets)
+}
+
+@Test func premiumLiftsTheFreeTierCap() async throws {
+    let relay = FakeShareRelay()
+    let (alice, holder) = holderPair()
+    let purchases = FakePurchaseRepository()
+    let (svc, _, _, _, _, _, _) = try makeService(relay: relay, contacts: [alice, holder], purchases: purchases)
+    for i in 0..<SecretLimits.freeTierMaxActiveSecrets {
+        try await svc.deposit(secret: Data([1, 2, 3]), label: "s\(i)", contacts: [alice, holder], threshold: 2)
+    }
+
+    purchases.premium = true
+    try await svc.deposit(secret: Data([4, 5, 6]), label: "the fourth", contacts: [alice, holder], threshold: 2)
+
+    #expect(try svc.listSecrets().count == SecretLimits.freeTierMaxActiveSecrets + 1)
+}
+
+@Test func discardingASecretFreesASlotBeforeAnyHolderConfirms() async throws {
+    let relay = FakeShareRelay()
+    let (alice, holder) = holderPair()
+    let (svc, _, _, _, _, _, _) = try makeService(relay: relay, contacts: [alice, holder])
+    for i in 0..<SecretLimits.freeTierMaxActiveSecrets {
+        try await svc.deposit(secret: Data([1, 2, 3]), label: "s\(i)", contacts: [alice, holder], threshold: 2)
+    }
+
+    // The record survives until every holder confirms removal; the slot does not wait for that.
+    try await svc.discardSecret(secretId: try #require(svc.listSecrets().first).id)
+    try await svc.deposit(secret: Data([4, 5, 6]), label: "the replacement", contacts: [alice, holder], threshold: 2)
+
+    #expect(try svc.listSecrets().filter { $0.state == .discarding }.count == 1)
+    #expect(try svc.listSecrets().filter { $0.state == .active }.count == SecretLimits.freeTierMaxActiveSecrets)
+}
+
+@Test func aRepairReSplitIsExemptFromTheFreeTierCap() async throws {
+    let relay = FakeShareRelay()
+    let (alice, holder) = holderPair()
+    let (svc, _, _, _, _, _, _) = try makeService(relay: relay, contacts: [alice, holder])
+    for i in 0..<SecretLimits.freeTierMaxActiveSecrets {
+        try await svc.deposit(secret: Data([1, 2, 3]), label: "s\(i)", contacts: [alice, holder], threshold: 2)
+    }
+    let degraded = try #require(svc.listSecrets().first)
+
+    // Repair deposits the replacement before discarding the original, so at the cap both exist at
+    // once. Refusing that would leave a free user's only way out of a degrading secret the one
+    // that destroys it first.
+    try await svc.deposit(secret: Data([1, 2, 3]), label: degraded.label, contacts: [alice, holder], threshold: 2, replacing: degraded.id)
+
+    #expect(try svc.listSecrets().count == SecretLimits.freeTierMaxActiveSecrets + 1)
 }

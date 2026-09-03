@@ -8,27 +8,61 @@ struct SettingsView: View {
     @State private var showRegenerateConfirmation = false
     @Environment(\.dismiss) private var dismiss
 
-    init(relaySettings: any RelaySettings, catalogManagement: any CatalogManagement, shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
-        _viewModel = State(initialValue: SettingsViewModel(relaySettings: relaySettings, catalogManagement: catalogManagement, shareManagement: shareManagement, contactManagement: contactManagement))
+    private let purchaseStore: StoreKitPurchaseStore
+
+    init(relaySettings: any RelaySettings, catalogManagement: any CatalogManagement, shareManagement: any ShareManagement, contactManagement: any ContactManagement, purchaseStore: StoreKitPurchaseStore) {
+        self.purchaseStore = purchaseStore
+        _viewModel = State(initialValue: SettingsViewModel(relaySettings: relaySettings, purchases: purchaseStore, catalogManagement: catalogManagement, shareManagement: shareManagement, contactManagement: contactManagement))
     }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("https://…", text: $viewModel.relayBaseUrl)
-                        .autocorrectionDisabled()
-                        .autocapitalization(.none)
-                        .keyboardType(.URL)
-                        .font(.system(.body, design: .monospaced))
+                    if purchaseStore.isUnlocked {
+                        TextField("https://…", text: $viewModel.relayBaseUrl)
+                            .autocorrectionDisabled()
+                            .autocapitalization(.none)
+                            .keyboardType(.URL)
+                            .font(.system(.body, design: .monospaced))
+                    } else {
+                        // Read-only rather than hidden: which relay this device uses is worth
+                        // knowing even when changing it is not on offer.
+                        Text(verbatim: viewModel.relayBaseUrl)
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
                 } header: {
                     Text("Default relay")
                 } footer: {
-                    Text("Used for contacts without a BYOR override, and advertised in your own QR code.")
+                    if purchaseStore.isUnlocked {
+                        Text("Used for contacts without a BYOR override, and advertised in your own QR code.")
+                    } else {
+                        Text("Used for contacts without a BYOR override, and advertised in your own QR code. Choosing your own default relay is part of Premium.")
+                    }
+                }
+                if purchaseStore.isUnlocked {
+                    Section {
+                        Button("Reset to Default", role: .destructive) {
+                            viewModel.resetToDefault()
+                        }
+                    }
                 }
                 Section {
-                    Button("Reset to Default", role: .destructive) {
-                        viewModel.resetToDefault()
+                    NavigationLink {
+                        PaywallView(store: purchaseStore)
+                    } label: {
+                        if purchaseStore.isUnlocked {
+                            Label("Premium is unlocked on this device.", systemImage: "checkmark.seal")
+                        } else {
+                            Text("See Premium")
+                        }
+                    }
+                } header: {
+                    Text("Deposplit Premium")
+                } footer: {
+                    if !purchaseStore.isUnlocked {
+                        Text("Not unlocked: \(SecretLimits.freeTierMaxActiveSecrets) secrets at a time, and deposplit.com as the relay.")
                     }
                 }
                 Section {

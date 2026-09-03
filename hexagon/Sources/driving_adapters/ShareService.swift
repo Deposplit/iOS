@@ -10,6 +10,9 @@ public enum ShareServiceError: Error, LocalizedError {
     /// Carries the numbers rather than a sentence, so a caller can say what happened in its own
     /// language — `errorDescription` here is not localised.
     case secretTooLarge(bytes: Int, limit: Int)
+    /// Likewise numbers rather than a sentence, so a paywall can show how full the free tier is
+    /// without counting again.
+    case freeTierLimitReached(active: Int, limit: Int)
     public var errorDescription: String? {
         switch self {
         case .contactNotFound: "Contact not found — cannot decrypt share."
@@ -19,6 +22,7 @@ public enum ShareServiceError: Error, LocalizedError {
         case .signatureVerificationFailed(let detail): "Signature verification failed: \(detail)"
         case .shareRequestNotFoundOnAnyRelay(let id): "Share request \(id) not found on any known relay."
         case .secretTooLarge(let bytes, let limit): "Secret is \(bytes) bytes; the limit is \(limit)."
+        case .freeTierLimitReached(let active, let limit): "\(active) of \(limit) free secrets are already active."
         }
     }
 }
@@ -34,6 +38,7 @@ public final class ShareService: ShareManagement {
     private let keyConflictRepository: any KeyConflictRepository
     private let retainedDepositRepository: any RetainedDepositRepository
     private let identity: any Identity
+    private let purchases: any PurchaseRepository
 
     public init(
         relayResolver: any ShareRelayResolver,
@@ -45,7 +50,8 @@ public final class ShareService: ShareManagement {
         contactManagement: any ContactManagement,
         keyConflictRepository: any KeyConflictRepository,
         retainedDepositRepository: any RetainedDepositRepository,
-        identity: any Identity
+        identity: any Identity,
+        purchases: any PurchaseRepository
     ) {
         self.relayResolver = relayResolver
         self.encryption = encryption
@@ -57,6 +63,7 @@ public final class ShareService: ShareManagement {
         self.keyConflictRepository = keyConflictRepository
         self.retainedDepositRepository = retainedDepositRepository
         self.identity = identity
+        self.purchases = purchases
     }
 
     // MARK: - Relay resolution
@@ -118,9 +125,18 @@ public final class ShareService: ShareManagement {
 
     // MARK: - Sender flows
 
-    public func deposit(secret: Data, label: String, contacts: [Contact], threshold: Int, mimeType: MimeType = .default) async throws {
+    public func deposit(secret: Data, label: String, contacts: [Contact], threshold: Int, mimeType: MimeType = .default, replacing: UUID? = nil) async throws {
         guard secret.count <= SecretLimits.maxSecretBytes else {
             throw ShareServiceError.secretTooLarge(bytes: secret.count, limit: SecretLimits.maxSecretBytes)
+        }
+        // The free tier is counted here rather than at the form so that no entry point can slip
+        // past it, exactly as the size limit above is. A repair passes `replacing` and is exempt: it
+        // supersedes an active secret instead of adding a fourth.
+        if replacing == nil, !purchases.isPremium() {
+            let active = ((try? secretRepository.getAll()) ?? []).filter { $0.state == .active }.count
+            guard active < SecretLimits.freeTierMaxActiveSecrets else {
+                throw ShareServiceError.freeTierLimitReached(active: active, limit: SecretLimits.freeTierMaxActiveSecrets)
+            }
         }
         let shares = try split(secret: Array(secret), shares: contacts.count, threshold: threshold)
         let secretId = UUID()

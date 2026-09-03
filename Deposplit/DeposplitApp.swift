@@ -8,11 +8,14 @@ struct DeposplitApp: App {
     private let contactManagement: any ContactManagement
     private let catalogManagement: any CatalogManagement
     private let relaySettings: any RelaySettings
+    private let purchaseStore: StoreKitPurchaseStore
 
     init() {
         let identityService = IdentityService(identityStore: KeychainIdentityStore())
         auth = identityService
         relaySettings = UserDefaultsRelaySettings()
+        let purchaseRepository = UserDefaultsPurchaseRepository()
+        purchaseStore = StoreKitPurchaseStore(cache: purchaseRepository)
         let contactRepository = LocalContactRepository()
         let shareRepository = LocalShareRepository()
         let shareMetadataRepository = LocalShareMetadataRepository()
@@ -20,7 +23,7 @@ struct DeposplitApp: App {
         let keyConflictRepository = LocalKeyConflictRepository()
         let retainedDepositRepository = LocalRetainedDepositRepository()
         let relayResolver = DeposplitRelayResolver(identity: identityService, relaySettings: relaySettings)
-        let contactService = ContactService(contactRepository: contactRepository)
+        let contactService = ContactService(contactRepository: contactRepository, purchases: purchaseRepository)
         contactManagement = contactService
         shareManagement = ShareService(
             relayResolver: relayResolver,
@@ -32,7 +35,8 @@ struct DeposplitApp: App {
             contactManagement: contactService,
             keyConflictRepository: keyConflictRepository,
             retainedDepositRepository: retainedDepositRepository,
-            identity: identityService
+            identity: identityService,
+            purchases: purchaseRepository
         )
         catalogManagement = CatalogService(
             contactRepository: contactRepository,
@@ -43,7 +47,7 @@ struct DeposplitApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(auth: auth, shareManagement: shareManagement, contactManagement: contactManagement, catalogManagement: catalogManagement, relaySettings: relaySettings)
+            RootView(auth: auth, shareManagement: shareManagement, contactManagement: contactManagement, catalogManagement: catalogManagement, relaySettings: relaySettings, purchaseStore: purchaseStore)
         }
     }
 }
@@ -54,20 +58,22 @@ struct RootView: View {
     let contactManagement: any ContactManagement
     let catalogManagement: any CatalogManagement
     let relaySettings: any RelaySettings
+    let purchaseStore: StoreKitPurchaseStore
     @State private var isRegistered: Bool
 
-    init(auth: any Identity, shareManagement: any ShareManagement, contactManagement: any ContactManagement, catalogManagement: any CatalogManagement, relaySettings: any RelaySettings) {
+    init(auth: any Identity, shareManagement: any ShareManagement, contactManagement: any ContactManagement, catalogManagement: any CatalogManagement, relaySettings: any RelaySettings, purchaseStore: StoreKitPurchaseStore) {
         self.auth = auth
         self.shareManagement = shareManagement
         self.contactManagement = contactManagement
         self.catalogManagement = catalogManagement
         self.relaySettings = relaySettings
+        self.purchaseStore = purchaseStore
         _isRegistered = State(initialValue: auth.isRegistered)
     }
 
     var body: some View {
         if isRegistered {
-            HomeView(auth: auth, shareManagement: shareManagement, contactManagement: contactManagement, catalogManagement: catalogManagement, relaySettings: relaySettings)
+            HomeView(auth: auth, shareManagement: shareManagement, contactManagement: contactManagement, catalogManagement: catalogManagement, relaySettings: relaySettings, purchaseStore: purchaseStore)
         } else {
             SignInView(auth: auth) {
                 isRegistered = true

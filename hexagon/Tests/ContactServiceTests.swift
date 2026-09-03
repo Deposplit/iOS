@@ -14,6 +14,12 @@ private final class InMemoryContactRepositoryForContactServiceTest: ContactRepos
     func delete(contactId: UUID) { contacts.removeAll { $0.id == contactId } }
 }
 
+private final class FakePurchaseRepositoryForContactServiceTest: PurchaseRepository {
+    var premium: Bool
+    init(premium: Bool = false) { self.premium = premium }
+    func isPremium() -> Bool { premium }
+}
+
 private func makeContact() -> Contact {
     Contact(
         id: UUID(), pseudonym: "bob",
@@ -27,7 +33,7 @@ private func makeContact() -> Contact {
 
 @Test func updateContactPreservesContactIdWhileChangingKeysAndLevel() throws {
     let repo = InMemoryContactRepositoryForContactServiceTest()
-    let svc = ContactService(contactRepository: repo)
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepositoryForContactServiceTest())
     let original = makeContact()
     repo.save(original)
     let newEd = Data(repeating: 0x03, count: 32)
@@ -45,7 +51,7 @@ private func makeContact() -> Contact {
 
 @Test func updateContactThrowsWhenChangingKeysWithoutSupplyingALevel() throws {
     let repo = InMemoryContactRepositoryForContactServiceTest()
-    let svc = ContactService(contactRepository: repo)
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepositoryForContactServiceTest())
     let original = makeContact()
     repo.save(original)
 
@@ -59,7 +65,7 @@ private func makeContact() -> Contact {
 
 @Test func updateContactCanChangeOnlyTheLevelWithoutTouchingKeys() throws {
     let repo = InMemoryContactRepositoryForContactServiceTest()
-    let svc = ContactService(contactRepository: repo)
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepositoryForContactServiceTest())
     let original = makeContact()
     repo.save(original)
 
@@ -72,7 +78,7 @@ private func makeContact() -> Contact {
 
 @Test func updateContactThrowsContactNotFoundForAnUnknownId() throws {
     let repo = InMemoryContactRepositoryForContactServiceTest()
-    let svc = ContactService(contactRepository: repo)
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepositoryForContactServiceTest())
 
     do {
         try svc.updateContact(contactId: UUID(), verifyKey: nil, encKey: nil, newCipherSuite: nil, verificationLevel: .high)
@@ -86,7 +92,7 @@ private func makeContact() -> Contact {
 
 @Test func updateContactRequiresAFreshLevelOnACipherSuiteOnlyChangeWithNoKeyValueChange() throws {
     let repo = InMemoryContactRepositoryForContactServiceTest()
-    let svc = ContactService(contactRepository: repo)
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepositoryForContactServiceTest())
     let original = makeContact()
     repo.save(original)
 
@@ -106,7 +112,7 @@ private func makeContact() -> Contact {
 
 @Test func addFromQrRejectsAVerifyKeyWhoseLengthDoesNotMatchTheAssertedCipherSuite() throws {
     let repo = InMemoryContactRepositoryForContactServiceTest()
-    let svc = ContactService(contactRepository: repo)
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepositoryForContactServiceTest())
 
     do {
         try svc.addFromQr(pseudonym: "eve", verifyKey: Data(repeating: 0x01, count: 16), encKey: Data(repeating: 0x02, count: 32), cipherSuite: .current, verificationLevel: .veryHigh, relayBaseUrl: nil, nickname: nil)
@@ -118,7 +124,7 @@ private func makeContact() -> Contact {
 
 @Test func addFromQrStoresTheAssertedCipherSuite() throws {
     let repo = InMemoryContactRepositoryForContactServiceTest()
-    let svc = ContactService(contactRepository: repo)
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepositoryForContactServiceTest())
 
     try svc.addFromQr(pseudonym: "eve", verifyKey: Data(repeating: 0x01, count: 32), encKey: Data(repeating: 0x02, count: 32), cipherSuite: .current, verificationLevel: .veryHigh, relayBaseUrl: nil, nickname: nil)
 
@@ -130,7 +136,7 @@ private func makeContact() -> Contact {
 
 @Test func renameContactSetsANicknameWithoutTouchingKeysLevelOrKeyChangedAt() throws {
     let repo = InMemoryContactRepositoryForContactServiceTest()
-    let svc = ContactService(contactRepository: repo)
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepositoryForContactServiceTest())
     let original = makeContact()
     repo.save(original)
 
@@ -148,7 +154,7 @@ private func makeContact() -> Contact {
 
 @Test func renameContactTrimsAndCollapsesABlankNicknameToNil() throws {
     let repo = InMemoryContactRepositoryForContactServiceTest()
-    let svc = ContactService(contactRepository: repo)
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepositoryForContactServiceTest())
     let original = makeContact()
     repo.save(original)
 
@@ -161,7 +167,7 @@ private func makeContact() -> Contact {
 
 @Test func renameContactCanClearAnExistingNickname() throws {
     let repo = InMemoryContactRepositoryForContactServiceTest()
-    let svc = ContactService(contactRepository: repo)
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepositoryForContactServiceTest())
     var original = makeContact()
     original = Contact(
         id: original.id, pseudonym: original.pseudonym, verifyKey: original.verifyKey, encKey: original.encKey,
@@ -177,7 +183,7 @@ private func makeContact() -> Contact {
 
 @Test func renameContactThrowsForAnUnknownContactId() throws {
     let repo = InMemoryContactRepositoryForContactServiceTest()
-    let svc = ContactService(contactRepository: repo)
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepositoryForContactServiceTest())
 
     do {
         try svc.renameContact(contactId: UUID(), nickname: "Paul")
@@ -189,7 +195,7 @@ private func makeContact() -> Contact {
 
 @Test func addManuallyAndAddFromQrTrimAndNormalizeTheNickname() throws {
     let repo = InMemoryContactRepositoryForContactServiceTest()
-    let svc = ContactService(contactRepository: repo)
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepositoryForContactServiceTest())
 
     try svc.addManually(pseudonym: "bob", verifyKey: Data(repeating: 0x01, count: 32), encKey: Data(repeating: 0x02, count: 32), verificationLevel: .low, relayBaseUrl: nil, nickname: "  Bobby  ")
     try svc.addFromQr(pseudonym: "carol", verifyKey: Data(repeating: 0x03, count: 32), encKey: Data(repeating: 0x04, count: 32), cipherSuite: .current, verificationLevel: .veryHigh, relayBaseUrl: nil, nickname: "   ")
@@ -201,9 +207,46 @@ private func makeContact() -> Contact {
 
 @Test func addManuallyDefaultsTheNicknameToNilWhenOmitted() throws {
     let repo = InMemoryContactRepositoryForContactServiceTest()
-    let svc = ContactService(contactRepository: repo)
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepositoryForContactServiceTest())
 
     try svc.addManually(pseudonym: "bob", verifyKey: Data(repeating: 0x01, count: 32), encKey: Data(repeating: 0x02, count: 32), verificationLevel: .low, relayBaseUrl: nil, nickname: nil)
 
     #expect(repo.getAll().first?.nickname == nil)
+}
+
+// MARK: - free tier
+
+@Test func addManuallyRefusesARelayOverrideWithoutPremium() throws {
+    let repo = InMemoryContactRepositoryForContactServiceTest()
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepositoryForContactServiceTest())
+
+    // ContactError is not Equatable, so match the case rather than the value.
+    do {
+        try svc.addManually(pseudonym: "bob", verifyKey: Data(repeating: 0x01, count: 32), encKey: Data(repeating: 0x02, count: 32), verificationLevel: .low, relayBaseUrl: "https://relay.example", nickname: nil)
+        Issue.record("expected a hand-typed relay override to require Premium")
+    } catch ContactError.premiumRequired {
+    }
+
+    #expect(repo.getAll().isEmpty)
+}
+
+@Test func addManuallyAcceptsARelayOverrideWithPremium() throws {
+    let repo = InMemoryContactRepositoryForContactServiceTest()
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepositoryForContactServiceTest(premium: true))
+
+    try svc.addManually(pseudonym: "bob", verifyKey: Data(repeating: 0x01, count: 32), encKey: Data(repeating: 0x02, count: 32), verificationLevel: .low, relayBaseUrl: "https://relay.example", nickname: nil)
+
+    #expect(repo.getAll().first?.relayBaseUrl == "https://relay.example")
+}
+
+/// The free half of BYOR. A relay named in a scanned QR code is the contact saying where their own
+/// mailbox is, so refusing it would mean a free device cannot share with a self-hoster at all — a
+/// different product, not a paywall.
+@Test func addFromQrAcceptsARelayOverrideWithoutPremium() throws {
+    let repo = InMemoryContactRepositoryForContactServiceTest()
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepositoryForContactServiceTest())
+
+    try svc.addFromQr(pseudonym: "bob", verifyKey: Data(repeating: 0x01, count: 32), encKey: Data(repeating: 0x02, count: 32), cipherSuite: .current, verificationLevel: .veryHigh, relayBaseUrl: "https://relay.example", nickname: nil)
+
+    #expect(repo.getAll().first?.relayBaseUrl == "https://relay.example")
 }

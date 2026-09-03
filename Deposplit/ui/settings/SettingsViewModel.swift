@@ -15,12 +15,14 @@ final class SettingsViewModel {
     var regenerateIdentityMessage: String?
 
     private let relaySettings: any RelaySettings
+    private let purchases: any PurchaseRepository
     private let catalogManagement: any CatalogManagement
     private let shareManagement: any ShareManagement
     private let contactManagement: any ContactManagement
 
-    init(relaySettings: any RelaySettings, catalogManagement: any CatalogManagement, shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
+    init(relaySettings: any RelaySettings, purchases: any PurchaseRepository, catalogManagement: any CatalogManagement, shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
         self.relaySettings = relaySettings
+        self.purchases = purchases
         self.catalogManagement = catalogManagement
         self.shareManagement = shareManagement
         self.contactManagement = contactManagement
@@ -28,7 +30,9 @@ final class SettingsViewModel {
         self.contactCount = (try? contactManagement.listContacts().count) ?? 0
     }
 
+    /// No-op without Premium: the field is not editable then, and Done calls this unconditionally.
     func save() {
+        guard purchases.isPremium() else { return }
         let trimmed = relayBaseUrl.trimmingCharacters(in: .whitespaces)
         relaySettings.setDefaultRelayBaseURL(trimmed.isEmpty ? nil : trimmed)
     }

@@ -1,0 +1,38 @@
+{
+  "identifier" : "A1B2C3D4",
+  "nonRenewingSubscriptions" : [
+  ],
+  "products" : [
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "1A2B3C4D",
+      "localizations" : [
+        {
+          "description" : "Split as many secrets as you like, and route them through a relay you run yourself.",
+          "displayName" : "Deposplit Premium",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "Teile beliebig viele Geheimnisse und leite sie über ein Relay, das du selbst betreibst.",
+          "displayName" : "Deposplit Premium",
+          "locale" : "de_DE"
+        }
+      ],
+      "productID" : "com.deposplit.premium",
+      "referenceName" : "Deposplit Premium",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "0",
+    "_developerTeamID" : "0",
+    "_lastSynchronizedDate" : 0
+  },
+  "subscriptionGroups" : [
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}
