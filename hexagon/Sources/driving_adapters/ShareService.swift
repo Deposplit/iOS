@@ -196,7 +196,12 @@ public final class ShareService: ShareManagement {
             // listSentRequests(), unchanged.
             let retrievals = (try? await relay.listShareRequests(role: .sender, transactionType: .retrieval, state: .approved)) ?? []
             for req in retrievals {
-                guard let shareId = req.shareId, let meta = existingMetadata.first(where: { $0.id == shareId }) else { continue }
+                // Matched on secretId plus the holder's key, the same pair requestRetrieval fans
+                // out on — the row itself carries no pointer back to this device's records, and
+                // needs none.
+                guard let contact = contactRepository.getByVerifyKey(req.recipientKey),
+                      let meta = existingMetadata.first(where: { $0.secretId == req.secretId && $0.contactId == contact.id })
+                else { continue }
                 try? shareMetadataRepository.save(ShareMetadata(id: meta.id, secretId: meta.secretId, contactId: meta.contactId, lastConfirmedAt: Date()))
             }
         }
@@ -227,7 +232,12 @@ public final class ShareService: ShareManagement {
         for secret in discarding {
             let metasForSecret = ((try? shareMetadataRepository.getAll()) ?? []).filter { $0.secretId == secret.id }
             for meta in metasForSecret {
-                guard let approvedRemoval = removalRequests.first(where: { $0.request.shareId == meta.id && $0.request.state == .approved }) else { continue }
+                guard let contact = contactRepository.getById(meta.contactId),
+                      let approvedRemoval = removalRequests.first(where: {
+                          $0.request.secretId == meta.secretId && $0.request.recipientKey == contact.verifyKey
+                              && $0.request.state == .approved
+                      })
+                else { continue }
                 try? await approvedRemoval.relay.deleteShareRequest(requestId: meta.id)
                 try? shareMetadataRepository.delete(shareId: meta.id)
             }

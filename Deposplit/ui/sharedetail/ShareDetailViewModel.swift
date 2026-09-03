@@ -90,8 +90,9 @@ final class ShareDetailViewModel {
     }
 
     func requestState(for type: ShareTransactionType) -> ShareRequestState? {
-        shareRequests
-            .filter { $0.shareId == share.id && $0.transactionType == type }
+        guard let holderKey = allContacts.first(where: { $0.id == share.contactId })?.verifyKey else { return nil }
+        return shareRequests
+            .filter { $0.recipientKey == holderKey && $0.transactionType == type }
             .sorted { $0.requestedAt > $1.requestedAt }
             .first?.state
     }

@@ -69,9 +69,11 @@ final class RepairViewModel {
             let requests = try await shareManagement.listSentRequests().filter { $0.secretId == secret.id }
             holderStatuses = distributed.map { share in
                 let contact = contacts.first(where: { $0.id == share.contactId })
-                let latestRetrieval = requests
-                    .filter { $0.shareId == share.id && $0.transactionType == .retrieval }
-                    .max { $0.requestedAt < $1.requestedAt }
+                let latestRetrieval = contact.flatMap { holder in
+                    requests
+                        .filter { $0.recipientKey == holder.verifyKey && $0.transactionType == .retrieval }
+                        .max { $0.requestedAt < $1.requestedAt }
+                }
                 return HolderRetrievalStatus(
                     contactId: share.contactId,
                     pseudonym: contact?.displayName ?? String(localized: "Unknown contact"),

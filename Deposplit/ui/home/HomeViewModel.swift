@@ -142,9 +142,11 @@ final class HomeViewModel {
         return secrets.map { secret in
             let shares = bySecret[secret.id] ?? []
             let holders = shares.map { share -> HolderStatus in
-                let latestRetrieval = allRequests
-                    .filter { $0.shareId == share.id && $0.transactionType == .retrieval }
-                    .max { $0.requestedAt < $1.requestedAt }
+                let latestRetrieval = contactsById[share.contactId]?.verifyKey.flatMap { holderKey in
+                    allRequests
+                        .filter { $0.secretId == share.secretId && $0.recipientKey == holderKey && $0.transactionType == .retrieval }
+                        .max { $0.requestedAt < $1.requestedAt }
+                }
                 return HolderStatus(
                     shareId: share.id, contactId: share.contactId, retrievalRequest: latestRetrieval,
                     lastConfirmedAt: share.lastConfirmedAt, heartbeatOptedOutAt: contactsById[share.contactId]?.heartbeatOptedOutAt
