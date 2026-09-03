@@ -20,14 +20,13 @@ final class DeposplitApiAdapter: ShareRelay {
 
     // MARK: - ShareRelay
 
-    func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, transactionType: ShareTransactionType, shareId: UUID?, ciphertext: Data?, k: Int?, n: Int?, mimeType: MimeType?, senderSignature: Data) async throws -> ShareRequest {
+    func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, transactionType: ShareTransactionType, ciphertext: Data?, k: Int?, n: Int?, mimeType: MimeType?, senderSignature: Data) async throws -> ShareRequest {
         let body = OpenShareRequestJSON(
             secretId: secretId.uuidString,
             recipientKey: recipientKey.base64URLEncoded,
             label: label,
             secretCreatedAt: _iso8601.string(from: secretCreatedAt),
             transactionType: transactionType.rawValue,
-            shareId: shareId?.uuidString,
             ciphertext: ciphertext?.base64EncodedString(),
             k: k,
             n: n,
@@ -174,7 +173,6 @@ final class DeposplitApiAdapter: ShareRelay {
         let label: String
         let secretCreatedAt: String
         let transactionType: String
-        let shareId: String?
         let ciphertext: String?
         let k: Int?
         let n: Int?
@@ -197,7 +195,6 @@ final class DeposplitApiAdapter: ShareRelay {
         let secretCreatedAt: String
         let transactionType: String
         let state: String
-        let shareId: String?
         let requestedAt: String
         let respondedAt: String?
         let ciphertext: String?
@@ -217,7 +214,6 @@ final class DeposplitApiAdapter: ShareRelay {
                 secretCreatedAt: parseISO8601(secretCreatedAt),
                 transactionType: ShareTransactionType(rawValue: transactionType) ?? .retrieval,
                 state: ShareRequestState(rawValue: state) ?? .pending,
-                shareId: shareId.flatMap { UUID(uuidString: $0) },
                 requestedAt: parseISO8601(requestedAt),
                 respondedAt: respondedAt.map { parseISO8601($0) },
                 ciphertext: ciphertext.flatMap { Data(base64Encoded: $0) },

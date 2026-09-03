@@ -55,7 +55,6 @@ public struct ShareRequest: Identifiable, Equatable {
     public let secretCreatedAt: Date
     public let transactionType: ShareTransactionType
     public let state: ShareRequestState
-    public let shareId: UUID?
     public let requestedAt: Date
     public let respondedAt: Date?
     public let ciphertext: Data?
@@ -73,7 +72,7 @@ public struct ShareRequest: Identifiable, Equatable {
         id: UUID, secretId: UUID, senderKey: Data, recipientKey: Data,
         label: String, secretCreatedAt: Date,
         transactionType: ShareTransactionType, state: ShareRequestState,
-        shareId: UUID?, requestedAt: Date, respondedAt: Date?, ciphertext: Data?,
+        requestedAt: Date, respondedAt: Date?, ciphertext: Data?,
         k: Int? = nil, n: Int? = nil, mimeType: MimeType? = nil,
         senderSignature: Data, recipientSignature: Data?
     ) {
@@ -85,7 +84,6 @@ public struct ShareRequest: Identifiable, Equatable {
         self.secretCreatedAt = secretCreatedAt
         self.transactionType = transactionType
         self.state = state
-        self.shareId = shareId
         self.requestedAt = requestedAt
         self.respondedAt = respondedAt
         self.ciphertext = ciphertext

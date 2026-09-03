@@ -20,7 +20,7 @@ import CryptoKit
 // Private key seed: bytes 0x00..0x1f. Not a real identity — a fixed, reproducible fixture.
 private let privateKeySeed = Data((0..<32).map { UInt8($0) })
 private let expectedPublicKeyBase64Url = "A6EHv_POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg"
-private let expectedSignatureBase64Url = "AlvZLAx0pmA8B5C4JMcib_35wt0HIjtWWjQtj-f0dED0c6FVoJvdlMX0-pqnZmOhtSEnmB7IWe5s3dRIXkgvAw"
+private let expectedSignatureBase64Url = "WFKVgN38zr_3fiLZ1UpxnrvUoW0KA-XjD1ml-VyfITDuCMv9D9uT0ryaHCiHYtWc9_rSpOKDw4kjbtqHMRPwBA"
 
 private let fixtureSecretId = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
 private let fixtureRecipientKey = Data(repeating: 0x02, count: 32)
@@ -53,10 +53,10 @@ private func base64URLEncode(_ data: Data) -> String {
 @Test func forOpenProducesTheFixedCanonicalBytes() {
     let canon = PayloadCanonical.forOpen(
         secretId: fixtureSecretId, transactionType: .deposit, recipientKey: fixtureRecipientKey,
-        label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, shareId: nil, ciphertext: fixtureCiphertext,
+        label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, ciphertext: fixtureCiphertext,
         k: fixtureK, n: fixtureN, mimeType: fixtureMimeType
     )
-    let expected = "11111111-1111-1111-1111-111111111111\ndeposit\nAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI\ncross-platform test vector\n1767225600000\n\nAQIDBAU=\n2\n3\ntext/plain"
+    let expected = "11111111-1111-1111-1111-111111111111\ndeposit\nAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI\ncross-platform test vector\n1767225600000\nAQIDBAU=\n2\n3\ntext/plain"
     #expect(String(data: canon, encoding: .utf8) == expected)
 }
 
@@ -69,7 +69,7 @@ private func base64URLEncode(_ data: Data) -> String {
 @Test func signingWithTheFixedSeedDerivesTheExpectedPublicKeyAndProducesAVerifiableSignature() throws {
     let canon = PayloadCanonical.forOpen(
         secretId: fixtureSecretId, transactionType: .deposit, recipientKey: fixtureRecipientKey,
-        label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, shareId: nil, ciphertext: fixtureCiphertext,
+        label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, ciphertext: fixtureCiphertext,
         k: fixtureK, n: fixtureN, mimeType: fixtureMimeType
     )
     let privateKey = try Curve25519.Signing.PrivateKey(rawRepresentation: privateKeySeed)
@@ -82,7 +82,7 @@ private func base64URLEncode(_ data: Data) -> String {
 @Test func theFixedSignatureVerifiesAgainstTheFixedPublicKey() throws {
     let canon = PayloadCanonical.forOpen(
         secretId: fixtureSecretId, transactionType: .deposit, recipientKey: fixtureRecipientKey,
-        label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, shareId: nil, ciphertext: fixtureCiphertext,
+        label: fixtureLabel, secretCreatedAt: fixtureSecretCreatedAt, ciphertext: fixtureCiphertext,
         k: fixtureK, n: fixtureN, mimeType: fixtureMimeType
     )
     let publicKey = try Curve25519.Signing.PublicKey(rawRepresentation: base64URLDecode(expectedPublicKeyBase64Url))

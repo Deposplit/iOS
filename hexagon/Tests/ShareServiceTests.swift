@@ -158,14 +158,14 @@ private final class FakeShareRelay: ShareRelay {
     var throwOnWithdraw = false
     var throwOnPushRotation = false
 
-    func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, transactionType: ShareTransactionType, shareId: UUID?, ciphertext: Data?, k: Int?, n: Int?, mimeType: MimeType?, senderSignature: Data) async throws -> ShareRequest {
+    func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, transactionType: ShareTransactionType, ciphertext: Data?, k: Int?, n: Int?, mimeType: MimeType?, senderSignature: Data) async throws -> ShareRequest {
         openedRequests.append(OpenedRequest(secretId: secretId, recipientKey: recipientKey, transactionType: transactionType, k: k, n: n, mimeType: mimeType))
         let now = Date()
         let selfApproved = transactionType == .inventory
         return ShareRequest(
             id: UUID(), secretId: secretId, senderKey: Data(), recipientKey: recipientKey, label: label,
             secretCreatedAt: secretCreatedAt, transactionType: transactionType, state: selfApproved ? .approved : .pending,
-            shareId: shareId, requestedAt: now, respondedAt: selfApproved ? now : nil,
+            requestedAt: now, respondedAt: selfApproved ? now : nil,
             ciphertext: nil, k: k, n: n, mimeType: mimeType, senderSignature: senderSignature, recipientSignature: nil
         )
     }
@@ -187,7 +187,7 @@ private final class FakeShareRelay: ShareRelay {
         let updated = ShareRequest(
             id: existing.id, secretId: existing.secretId, senderKey: existing.senderKey, recipientKey: existing.recipientKey,
             label: existing.label, secretCreatedAt: existing.secretCreatedAt, transactionType: existing.transactionType,
-            state: approved ? .approved : .denied, shareId: existing.shareId, requestedAt: existing.requestedAt,
+            state: approved ? .approved : .denied, requestedAt: existing.requestedAt,
             respondedAt: existing.respondedAt, ciphertext: existing.ciphertext, k: existing.k, n: existing.n,
             senderSignature: existing.senderSignature, recipientSignature: recipientSignature
         )
@@ -284,7 +284,7 @@ private func makeService(
 /// forged one (signer differs from the claimed senderKey).
 private func makeSignedRow(
     id: UUID, senderKey: Data, recipientKey: Data, signer: TestKeyPair,
-    transactionType: ShareTransactionType = .deposit, shareId: UUID? = nil, ciphertext: Data? = Data([1, 2, 3]),
+    transactionType: ShareTransactionType = .deposit, ciphertext: Data? = Data([1, 2, 3]),
     label: String = "test secret", createdAt: Date = Date(),
     k: Int? = nil, n: Int? = nil, mimeType: MimeType? = nil
 ) throws -> ShareRequest {
@@ -295,11 +295,11 @@ private func makeSignedRow(
     let isRoot = transactionType == .deposit || transactionType == .inventory
     let (kk, nn): (Int?, Int?) = isRoot ? (k ?? 2, n ?? 3) : (nil, nil)
     let mt: MimeType? = isRoot ? (mimeType ?? .default) : nil
-    let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: transactionType, recipientKey: recipientKey, label: label, secretCreatedAt: createdAt, shareId: shareId, ciphertext: ciphertext, k: kk, n: nn, mimeType: mt)
+    let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: transactionType, recipientKey: recipientKey, label: label, secretCreatedAt: createdAt, ciphertext: ciphertext, k: kk, n: nn, mimeType: mt)
     let sig = try signer.sign(canon)
     return ShareRequest(
         id: id, secretId: secretId, senderKey: senderKey, recipientKey: recipientKey, label: label,
-        secretCreatedAt: createdAt, transactionType: transactionType, state: .pending, shareId: shareId,
+        secretCreatedAt: createdAt, transactionType: transactionType, state: .pending,
         requestedAt: Date(), respondedAt: nil, ciphertext: ciphertext, k: kk, n: nn, mimeType: mt, senderSignature: sig, recipientSignature: nil
     )
 }
@@ -376,7 +376,7 @@ private func makeSignedRow(
     let (svc, bob, _, _, _, _, _) = try makeService(relay: relay)
     let row = try makeSignedRow(
         id: UUID(), senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: strangerKeys,
-        transactionType: .removal, shareId: UUID(), ciphertext: nil
+        transactionType: .removal, ciphertext: nil
     )
     relay.pending = [row]
 
@@ -391,7 +391,7 @@ private func makeSignedRow(
     let id = UUID()
     let row = try makeSignedRow(
         id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: strangerKeys,
-        transactionType: .removal, shareId: UUID(), ciphertext: nil
+        transactionType: .removal, ciphertext: nil
     )
     relay.byId[id] = row
 
@@ -540,12 +540,12 @@ private func makeApprovedRecoveryMetadataRow(
     k: Int = 2, n: Int = 3, mimeType: MimeType = .default,
     label: String = "recovered secret", createdAt: Date = Date()
 ) throws -> ShareRequest {
-    let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: .inventory, recipientKey: recipientKey, label: label, secretCreatedAt: createdAt, shareId: nil, ciphertext: nil, k: k, n: n, mimeType: mimeType)
+    let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: .inventory, recipientKey: recipientKey, label: label, secretCreatedAt: createdAt, ciphertext: nil, k: k, n: n, mimeType: mimeType)
     let sig = try signer.sign(canon)
     let now = Date()
     return ShareRequest(
         id: UUID(), secretId: secretId, senderKey: senderKey, recipientKey: recipientKey, label: label,
-        secretCreatedAt: createdAt, transactionType: .inventory, state: .approved, shareId: nil,
+        secretCreatedAt: createdAt, transactionType: .inventory, state: .approved,
         requestedAt: now, respondedAt: now, ciphertext: nil, k: k, n: n, mimeType: mimeType, senderSignature: sig, recipientSignature: nil
     )
 }
@@ -772,7 +772,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
     ShareRequest(
         id: id, secretId: secretId, senderKey: Data(repeating: 0x05, count: 32), recipientKey: recipientKey,
         label: "test secret", secretCreatedAt: Date(), transactionType: .deposit, state: state,
-        shareId: nil, requestedAt: Date(), respondedAt: state == .pending ? nil : Date(),
+        requestedAt: Date(), respondedAt: state == .pending ? nil : Date(),
         ciphertext: nil, k: 2, n: 3, senderSignature: Data(), recipientSignature: nil
     )
 }
@@ -955,7 +955,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
     let retrievalRow = ShareRequest(
         id: UUID(), secretId: secretId, senderKey: Data(repeating: 0x05, count: 32), recipientKey: aliceContact.verifyKey,
         label: "s", secretCreatedAt: Date(), transactionType: .retrieval, state: .approved,
-        shareId: depositId, requestedAt: Date(), respondedAt: Date(), ciphertext: Data([1]), k: nil, n: nil,
+        requestedAt: Date(), respondedAt: Date(), ciphertext: Data([1]), k: nil, n: nil,
         senderSignature: Data(), recipientSignature: nil
     )
     relay.pending = [retrievalRow]
@@ -1134,7 +1134,7 @@ private func makeApprovedRetrievalRow(secretId: UUID, holder: HolderFixture, cip
     let sig = try holder.keys.sign(canon)
     return ShareRequest(
         id: id, secretId: secretId, senderKey: Data(), recipientKey: holder.contact.verifyKey, label: "s",
-        secretCreatedAt: Date(), transactionType: .retrieval, state: .approved, shareId: UUID(),
+        secretCreatedAt: Date(), transactionType: .retrieval, state: .approved,
         requestedAt: Date(), respondedAt: Date(), ciphertext: ciphertext, k: nil, n: nil,
         senderSignature: Data(), recipientSignature: sig
     )
@@ -1145,7 +1145,7 @@ private func makeApprovedRetrievalRow(secretId: UUID, holder: HolderFixture, cip
 private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> ShareRequest {
     ShareRequest(
         id: UUID(), secretId: secretId, senderKey: Data(), recipientKey: recipientKey, label: "s",
-        secretCreatedAt: Date(), transactionType: .retrieval, state: .pending, shareId: UUID(),
+        secretCreatedAt: Date(), transactionType: .retrieval, state: .pending,
         requestedAt: Date(), respondedAt: nil, ciphertext: nil, k: nil, n: nil,
         senderSignature: Data(), recipientSignature: nil
     )
@@ -1556,11 +1556,11 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     let id = UUID()
     let signed = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: aliceKeys)
     // Re-sign without the mimeType so the row is internally consistent and only the guard rejects it.
-    let canon = PayloadCanonical.forOpen(secretId: signed.secretId, transactionType: .deposit, recipientKey: signed.recipientKey, label: signed.label, secretCreatedAt: signed.secretCreatedAt, shareId: nil, ciphertext: signed.ciphertext, k: signed.k, n: signed.n, mimeType: nil)
+    let canon = PayloadCanonical.forOpen(secretId: signed.secretId, transactionType: .deposit, recipientKey: signed.recipientKey, label: signed.label, secretCreatedAt: signed.secretCreatedAt, ciphertext: signed.ciphertext, k: signed.k, n: signed.n, mimeType: nil)
     let row = ShareRequest(
         id: id, secretId: signed.secretId, senderKey: signed.senderKey, recipientKey: signed.recipientKey,
         label: signed.label, secretCreatedAt: signed.secretCreatedAt, transactionType: .deposit, state: .pending,
-        shareId: nil, requestedAt: Date(), respondedAt: nil, ciphertext: signed.ciphertext,
+        requestedAt: Date(), respondedAt: nil, ciphertext: signed.ciphertext,
         k: signed.k, n: signed.n, mimeType: nil, senderSignature: try aliceKeys.sign(canon), recipientSignature: nil
     )
     relay.pending = [row]
@@ -1624,7 +1624,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     let tampered = ShareRequest(
         id: signed.id, secretId: signed.secretId, senderKey: signed.senderKey, recipientKey: signed.recipientKey,
         label: signed.label, secretCreatedAt: signed.secretCreatedAt, transactionType: .deposit, state: .pending,
-        shareId: nil, requestedAt: signed.requestedAt, respondedAt: nil, ciphertext: signed.ciphertext,
+        requestedAt: signed.requestedAt, respondedAt: nil, ciphertext: signed.ciphertext,
         k: signed.k, n: signed.n, mimeType: MimeType("image/png"),
         senderSignature: signed.senderSignature, recipientSignature: nil
     )
