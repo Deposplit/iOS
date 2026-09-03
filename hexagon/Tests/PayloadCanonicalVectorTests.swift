@@ -8,14 +8,15 @@ import CryptoKit
 // Ed25519 sign/verify interop across BouncyCastle/CryptoKit is already proven via the
 // transport-auth signature; what this vector
 // actually exercises is the *canonical byte construction* itself — a field-order or encoding
-// slip on any one platform would silently produce a different signature than the other two even
+// slip on any one platform would silently produce a different signature than the other three even
 // though each platform's own sign/verify round-trips fine internally.
 //
 // Identical fixed inputs, keypair, and expected outputs are checked into
-// deposplit.com/hexagons/relay/src/test/scala/value_objects/PayloadCanonicalVectorTests.scala and
-// Android/hexagon/src/test/kotlin/com/deposplit/value_objects/PayloadCanonicalVectorTest.kt. All
-// three must produce byte-identical canonical bytes and the same signature for the same 32-byte
-// private key seed.
+// deposplit.com/hexagons/relay/src/test/scala/value_objects/PayloadCanonicalVectorTests.scala,
+// deposplit.com/hexagons/phon/src/test/scala/value_objects/svo/PayloadCanonicalVectorTests.scala
+// and Android/hexagon/src/test/kotlin/com/deposplit/value_objects/PayloadCanonicalVectorTest.kt.
+// All four must produce byte-identical canonical bytes and the same signature for the same
+// 32-byte private key seed.
 
 // Private key seed: bytes 0x00..0x1f. Not a real identity — a fixed, reproducible fixture.
 private let privateKeySeed = Data((0..<32).map { UInt8($0) })
