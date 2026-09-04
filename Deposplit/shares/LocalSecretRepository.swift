@@ -7,8 +7,7 @@ final class LocalSecretRepository: SecretRepository {
     private var cache: [Secret]?
 
     init() {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        fileURL = docs.appendingPathComponent("secrets.json")
+        fileURL = AppFiles.url("secrets.json")
     }
 
     func getAll() throws -> [Secret] {

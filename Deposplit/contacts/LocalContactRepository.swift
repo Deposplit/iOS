@@ -7,8 +7,7 @@ final class LocalContactRepository: ContactRepository {
     private var cache: [Contact]?
 
     init() {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        fileURL = docs.appendingPathComponent("contacts.json")
+        fileURL = AppFiles.url("contacts.json")
     }
 
     func getAll() -> [Contact] {

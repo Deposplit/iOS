@@ -7,8 +7,7 @@ final class LocalShareMetadataRepository: ShareMetadataRepository {
     private var cache: [ShareMetadata]?
 
     init() {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        fileURL = docs.appendingPathComponent("distributed_shares.json")
+        fileURL = AppFiles.url("distributed_shares.json")
     }
 
     func getAll() throws -> [ShareMetadata] {

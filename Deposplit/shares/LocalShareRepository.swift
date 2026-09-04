@@ -7,8 +7,7 @@ final class LocalShareRepository: ShareRepository {
     private var cache: [HeldShare]?
 
     init() {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        fileURL = docs.appendingPathComponent("shares.json")
+        fileURL = AppFiles.url("shares.json")
     }
 
     func getAll() -> [HeldShare] {

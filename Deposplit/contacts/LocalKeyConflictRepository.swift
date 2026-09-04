@@ -7,8 +7,7 @@ final class LocalKeyConflictRepository: KeyConflictRepository {
     private var cache: [KeyConflict]?
 
     init() {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        fileURL = docs.appendingPathComponent("key_conflicts.json")
+        fileURL = AppFiles.url("key_conflicts.json")
     }
 
     func getAll() throws -> [KeyConflict] {

@@ -474,12 +474,32 @@
         }
       }
     },
+    "Deposplit's data on this phone — your contacts, your secrets' details, and the shares you hold for other people — is included in your device backup, so it survives a phone switch. Your private keys are not: they cannot leave this phone." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Daten von Deposplit auf diesem Telefon — deine Kontakte, die Angaben zu deinen Geheimnissen und die Anteile, die du für andere verwahrst — sind in der Gerätesicherung enthalten und überstehen so einen Telefonwechsel. Deine privaten Schlüssel nicht: Sie können dieses Telefon nicht verlassen."
+          }
+        }
+      }
+    },
     "Detected %@" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ erkannt"
+          }
+        }
+      }
+    },
+    "Device Backup" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gerätesicherung"
           }
         }
       }
@@ -806,6 +826,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "https://…"
+          }
+        }
+      }
+    },
+    "iCloud Backup is encrypted, but end-to-end only with Advanced Data Protection turned on. You can exclude Deposplit under iCloud Backup in Settings. If you do, a new iPhone starts empty — the people whose shares you guard lose that redundancy, and your new iPhone has no record to tell them with." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die iCloud-Sicherung ist verschlüsselt, aber nur mit aktiviertem erweitertem Datenschutz für iCloud-Daten Ende-zu-Ende. Du kannst Deposplit in den Einstellungen unter „iCloud-Backup“ ausschließen. Dann startet ein neues iPhone leer — die Menschen, deren Anteile du verwahrst, verlieren diese Redundanz, und dein neues iPhone weiß nichts davon, um es ihnen zu sagen."
           }
         }
       }

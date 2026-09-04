@@ -10,8 +10,7 @@ final class LocalRetainedDepositRepository: RetainedDepositRepository {
     private var cache: [RetainedDepositBlob]?
 
     init() {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        fileURL = docs.appendingPathComponent("retained_deposits.json")
+        fileURL = AppFiles.url("retained_deposits.json")
     }
 
     func getAll() throws -> [RetainedDepositBlob] {

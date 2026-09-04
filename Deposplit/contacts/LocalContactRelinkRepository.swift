@@ -9,8 +9,7 @@ final class LocalContactRelinkRepository: ContactRelinkRepository {
     private var cache: [ContactRelink]?
 
     init() {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        fileURL = docs.appendingPathComponent("contact_relinks.json")
+        fileURL = AppFiles.url("contact_relinks.json")
     }
 
     func getAll() -> [ContactRelink] {

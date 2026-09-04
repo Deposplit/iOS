@@ -85,6 +85,18 @@ struct SettingsView: View {
                 } footer: {
                     Text("Contacts, verification levels, and secret metadata only — never shares or private keys.")
                 }
+                // Nothing to toggle: iOS owns this switch and offers it per app under iCloud
+                // Backup. What the app owes the user is the consequence, because the redundancy
+                // lost by excluding Deposplit is other people's, not theirs.
+                Section {
+                    Text("Deposplit's data on this phone — your contacts, your secrets' details, and the shares you hold for other people — is included in your device backup, so it survives a phone switch. Your private keys are not: they cannot leave this phone.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } header: {
+                    Text("Device Backup")
+                } footer: {
+                    Text("iCloud Backup is encrypted, but end-to-end only with Advanced Data Protection turned on. You can exclude Deposplit under iCloud Backup in Settings. If you do, a new iPhone starts empty — the people whose shares you guard lose that redundancy, and your new iPhone has no record to tell them with.")
+                }
                 Section {
                     Button("Regenerate My Identity", role: .destructive) {
                         showRegenerateConfirmation = true
