@@ -463,9 +463,9 @@ private final class TwoRelayResolver: ShareRelayResolver {
     )
 
     let fromAliceId = UUID()
-    let fromAlice = try makeSignedRow(id: fromAliceId, senderKey: aliceKeys.publicKey, recipientKey: bobIdentity.verifyKey, signer: aliceKeys)
+    let fromAlice = try makeSignedRow(id: fromAliceId, senderKey: aliceKeys.publicKey, recipientKey: bobIdentity.verifyKey!, signer: aliceKeys)
     let fromCharlieId = UUID()
-    let fromCharlie = try makeSignedRow(id: fromCharlieId, senderKey: charlieKeys.publicKey, recipientKey: bobIdentity.verifyKey, signer: charlieKeys)
+    let fromCharlie = try makeSignedRow(id: fromCharlieId, senderKey: charlieKeys.publicKey, recipientKey: bobIdentity.verifyKey!, signer: charlieKeys)
     defaultRelay.pending = [fromAlice]
     defaultRelay.byId[fromAliceId] = fromAlice
     byorRelay.pending = [fromCharlie]
@@ -510,7 +510,7 @@ private final class TwoRelayResolver: ShareRelayResolver {
     )
 
     let fromAliceId = UUID()
-    let fromAlice = try makeSignedRow(id: fromAliceId, senderKey: aliceKeys.publicKey, recipientKey: bobIdentity.verifyKey, signer: aliceKeys)
+    let fromAlice = try makeSignedRow(id: fromAliceId, senderKey: aliceKeys.publicKey, recipientKey: bobIdentity.verifyKey!, signer: aliceKeys)
     defaultRelay.pending = [fromAlice]
     defaultRelay.byId[fromAliceId] = fromAlice
 
@@ -1362,7 +1362,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     // Alice signs with the fixture keypair but agrees with her real X25519 key — the two keypairs
     // are independent, exactly as they are in production.
     let alice = Contact(
-        id: UUID(), pseudonym: "alice", verifyKey: aliceKeys.publicKey, encKey: aliceIdentity.encKey,
+        id: UUID(), pseudonym: "alice", verifyKey: aliceKeys.publicKey, encKey: aliceIdentity.encKey!,
         verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date()
     )
     let relay = FakeShareRelay()
@@ -1385,8 +1385,8 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
 
     let id = UUID()
     let share = Data("bob's share".utf8)
-    let sealedToBobsOldKey = try aliceIdentity.encrypt(share, recipientEncKey: bobIdentity.encKey)
-    let row = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bobIdentity.verifyKey, signer: aliceKeys, ciphertext: sealedToBobsOldKey)
+    let sealedToBobsOldKey = try aliceIdentity.encrypt(share, recipientEncKey: bobIdentity.encKey!)
+    let row = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bobIdentity.verifyKey!, signer: aliceKeys, ciphertext: sealedToBobsOldKey)
 
     try bobIdentity.activateKeyPair(bobIdentity.generateNewKeyPair())
     relay.pending = [row]
@@ -1450,7 +1450,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
         identity: bobIdentity,
         purchases: purchases
     )
-    let oldVerifyKey = bobIdentity.verifyKey
+    let oldVerifyKey = bobIdentity.verifyKey!
 
     let result = try await svc.regenerateIdentity()
 
@@ -1459,7 +1459,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     #expect(defaultRelay.pushedRotations.count == 1)
     #expect(byorRelay.pushedRotations.isEmpty)
     // The swap still completes even though one contact couldn't be notified.
-    #expect(bobIdentity.verifyKey != oldVerifyKey)
+    #expect(bobIdentity.verifyKey! != oldVerifyKey)
 }
 
 @Test func requestAllTreatsAHeartbeatOptedOutHolderAsNotConfirmedEvenWithARecentTimestamp() async throws {
