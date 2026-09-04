@@ -37,6 +37,24 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                if homeViewModel.awaitingRelinkCount > 0 {
+                    HStack(spacing: 6) {
+                        Image(systemName: "person.crop.circle.badge.exclamationmark")
+                            .imageScale(.small)
+                        Text(
+                            homeViewModel.awaitingRelinkCount == 1
+                                ? "1 contact still has your old key — meet them and let them re-scan your code"
+                                : "\(homeViewModel.awaitingRelinkCount) contacts still have your old key — meet them and let them re-scan your code"
+                        )
+                        .font(.caption)
+                        Spacer()
+                    }
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+                    .padding(.vertical, 6)
+                    .background(.bar)
+                    Divider()
+                }
                 if homeViewModel.syncWarning {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle")

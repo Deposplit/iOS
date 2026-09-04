@@ -74,6 +74,10 @@ final class HomeViewModel {
     var heldShares: [HeldShare] = []
     var isLoading = false
     var syncWarning = false
+    /// How many contacts still hold a key this device no longer signs with. A standing advisory
+    /// rather than an alarm: it is expected work after a phone switch, and it clears itself as each
+    /// contact gets back in touch.
+    var awaitingRelinkCount = 0
     var error: String?
     var requestingAllIds: Set<UUID> = []
 
@@ -97,6 +101,7 @@ final class HomeViewModel {
             let contacts = (try? contactManagement.listContacts()) ?? []
             groupedSecrets = Self.buildGroups(secrets: secrets, distributed: distributed, allRequests: [], contacts: contacts)
             heldShares = try shareManagement.listHeld()
+            awaitingRelinkCount = contactManagement.contactsAwaitingRelink().count
         } catch {
             self.error = error.localizedDescription
             isLoading = false
@@ -114,6 +119,8 @@ final class HomeViewModel {
             let contacts = (try? contactManagement.listContacts()) ?? []
             groupedSecrets = Self.buildGroups(secrets: secrets, distributed: distributed, allRequests: allRequests, contacts: contacts)
             heldShares = try shareManagement.listHeld()
+            // The sync may itself be the evidence that clears someone.
+            awaitingRelinkCount = contactManagement.contactsAwaitingRelink().count
         } catch {
             syncWarning = true
         }

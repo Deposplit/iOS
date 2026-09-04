@@ -5,6 +5,10 @@ import Foundation
 final class ContactsViewModel {
 
     var contacts: [Contact] = []
+    /// Contacts who still hold a key this device no longer signs with, so they cannot address it
+    /// any more. Only ever non-empty after an identity was re-established without the old key to
+    /// sign a rotation notice with — a phone switch, or a catalogue restored onto a fresh install.
+    var awaitingRelink: Set<UUID> = []
 
     private let contactManagement: any ContactManagement
     private let shareManagement: any ShareManagement
@@ -16,6 +20,15 @@ final class ContactsViewModel {
 
     func load() {
         contacts = (try? contactManagement.listContacts()) ?? []
+        awaitingRelink = Set(contactManagement.contactsAwaitingRelink().map(\.id))
+    }
+
+    /// The manual fallback. Anything arriving from a contact clears them automatically, but a
+    /// contact who holds no share and sends nothing never produces evidence, so the list would
+    /// otherwise never empty.
+    func markRelinked(_ contactId: UUID) {
+        contactManagement.markRelinked(contactId)
+        load()
     }
 
     func delete(at offsets: IndexSet) {

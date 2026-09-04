@@ -431,6 +431,7 @@ public final class ShareService: ShareManagement {
             // Unknown sender or unverified senderSignature: skip silently, do not auto-approve.
             for req in pending where verifyOpen(req) {
                 guard let senderContact = contactRepository.getByVerifyKey(req.senderKey) else { continue }
+                noteRelinked(senderContact)
                 // A deposit without valid k/n/mimeType can't happen against a conforming relay
                 // (all three required by ShareRequestsService) — skip defensively rather than store
                 // a share we can't later report thresholds for during recovery.
@@ -509,6 +510,15 @@ public final class ShareService: ShareManagement {
     /// deletes a heartbeat row — see `CustodyHeartbeat` for why it's a standing status, not a
     /// one-shot delivery. Unknown senders and forged signatures are silently skipped, same
     /// posture as `processRotations()`.
+    // Anything arriving from a contact proves they hold this device's current key, because the
+    // relay only ever returns rows addressed to the caller — so every inbound path notes it, and a
+    // contact who has relinked drops off the awaiting-relink list without anyone tapping anything.
+    // Rows this device created itself, which syncDistributed reads back, prove nothing about the
+    // contact and are deliberately not counted.
+    private func noteRelinked(_ contact: Contact) {
+        contactManagement.markRelinked(contact.id)
+    }
+
     private func processHeartbeats() async {
         // Nothing here can be verified without our own key, so a device whose key storage is locked
         // does nothing and picks this up on a later pass rather than failing every notice.
@@ -518,6 +528,7 @@ public final class ShareService: ShareManagement {
             let notices = (try? await relay.listHeartbeats()) ?? []
             for notice in notices {
                 guard let contact = contactRepository.getByVerifyKey(notice.holderKey) else { continue }
+                noteRelinked(contact)
                 let canon = PayloadCanonical.forHeartbeat(ownerKey: myKey, secretIds: notice.secretIds, optedOut: notice.optedOut)
                 guard identity.verify(canon, signature: notice.signature, publicKey: notice.holderKey) else { continue }
                 if notice.optedOut {
@@ -576,6 +587,7 @@ public final class ShareService: ShareManagement {
             let notices = (try? await relay.listRotations()) ?? []
             for notice in notices {
                 guard let contact = contactRepository.getByVerifyKey(notice.oldVerifyKey) else { continue }
+                noteRelinked(contact)
                 let canon = PayloadCanonical.forRotation(recipientKey: notice.recipientKey, newVerifyKey: notice.newVerifyKey, newEncKey: notice.newEncKey, newCipherSuite: notice.newCipherSuite)
                 guard identity.verify(canon, signature: notice.signature, publicKey: notice.oldVerifyKey) else { continue }
                 // A stolen key can't revoke itself, but a locally-flagged one blocks
@@ -670,6 +682,7 @@ public final class ShareService: ShareManagement {
             let pushes = (try? await relay.listShareRequests(role: .recipient, transactionType: .inventory, state: .approved)) ?? []
             for req in pushes where verifyOpen(req) {
                 guard let holderContact = contactRepository.getByVerifyKey(req.senderKey) else { continue }
+                noteRelinked(holderContact)
                 guard let k = req.k, let n = req.n, let mimeType = req.mimeType else { continue }
                 let existingSecrets = (try? secretRepository.getAll()) ?? []
                 if !existingSecrets.contains(where: { $0.id == req.secretId }) {

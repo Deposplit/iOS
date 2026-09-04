@@ -2,6 +2,16 @@
   "sourceLanguage" : "en",
   "strings" : {
     "" : {},
+    "%@ has not re-verified you yet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat dich noch nicht erneut verifiziert"
+          }
+        }
+      }
+    },
     "%@'s key changed %lld days ago — verify fresh before approving" : {
       "localizations" : {
         "en" : {
@@ -58,6 +68,16 @@
         }
       }
     },
+    "%lld contacts still have your old key — meet them and let them re-scan your code" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Kontakte haben noch deinen alten Schlüssel — triff sie und lass sie deinen Code erneut scannen"
+          }
+        }
+      }
+    },
     "%lld of %lld free secrets are in use. Discard one, or unlock Premium." : {
       "localizations" : {
         "de" : {
@@ -80,6 +100,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$lld of %2$lld is a relatively low threshold — a minority of holders could reconstruct this secret together."
+          }
+        }
+      }
+    },
+    "1 contact still has your old key — meet them and let them re-scan your code" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 Kontakt hat noch deinen alten Schlüssel — triff die Person und lass sie deinen Code erneut scannen"
           }
         }
       }
@@ -906,6 +936,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sicherheitsabstand von eins — bald neu aufteilen"
+          }
+        }
+      }
+    },
+    "Mark as Re-verified" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als erneut verifiziert markieren"
           }
         }
       }

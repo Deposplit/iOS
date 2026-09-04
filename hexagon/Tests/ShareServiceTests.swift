@@ -1,6 +1,33 @@
 import Testing
 @testable import hexagon
 import Foundation
+
+private final class InMemoryContactRelinkRepositoryForTests: ContactRelinkRepository {
+    private var relinks: [ContactRelink] = []
+    func getAll() -> [ContactRelink] { relinks }
+    func get(_ contactId: UUID) -> ContactRelink? { relinks.first { $0.contactId == contactId } }
+    func save(_ relink: ContactRelink) {
+        relinks.removeAll { $0.contactId == relink.contactId }
+        relinks.append(relink)
+    }
+}
+
+/// Only identityCreatedAt is read by ContactService; the rest of the port is never reached.
+private final class FakeIdentityStoreForContacts: IdentityStore {
+    var identityCreatedAt: Date?
+    init(identityCreatedAt: Date? = nil) { self.identityCreatedAt = identityCreatedAt }
+    var isRegistered: Bool { identityCreatedAt != nil }
+    func save(pseudonym: String, verifyKey: Data, signKey: Data, encKey: Data, decKey: Data) throws {}
+    func rotate(verifyKey: Data, signKey: Data, encKey: Data, decKey: Data) throws {}
+    var pseudonym: String { "" }
+    var verifyKey: Data? { nil }
+    var encKey: Data? { nil }
+    func signKey() throws -> Data { Data() }
+    func decKey() throws -> Data { Data() }
+    func previousDecKey() -> Data? { nil }
+}
+
+private var identityStoreForContacts: any IdentityStore { FakeIdentityStoreForContacts() }
 import CryptoKit
 
 /// A keypair not tied to any Identity instance — used to sign fixture rows "as" a third party
@@ -27,6 +54,7 @@ private final class InMemoryIdentityStoreForShareServiceTest: IdentityStore {
     private var _encKey = Data()
     private var _decKey = Data()
     private var _previousDecKey: Data?
+    private var _identityCreatedAt: Date?
 
     var pseudonym: String { _pseudonym }
     var verifyKey: Data? { _verifyKey }
@@ -39,6 +67,8 @@ private final class InMemoryIdentityStoreForShareServiceTest: IdentityStore {
         self._encKey = encKey
         self._decKey = decKey
         self._previousDecKey = nil
+        // Mirrors the real adapters: registration starts a new identity, rotation continues one.
+        self._identityCreatedAt = Date()
         self.isRegistered = true
     }
 
@@ -52,6 +82,7 @@ private final class InMemoryIdentityStoreForShareServiceTest: IdentityStore {
 
     func signKey() throws -> Data { _signKey }
     func decKey() throws -> Data { _decKey }
+    var identityCreatedAt: Date? { _identityCreatedAt }
     func previousDecKey() -> Data? { _previousDecKey }
 }
 
@@ -280,7 +311,7 @@ private func makeService(
         shareMetadataRepository: metaRepo,
         secretRepository: FakeSecretRepository(),
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases),
+        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
         keyConflictRepository: conflictRepo,
         retainedDepositRepository: retainedRepo,
         identity: bobIdentity,
@@ -455,7 +486,7 @@ private final class TwoRelayResolver: ShareRelayResolver {
         shareMetadataRepository: FakeShareMetadataRepository(),
         secretRepository: FakeSecretRepository(),
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases),
+        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
         keyConflictRepository: FakeKeyConflictRepository(),
         retainedDepositRepository: FakeRetainedDepositRepository(),
         identity: bobIdentity,
@@ -502,7 +533,7 @@ private final class TwoRelayResolver: ShareRelayResolver {
         shareMetadataRepository: FakeShareMetadataRepository(),
         secretRepository: FakeSecretRepository(),
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases),
+        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
         keyConflictRepository: FakeKeyConflictRepository(),
         retainedDepositRepository: FakeRetainedDepositRepository(),
         identity: bobIdentity,
@@ -540,7 +571,7 @@ private func makeServiceForRecoveryTest(relay: FakeShareRelay, contacts: [Contac
         shareMetadataRepository: metaRepo,
         secretRepository: secretRepo,
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases),
+        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
         keyConflictRepository: FakeKeyConflictRepository(),
         retainedDepositRepository: FakeRetainedDepositRepository(),
         identity: bobIdentity,
@@ -884,7 +915,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
 
 @Test func markKeyCompromisedFlagsTheContactsCurrentKeyByDefault() throws {
     let repo = FakeContactRepository([aliceContact])
-    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepository())
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepository(), identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests())
 
     try svc.markKeyCompromised(contactId: aliceContact.id, verifyKey: nil)
 
@@ -893,7 +924,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
 
 @Test func markKeyCompromisedIsIdempotentForAnAlreadyFlaggedKey() throws {
     let repo = FakeContactRepository([aliceContact])
-    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepository())
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepository(), identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests())
     try svc.markKeyCompromised(contactId: aliceContact.id, verifyKey: nil)
 
     try svc.markKeyCompromised(contactId: aliceContact.id, verifyKey: nil)
@@ -903,7 +934,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
 
 @Test func updateContactSetsKeyChangedAtOnlyWhenKeysActuallyChange() throws {
     let repo = FakeContactRepository([aliceContact])
-    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepository())
+    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepository(), identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests())
     #expect(aliceContact.keyChangedAt == nil)
 
     try svc.updateContact(contactId: aliceContact.id, verifyKey: Data(repeating: 0x03, count: 32), encKey: nil, newCipherSuite: nil, verificationLevel: .low)
@@ -1376,7 +1407,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
         shareMetadataRepository: FakeShareMetadataRepository(),
         secretRepository: FakeSecretRepository(),
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases),
+        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
         keyConflictRepository: FakeKeyConflictRepository(),
         retainedDepositRepository: FakeRetainedDepositRepository(),
         identity: bobIdentity,
@@ -1444,7 +1475,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
         shareMetadataRepository: FakeShareMetadataRepository(),
         secretRepository: FakeSecretRepository(),
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases),
+        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
         keyConflictRepository: FakeKeyConflictRepository(),
         retainedDepositRepository: FakeRetainedDepositRepository(),
         identity: bobIdentity,

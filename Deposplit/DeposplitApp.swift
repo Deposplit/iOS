@@ -11,7 +11,8 @@ struct DeposplitApp: App {
     private let purchaseStore: StoreKitPurchaseStore
 
     init() {
-        let identityService = IdentityService(identityStore: KeychainIdentityStore())
+        let identityStore = KeychainIdentityStore()
+        let identityService = IdentityService(identityStore: identityStore)
         auth = identityService
         relaySettings = UserDefaultsRelaySettings()
         let purchaseRepository = UserDefaultsPurchaseRepository()
@@ -23,7 +24,12 @@ struct DeposplitApp: App {
         let keyConflictRepository = LocalKeyConflictRepository()
         let retainedDepositRepository = LocalRetainedDepositRepository()
         let relayResolver = DeposplitRelayResolver(identity: identityService, relaySettings: relaySettings)
-        let contactService = ContactService(contactRepository: contactRepository, purchases: purchaseRepository)
+        let contactService = ContactService(
+            contactRepository: contactRepository,
+            purchases: purchaseRepository,
+            identityStore: identityStore,
+            relinkRepository: LocalContactRelinkRepository()
+        )
         contactManagement = contactService
         shareManagement = ShareService(
             relayResolver: relayResolver,

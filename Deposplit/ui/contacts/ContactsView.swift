@@ -58,6 +58,12 @@ struct ContactsView: View {
                                             .foregroundStyle(.red)
                                             .font(.caption)
                                     }
+                                    if viewModel.awaitingRelink.contains(contact.id) {
+                                        Image(systemName: "person.crop.circle.badge.exclamationmark")
+                                            .foregroundStyle(.secondary)
+                                            .font(.caption)
+                                            .accessibilityLabel("\(contact.displayName) has not re-verified you yet")
+                                    }
                                     if contact.heartbeatEmissionOptedOut {
                                         Image(systemName: "heart.slash")
                                             .foregroundStyle(.secondary)
@@ -76,6 +82,15 @@ struct ContactsView: View {
                                     .foregroundStyle(.secondary)
                             }
                             .contextMenu {
+                                // Only where it is relevant: the entry would be meaningless noise on
+                                // a contact who never lost sight of this device's key.
+                                if viewModel.awaitingRelink.contains(contact.id) {
+                                    Button {
+                                        viewModel.markRelinked(contact.id)
+                                    } label: {
+                                        Label("Mark as Re-verified", systemImage: "checkmark")
+                                    }
+                                }
                                 Button {
                                     renameInput = contact.nickname ?? ""
                                     renameTarget = contact

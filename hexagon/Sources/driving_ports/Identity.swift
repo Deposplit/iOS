@@ -10,6 +10,10 @@ public protocol Identity {
     var integrity: IdentityIntegrity { get }
     func register(pseudonym: String) throws
     var pseudonym: String { get }
+    /// When the identity this device holds today was established. Moves on registration and stays
+    /// put across a rotation — see `IdentityStore.identityCreatedAt`. Nil on a device registered
+    /// before this was recorded.
+    var identityCreatedAt: Date? { get }
     /// Ed25519 public key — 32 raw bytes, or nil when this device's keys are gone or cannot be
     /// read. An ordinary state on a phone restored from a backup, whose files came across without
     /// the keys, so optional rather than throwing — the same reasoning as `previousDecKey()`.

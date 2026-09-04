@@ -11,6 +11,7 @@ private final class InMemoryIdentityStore: IdentityStore {
     private var _encKey = Data()
     private var _decKey = Data()
     private var _previousDecKey: Data?
+    private var _identityCreatedAt: Date?
 
     var pseudonym: String { _pseudonym }
     var verifyKey: Data? { _verifyKey }
@@ -23,6 +24,8 @@ private final class InMemoryIdentityStore: IdentityStore {
         self._encKey = encKey
         self._decKey = decKey
         self._previousDecKey = nil
+        // Mirrors the real adapters: registration starts a new identity, rotation continues one.
+        self._identityCreatedAt = Date()
         self.isRegistered = true
     }
 
@@ -36,6 +39,7 @@ private final class InMemoryIdentityStore: IdentityStore {
 
     func signKey() throws -> Data { _signKey }
     func decKey() throws -> Data { _decKey }
+    var identityCreatedAt: Date? { _identityCreatedAt }
     func previousDecKey() -> Data? { _previousDecKey }
 }
 

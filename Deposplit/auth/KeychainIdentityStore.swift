@@ -5,6 +5,7 @@ import Security
 final class KeychainIdentityStore: IdentityStore {
     private enum Keys {
         static let registered = "deposplit.registered"
+        static let identityCreatedAt = "deposplit.identityCreatedAt"
         static let pseudonymKey = "deposplit.pseudonym"
         static let verifyKeyAccount = "verify.public"
         static let signKeyAccount = "sign.private"
@@ -25,6 +26,7 @@ final class KeychainIdentityStore: IdentityStore {
         try saveToKeychain(encKey, account: Keys.encKeyAccount)
         deleteFromKeychain(account: Keys.previousDecKeyAccount)
         UserDefaults.standard.set(pseudonym, forKey: Keys.pseudonymKey)
+        UserDefaults.standard.set(Date(), forKey: Keys.identityCreatedAt)
         UserDefaults.standard.set(true, forKey: Keys.registered)
     }
 
@@ -50,6 +52,12 @@ final class KeychainIdentityStore: IdentityStore {
     /// Keeps an empty-string fallback where the keys below are optional, and the difference is
     /// deliberate: an absent display name is cosmetic, and the keys-lost screen pre-fills from this
     /// on exactly the device whose keys are already gone.
+    /// Deliberately not touched by `rotate` above: a rotation is continuous with what came before
+    /// and tells every contact itself, so it must not put them on the awaiting-relink list.
+    var identityCreatedAt: Date? {
+        UserDefaults.standard.object(forKey: Keys.identityCreatedAt) as? Date
+    }
+
     var pseudonym: String {
         UserDefaults.standard.string(forKey: Keys.pseudonymKey) ?? ""
     }

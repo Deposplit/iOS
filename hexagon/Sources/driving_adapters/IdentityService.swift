@@ -38,6 +38,7 @@ public final class IdentityService: Identity, ShareEncryption {
         }
     }
     public var pseudonym: String { identityStore.pseudonym }
+    public var identityCreatedAt: Date? { identityStore.identityCreatedAt }
     public var verifyKey: Data? { identityStore.verifyKey }
     public var encKey: Data? { identityStore.encKey }
 

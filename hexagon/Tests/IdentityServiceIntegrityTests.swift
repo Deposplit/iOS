@@ -18,6 +18,7 @@ private final class RestorableIdentityStore: IdentityStore {
     private var _encKey = Data()
     fileprivate var _decKey = Data()
     private var _previousDecKey: Data?
+    private var _identityCreatedAt: Date?
 
     /// Thrown by every private-key read, standing in for key storage that no longer yields its
     /// contents.
@@ -37,6 +38,8 @@ private final class RestorableIdentityStore: IdentityStore {
         self._encKey = encKey
         self._decKey = decKey
         self._previousDecKey = nil
+        // Mirrors the real adapters: registration starts a new identity, rotation continues one.
+        self._identityCreatedAt = Date()
         self.isRegistered = true
     }
 
@@ -64,6 +67,7 @@ private final class RestorableIdentityStore: IdentityStore {
         return _decKey
     }
 
+    var identityCreatedAt: Date? { _identityCreatedAt }
     func previousDecKey() -> Data? { _previousDecKey }
 }
 

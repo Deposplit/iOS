@@ -22,14 +22,45 @@ public enum ContactError: Error, LocalizedError {
 public final class ContactService: ContactManagement {
     private let contactRepository: any ContactRepository
     private let purchases: any PurchaseRepository
+    private let identityStore: any IdentityStore
+    private let relinkRepository: any ContactRelinkRepository
 
-    public init(contactRepository: any ContactRepository, purchases: any PurchaseRepository) {
+    public init(
+        contactRepository: any ContactRepository,
+        purchases: any PurchaseRepository,
+        identityStore: any IdentityStore,
+        relinkRepository: any ContactRelinkRepository
+    ) {
         self.contactRepository = contactRepository
         self.purchases = purchases
+        self.identityStore = identityStore
+        self.relinkRepository = relinkRepository
     }
 
     public func listContacts() throws -> [Contact] {
         contactRepository.getAll()
+    }
+
+    public func contactsAwaitingRelink() -> [Contact] {
+        // No recorded start means no basis to judge, and flagging every contact on a guess would be
+        // a false alarm on a device that never lost anything.
+        guard let identityCreatedAt = identityStore.identityCreatedAt else { return [] }
+        return contactRepository.getAll().filter { contact in
+            guard contact.addedAt < identityCreatedAt else { return false }
+            guard let relinkedAt = relinkRepository.get(contact.id)?.observedAt else { return true }
+            return relinkedAt < identityCreatedAt
+        }
+    }
+
+    public func markRelinked(_ contactId: UUID) {
+        // Called once per inbound row as well as by the user, so it skips the write when the answer
+        // would not change — otherwise a single poll would rewrite the store for every row it reads.
+        if let identityCreatedAt = identityStore.identityCreatedAt,
+           let recorded = relinkRepository.get(contactId)?.observedAt,
+           recorded >= identityCreatedAt {
+            return
+        }
+        relinkRepository.save(ContactRelink(contactId: contactId, observedAt: Date()))
     }
 
     public func addManually(pseudonym: String, verifyKey: Data, encKey: Data, verificationLevel: VerificationLevel, relayBaseUrl: String?, nickname: String?) throws {
