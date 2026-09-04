@@ -9,6 +9,28 @@ public final class IdentityService: Identity, ShareEncryption {
     }
 
     public var isRegistered: Bool { identityStore.isRegistered }
+
+    /// Derives each public key from its stored private half and compares it to the public key this
+    /// device hands out. That single question covers every way the two can come apart: key storage
+    /// emptied while the app's files survived a restore, a Keychain item that no longer reads, and
+    /// public keys restored without the private ones.
+    public var integrity: IdentityIntegrity {
+        guard identityStore.isRegistered else { return .intact }
+        do {
+            let derivedVerifyKey = try Curve25519.Signing.PrivateKey(
+                rawRepresentation: identityStore.signKey()
+            ).publicKey.rawRepresentation
+            let derivedEncKey = try Curve25519.KeyAgreement.PrivateKey(
+                rawRepresentation: identityStore.decKey()
+            ).publicKey.rawRepresentation
+            let matches = derivedVerifyKey == identityStore.verifyKey && derivedEncKey == identityStore.encKey
+            return matches ? .intact : .keysLost
+        } catch AuthError.identityStorageUnavailable {
+            return .unreadable
+        } catch {
+            return .keysLost
+        }
+    }
     public var pseudonym: String { identityStore.pseudonym }
     public var verifyKey: Data { identityStore.verifyKey }
     public var encKey: Data { identityStore.encKey }

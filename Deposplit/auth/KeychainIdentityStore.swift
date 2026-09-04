@@ -51,6 +51,10 @@ final class KeychainIdentityStore: IdentityStore {
         UserDefaults.standard.string(forKey: Keys.pseudonymKey) ?? ""
     }
 
+    /// Falls back to empty rather than throwing, because the port declares these non-throwing.
+    /// What keeps that survivable is `IdentityIntegrity`: the launch gate refuses to open Home on a
+    /// device whose keys are gone, and `QrDisplayViewModel` refuses to encode a code, so nothing
+    /// hands an empty key to a contact.
     var verifyKey: Data {
         (try? loadFromKeychain(account: Keys.verifyKeyAccount)) ?? Data()
     }
@@ -101,6 +105,12 @@ final class KeychainIdentityStore: IdentityStore {
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         guard status == errSecSuccess, let data = result as? Data else {
+            // A locked device is not an emptied one. `…WhenUnlockedThisDeviceOnly` items are
+            // unreadable before first unlock, and reading "gone" from that would offer to mint a
+            // replacement identity over a perfectly good one.
+            if status == errSecInteractionNotAllowed || status == errSecNotAvailable {
+                throw AuthError.identityStorageUnavailable(status)
+            }
             throw AuthError.keychainLoad(status)
         }
         return data

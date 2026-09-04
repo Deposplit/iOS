@@ -2,6 +2,12 @@ import Foundation
 
 public protocol Identity {
     var isRegistered: Bool { get }
+
+    /// Whether the private keys this device believes it has are still there and still match the
+    /// public keys it advertises. Total and non-throwing: a device that cannot answer the question
+    /// reports `.unreadable` rather than failing, and an unregistered device reports `.intact`
+    /// because it has nothing to have lost.
+    var integrity: IdentityIntegrity { get }
     func register(pseudonym: String) throws
     var pseudonym: String { get }
     /// Ed25519 public key — 32 raw bytes

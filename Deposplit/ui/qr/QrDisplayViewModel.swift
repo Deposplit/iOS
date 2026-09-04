@@ -20,6 +20,14 @@ final class QrDisplayViewModel {
 
     func generate() {
         pseudonym = auth.pseudonym
+        // The QR is the one path by which a broken identity reaches another person's phone, and on
+        // a restored device the public keys can outlive the private ones — so a code encoded here
+        // would scan cleanly and name an identity nobody can use. The launch gate should have
+        // caught that already; this is the second lock.
+        guard auth.integrity == .intact else {
+            qrImage = nil
+            return
+        }
         let json = QrPayload.encode(
             pseudonym: auth.pseudonym,
             verifyKey: auth.verifyKey,

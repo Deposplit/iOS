@@ -60,6 +60,7 @@ struct RootView: View {
     let relaySettings: any RelaySettings
     let purchaseStore: StoreKitPurchaseStore
     @State private var isRegistered: Bool
+    @State private var keysLost: Bool
 
     init(auth: any Identity, shareManagement: any ShareManagement, contactManagement: any ContactManagement, catalogManagement: any CatalogManagement, relaySettings: any RelaySettings, purchaseStore: StoreKitPurchaseStore) {
         self.auth = auth
@@ -69,15 +70,22 @@ struct RootView: View {
         self.relaySettings = relaySettings
         self.purchaseStore = purchaseStore
         _isRegistered = State(initialValue: auth.isRegistered)
+        // `.unreadable` deliberately falls through to Home: key storage that is merely locked must
+        // never be offered a replacement identity.
+        _keysLost = State(initialValue: auth.isRegistered && auth.integrity == .keysLost)
     }
 
     var body: some View {
-        if isRegistered {
-            HomeView(auth: auth, shareManagement: shareManagement, contactManagement: contactManagement, catalogManagement: catalogManagement, relaySettings: relaySettings, purchaseStore: purchaseStore)
-        } else {
+        if !isRegistered {
             SignInView(auth: auth) {
                 isRegistered = true
             }
+        } else if keysLost {
+            KeysLostView(auth: auth) {
+                keysLost = false
+            }
+        } else {
+            HomeView(auth: auth, shareManagement: shareManagement, contactManagement: contactManagement, catalogManagement: catalogManagement, relaySettings: relaySettings, purchaseStore: purchaseStore)
         }
     }
 }
