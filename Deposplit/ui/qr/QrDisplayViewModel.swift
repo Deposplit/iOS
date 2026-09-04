@@ -24,14 +24,14 @@ final class QrDisplayViewModel {
         // a restored device the public keys can outlive the private ones — so a code encoded here
         // would scan cleanly and name an identity nobody can use. The launch gate should have
         // caught that already; this is the second lock.
-        guard auth.integrity == .intact else {
+        guard auth.integrity == .intact, let verifyKey = auth.verifyKey, let encKey = auth.encKey else {
             qrImage = nil
             return
         }
         let json = QrPayload.encode(
             pseudonym: auth.pseudonym,
-            verifyKey: auth.verifyKey,
-            encKey: auth.encKey,
+            verifyKey: verifyKey,
+            encKey: encKey,
             cipherSuite: .current,
             relayBaseUrl: relaySettings.defaultRelayBaseURL()
         ) ?? ""

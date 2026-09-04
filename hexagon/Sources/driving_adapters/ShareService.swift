@@ -510,7 +510,9 @@ public final class ShareService: ShareManagement {
     /// one-shot delivery. Unknown senders and forged signatures are silently skipped, same
     /// posture as `processRotations()`.
     private func processHeartbeats() async {
-        let myKey = identity.verifyKey
+        // Nothing here can be verified without our own key, so a device whose key storage is locked
+        // does nothing and picks this up on a later pass rather than failing every notice.
+        guard let myKey = identity.verifyKey else { return }
         let existingMetadata = (try? shareMetadataRepository.getAll()) ?? []
         for relay in allRelays() {
             let notices = (try? await relay.listHeartbeats()) ?? []

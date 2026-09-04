@@ -17,14 +17,20 @@ public final class IdentityService: Identity, ShareEncryption {
     public var integrity: IdentityIntegrity {
         guard identityStore.isRegistered else { return .intact }
         do {
+            // The private keys are read first on purpose. They are the half that can distinguish
+            // locked from empty, so reading the optional public keys ahead of them would report a
+            // merely locked device as `.keysLost` — and `.keysLost` is what offers to mint a
+            // replacement identity over a working one.
             let derivedVerifyKey = try Curve25519.Signing.PrivateKey(
                 rawRepresentation: identityStore.signKey()
             ).publicKey.rawRepresentation
             let derivedEncKey = try Curve25519.KeyAgreement.PrivateKey(
                 rawRepresentation: identityStore.decKey()
             ).publicKey.rawRepresentation
-            let matches = derivedVerifyKey == identityStore.verifyKey && derivedEncKey == identityStore.encKey
-            return matches ? .intact : .keysLost
+            guard let storedVerifyKey = identityStore.verifyKey, let storedEncKey = identityStore.encKey else {
+                return .keysLost
+            }
+            return derivedVerifyKey == storedVerifyKey && derivedEncKey == storedEncKey ? .intact : .keysLost
         } catch AuthError.identityStorageUnavailable {
             return .unreadable
         } catch {
@@ -32,8 +38,8 @@ public final class IdentityService: Identity, ShareEncryption {
         }
     }
     public var pseudonym: String { identityStore.pseudonym }
-    public var verifyKey: Data { identityStore.verifyKey }
-    public var encKey: Data { identityStore.encKey }
+    public var verifyKey: Data? { identityStore.verifyKey }
+    public var encKey: Data? { identityStore.encKey }
 
     public func register(pseudonym: String) throws {
         let material = Self.generateKeyPairMaterial()

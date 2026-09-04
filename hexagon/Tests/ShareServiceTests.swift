@@ -29,8 +29,8 @@ private final class InMemoryIdentityStoreForShareServiceTest: IdentityStore {
     private var _previousDecKey: Data?
 
     var pseudonym: String { _pseudonym }
-    var verifyKey: Data { _verifyKey }
-    var encKey: Data { _encKey }
+    var verifyKey: Data? { _verifyKey }
+    var encKey: Data? { _encKey }
 
     func save(pseudonym: String, verifyKey: Data, signKey: Data, encKey: Data, decKey: Data) throws {
         self._pseudonym = pseudonym
@@ -324,7 +324,7 @@ private func makeSignedRow(
     let relay = FakeShareRelay()
     let (svc, bob, shareRepo, _, _, _, _) = try makeService(relay: relay)
     let id = UUID()
-    let row = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: aliceKeys)
+    let row = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: aliceKeys)
     relay.pending = [row]
     relay.byId[id] = row
 
@@ -338,7 +338,7 @@ private func makeSignedRow(
     let relay = FakeShareRelay()
     let (svc, bob, shareRepo, _, _, _, _) = try makeService(relay: relay, encryption: FailingShareEncryption())
     let id = UUID()
-    let row = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: aliceKeys)
+    let row = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: aliceKeys)
     relay.pending = [row]
     relay.byId[id] = row
 
@@ -357,7 +357,7 @@ private func makeSignedRow(
     let (svc, bob, shareRepo, _, _, _, _) = try makeService(relay: relay)
     let id = UUID()
     // Signed by a stranger, not by alice — claims to be from alice but doesn't verify against her key.
-    let row = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: strangerKeys)
+    let row = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: strangerKeys)
     relay.pending = [row]
     relay.byId[id] = row
 
@@ -371,7 +371,7 @@ private func makeSignedRow(
     let relay = FakeShareRelay()
     let (svc, bob, shareRepo, _, _, _, _) = try makeService(relay: relay)
     let id = UUID()
-    let row = try makeSignedRow(id: id, senderKey: strangerKeys.publicKey, recipientKey: bob.verifyKey, signer: strangerKeys)
+    let row = try makeSignedRow(id: id, senderKey: strangerKeys.publicKey, recipientKey: bob.verifyKey!, signer: strangerKeys)
     relay.pending = [row]
     relay.byId[id] = row
 
@@ -385,7 +385,7 @@ private func makeSignedRow(
     let relay = FakeShareRelay()
     let (svc, bob, _, _, _, _, _) = try makeService(relay: relay)
     let row = try makeSignedRow(
-        id: UUID(), senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: strangerKeys,
+        id: UUID(), senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: strangerKeys,
         transactionType: .removal, ciphertext: nil
     )
     relay.pending = [row]
@@ -400,7 +400,7 @@ private func makeSignedRow(
     let (svc, bob, _, _, _, _, _) = try makeService(relay: relay)
     let id = UUID()
     let row = try makeSignedRow(
-        id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: strangerKeys,
+        id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: strangerKeys,
         transactionType: .removal, ciphertext: nil
     )
     relay.byId[id] = row
@@ -602,7 +602,7 @@ private func makeApprovedRecoveryMetadataRow(
     let relay = FakeShareRelay()
     let (svc, bob, _, secretRepo, metaRepo, _) = try makeServiceForRecoveryTest(relay: relay)
     let secretId = UUID()
-    let pushRow = try makeApprovedRecoveryMetadataRow(secretId: secretId, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: aliceKeys)
+    let pushRow = try makeApprovedRecoveryMetadataRow(secretId: secretId, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: aliceKeys)
     relay.pending = [pushRow]
 
     try await svc.syncInbox()
@@ -624,7 +624,7 @@ private func makeApprovedRecoveryMetadataRow(
     let (svc, bob, _, secretRepo, metaRepo, _) = try makeServiceForRecoveryTest(relay: relay)
     let secretId = UUID()
     // Claims to be from alice but signed by a stranger.
-    let pushRow = try makeApprovedRecoveryMetadataRow(secretId: secretId, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: strangerKeys)
+    let pushRow = try makeApprovedRecoveryMetadataRow(secretId: secretId, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: strangerKeys)
     relay.pending = [pushRow]
 
     try await svc.syncInbox()
@@ -666,7 +666,7 @@ private func makeSignedRotation(
     #expect(pushed.newEncKey == newX)
     #expect(pushed.newCipherSuite == .current)
     let canon = PayloadCanonical.forRotation(recipientKey: aliceContact.verifyKey, newVerifyKey: newEd, newEncKey: newX, newCipherSuite: .current)
-    #expect(bob.verify(canon, signature: pushed.signature, publicKey: bob.verifyKey))
+    #expect(bob.verify(canon, signature: pushed.signature, publicKey: bob.verifyKey!))
 }
 
 @Test func pushRotationThrowsContactNotFoundForAnUnknownContact() async throws {
@@ -687,7 +687,7 @@ private func makeSignedRotation(
     let (svc, bob, _, contactRepo, _, _, _) = try makeService(relay: relay)
     let newEd = Data(repeating: 0x0c, count: 32)
     let newX = Data(repeating: 0x0d, count: 32)
-    let notice = try makeSignedRotation(oldVerifyKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, newVerifyKey: newEd, newEncKey: newX, signer: aliceKeys)
+    let notice = try makeSignedRotation(oldVerifyKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, newVerifyKey: newEd, newEncKey: newX, signer: aliceKeys)
     relay.rotationsToReturn = [notice]
 
     try await svc.syncInbox()
@@ -710,7 +710,7 @@ private func makeSignedRotation(
         verificationLevel: .veryLow, verifiedAt: nil, addedAt: Date()
     )
     let (svc, bob, _, contactRepo, _, _, _) = try makeService(relay: relay, contacts: [daveContact])
-    let notice = try makeSignedRotation(oldVerifyKey: daveKeys.publicKey, recipientKey: bob.verifyKey, signer: daveKeys)
+    let notice = try makeSignedRotation(oldVerifyKey: daveKeys.publicKey, recipientKey: bob.verifyKey!, signer: daveKeys)
     relay.rotationsToReturn = [notice]
 
     try await svc.syncInbox()
@@ -724,7 +724,7 @@ private func makeSignedRotation(
     let relay = FakeShareRelay()
     let (svc, bob, _, contactRepo, _, _, _) = try makeService(relay: relay)
     // Claims to be from alice (oldVerifyKey = aliceKeys.publicKey) but signed by a stranger.
-    let notice = try makeSignedRotation(oldVerifyKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: strangerKeys)
+    let notice = try makeSignedRotation(oldVerifyKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: strangerKeys)
     relay.rotationsToReturn = [notice]
 
     try await svc.syncInbox()
@@ -736,7 +736,7 @@ private func makeSignedRotation(
 @Test func syncInboxIgnoresARotationNoticeFromAnUnknownOldKey() async throws {
     let relay = FakeShareRelay()
     let (svc, bob, _, contactRepo, _, _, _) = try makeService(relay: relay)
-    let notice = try makeSignedRotation(oldVerifyKey: strangerKeys.publicKey, recipientKey: bob.verifyKey, signer: strangerKeys)
+    let notice = try makeSignedRotation(oldVerifyKey: strangerKeys.publicKey, recipientKey: bob.verifyKey!, signer: strangerKeys)
     relay.rotationsToReturn = [notice]
 
     try await svc.syncInbox()
@@ -832,7 +832,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
     let (svc, bob, _, contactRepo, _, conflictRepo, _) = try makeService(relay: relay, contacts: [revokedAliceContact])
     let newEd = Data(repeating: 0x0e, count: 32)
     let newX = Data(repeating: 0x0f, count: 32)
-    let notice = try makeSignedRotation(oldVerifyKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, newVerifyKey: newEd, newEncKey: newX, signer: aliceKeys)
+    let notice = try makeSignedRotation(oldVerifyKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, newVerifyKey: newEd, newEncKey: newX, signer: aliceKeys)
     relay.rotationsToReturn = [notice]
 
     try await svc.syncInbox()
@@ -860,7 +860,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
     )
     let (svc, bob, _, contactRepo, _, conflictRepo, _) = try makeService(relay: relay, contacts: [contactWithUnrelatedRevocation])
     let newEd = Data(repeating: 0x10, count: 32)
-    let notice = try makeSignedRotation(oldVerifyKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, newVerifyKey: newEd, signer: aliceKeys)
+    let notice = try makeSignedRotation(oldVerifyKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, newVerifyKey: newEd, signer: aliceKeys)
     relay.rotationsToReturn = [notice]
 
     try await svc.syncInbox()
@@ -995,7 +995,7 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
     #expect(pushed?.secretIds == [secretId])
     #expect(pushed?.optedOut == false)
     let canon = PayloadCanonical.forHeartbeat(ownerKey: aliceContact.verifyKey, secretIds: [secretId], optedOut: false)
-    #expect(bob.verify(canon, signature: pushed!.signature, publicKey: bob.verifyKey))
+    #expect(bob.verify(canon, signature: pushed!.signature, publicKey: bob.verifyKey!))
 }
 
 @Test func syncInboxDoesNotReEmitAHeartbeatBeforeTheIntervalElapses() async throws {
@@ -1056,7 +1056,7 @@ private func makeSignedHeartbeat(holderKey: Data, ownerKey: Data, signer: TestKe
     let secretId = UUID()
     try metaRepo.save(ShareMetadata(id: depositId, secretId: secretId, contactId: aliceContact.id))
     try retainedRepo.save(RetainedDepositBlob(id: depositId, secretId: secretId, contactId: aliceContact.id, label: "s", secretCreatedAt: Date(), ciphertext: Data([1]), k: 2, n: 3, mimeType: .default))
-    relay.heartbeatsToReturn = [try makeSignedHeartbeat(holderKey: aliceKeys.publicKey, ownerKey: bob.verifyKey, signer: aliceKeys, secretIds: [secretId])]
+    relay.heartbeatsToReturn = [try makeSignedHeartbeat(holderKey: aliceKeys.publicKey, ownerKey: bob.verifyKey!, signer: aliceKeys, secretIds: [secretId])]
 
     try await svc.syncDistributed()
 
@@ -1072,7 +1072,7 @@ private func makeSignedHeartbeat(holderKey: Data, ownerKey: Data, signer: TestKe
     let secretId = UUID()
     try metaRepo.save(ShareMetadata(id: depositId, secretId: secretId, contactId: aliceContact.id))
     // Claims to be from alice but signed by a stranger.
-    relay.heartbeatsToReturn = [try makeSignedHeartbeat(holderKey: aliceKeys.publicKey, ownerKey: bob.verifyKey, signer: strangerKeys, secretIds: [secretId])]
+    relay.heartbeatsToReturn = [try makeSignedHeartbeat(holderKey: aliceKeys.publicKey, ownerKey: bob.verifyKey!, signer: strangerKeys, secretIds: [secretId])]
 
     try await svc.syncDistributed()
 
@@ -1082,14 +1082,14 @@ private func makeSignedHeartbeat(holderKey: Data, ownerKey: Data, signer: TestKe
 @Test func syncDistributedSetsAndClearsHeartbeatOptedOutAt() async throws {
     let relay = FakeShareRelay()
     let (svc, bob, _, contactRepo, _, _, _) = try makeService(relay: relay)
-    relay.heartbeatsToReturn = [try makeSignedHeartbeat(holderKey: aliceKeys.publicKey, ownerKey: bob.verifyKey, signer: aliceKeys, optedOut: true)]
+    relay.heartbeatsToReturn = [try makeSignedHeartbeat(holderKey: aliceKeys.publicKey, ownerKey: bob.verifyKey!, signer: aliceKeys, optedOut: true)]
 
     try await svc.syncDistributed()
 
     #expect(contactRepo.getById(aliceContact.id)?.heartbeatOptedOutAt != nil)
 
     // A subsequent non-opted-out heartbeat clears it again.
-    relay.heartbeatsToReturn = [try makeSignedHeartbeat(holderKey: aliceKeys.publicKey, ownerKey: bob.verifyKey, signer: aliceKeys, optedOut: false)]
+    relay.heartbeatsToReturn = [try makeSignedHeartbeat(holderKey: aliceKeys.publicKey, ownerKey: bob.verifyKey!, signer: aliceKeys, optedOut: false)]
 
     try await svc.syncDistributed()
 
@@ -1308,8 +1308,8 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
         verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date()
     )
     let (svc, bob, _, _, _, _, _) = try makeService(relay: relay, contacts: [aliceContact, charlieContact])
-    let oldVerifyKey = bob.verifyKey
-    let oldEncKey = bob.encKey
+    let oldVerifyKey = bob.verifyKey!
+    let oldEncKey = bob.encKey!
 
     let result = try await svc.regenerateIdentity()
 
@@ -1324,16 +1324,16 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
         #expect(!bob.verify(canon, signature: pushed.signature, publicKey: pushed.newVerifyKey))
     }
     // The new identity is now live.
-    #expect(bob.verifyKey != oldVerifyKey)
-    #expect(bob.encKey != oldEncKey)
+    #expect(bob.verifyKey! != oldVerifyKey)
+    #expect(bob.encKey! != oldEncKey)
 }
 
 @Test func regenerateIdentityDrainsThePendingInboxUnderTheOldIdentityBeforeRotating() async throws {
     let relay = FakeShareRelay()
     let (svc, bob, shareRepo, _, _, _, _) = try makeService(relay: relay)
-    let oldVerifyKey = bob.verifyKey
+    let oldVerifyKey = bob.verifyKey!
     let depositId = UUID()
-    let row = try makeSignedRow(id: depositId, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: aliceKeys)
+    let row = try makeSignedRow(id: depositId, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: aliceKeys)
     relay.pending = [row]
     relay.byId[depositId] = row
 
@@ -1401,7 +1401,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
 @Test func regenerateIdentityReportsADrainThatCouldNotReachEveryRelay() async throws {
     let relay = FakeShareRelay()
     let (svc, bob, _, _, _, _, _) = try makeService(relay: relay)
-    let oldVerifyKey = bob.verifyKey
+    let oldVerifyKey = bob.verifyKey!
     relay.unreachable = true
 
     let result = try await svc.regenerateIdentity()
@@ -1409,7 +1409,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     // Reported, not dropped — but the rotation still completes: an unreachable relay must not be
     // able to block someone rotating precisely because they think the old key is compromised.
     #expect(!result.drainSucceeded)
-    #expect(bob.verifyKey != oldVerifyKey)
+    #expect(bob.verifyKey! != oldVerifyKey)
 }
 
 @Test func regenerateIdentityReportsACompleteDrainWhenEveryRelayAnswers() async throws {
@@ -1558,7 +1558,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     let relay = FakeShareRelay()
     let (svc, bob, shareRepo, _, _, _, _) = try makeService(relay: relay)
     let id = UUID()
-    let row = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: aliceKeys, mimeType: MimeType("image/png"))
+    let row = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: aliceKeys, mimeType: MimeType("image/png"))
     relay.pending = [row]
     relay.byId = [id: row]
 
@@ -1574,7 +1574,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     let relay = FakeShareRelay()
     let (svc, bob, shareRepo, _, _, _, _) = try makeService(relay: relay)
     let id = UUID()
-    let signed = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: aliceKeys)
+    let signed = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: aliceKeys)
     // Re-sign without the mimeType so the row is internally consistent and only the guard rejects it.
     let canon = PayloadCanonical.forOpen(secretId: signed.secretId, transactionType: .deposit, recipientKey: signed.recipientKey, label: signed.label, secretCreatedAt: signed.secretCreatedAt, ciphertext: signed.ciphertext, k: signed.k, n: signed.n, mimeType: nil)
     let row = ShareRequest(
@@ -1610,7 +1610,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     let relay = FakeShareRelay()
     let (svc, bob, _, secretRepo, _, _) = try makeServiceForRecoveryTest(relay: relay)
     let secretId = UUID()
-    relay.pending = [try makeApprovedRecoveryMetadataRow(secretId: secretId, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: aliceKeys, mimeType: MimeType("image/png"))]
+    relay.pending = [try makeApprovedRecoveryMetadataRow(secretId: secretId, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: aliceKeys, mimeType: MimeType("image/png"))]
 
     try await svc.syncInbox()
 
@@ -1640,7 +1640,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     let relay = FakeShareRelay()
     let (svc, bob, shareRepo, _, _, _, _) = try makeService(relay: relay)
     let id = UUID()
-    let signed = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey, signer: aliceKeys)
+    let signed = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: aliceKeys)
     let tampered = ShareRequest(
         id: signed.id, secretId: signed.secretId, senderKey: signed.senderKey, recipientKey: signed.recipientKey,
         label: signed.label, secretCreatedAt: signed.secretCreatedAt, transactionType: .deposit, state: .pending,

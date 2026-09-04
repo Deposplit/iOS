@@ -129,6 +129,7 @@ final class DeposplitApiAdapter: ShareRelay {
     }
 
     private func executeRaw(_ method: String, path: String, bodyData: Data?) async throws -> Data {
+        guard let verifyKey = identity.verifyKey else { throw AuthError.notRegistered }
         let nonce = generateNonce()
         let canonical = buildCanonical(nonce: nonce, method: method, path: path, body: bodyData ?? Data())
         let sig = try identity.sign(Data(canonical.utf8))
@@ -137,7 +138,7 @@ final class DeposplitApiAdapter: ShareRelay {
         request.httpMethod = method
         request.timeoutInterval = 30
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue(identity.verifyKey.base64URLEncoded, forHTTPHeaderField: "X-Deposplit-Verify-Key")
+        request.setValue(verifyKey.base64URLEncoded, forHTTPHeaderField: "X-Deposplit-Verify-Key")
         request.setValue(nonce, forHTTPHeaderField: "X-Deposplit-Nonce")
         request.setValue(sig.base64URLEncoded, forHTTPHeaderField: "X-Deposplit-Signature")
         if let bodyData {

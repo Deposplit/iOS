@@ -14,8 +14,12 @@ public protocol IdentityStore {
     /// which every contact would auto-accept as proof of key continuity.
     func rotate(verifyKey: Data, signKey: Data, encKey: Data, decKey: Data) throws
     var pseudonym: String { get }
-    var verifyKey: Data { get }
-    var encKey: Data { get }
+    /// This device's own public keys, or nil when they are gone or cannot be read. Optional rather
+    /// than throwing, for the same reason as `previousDecKey()` below: absence is an ordinary state
+    /// on a restored device, not an exception. Contrast `signKey()`/`decKey()`, where a caller who
+    /// wants to sign has no fallback to fall back on.
+    var verifyKey: Data? { get }
+    var encKey: Data? { get }
     /// `signKey()` and `decKey()` must distinguish key material that is *absent or unusable* from
     /// key material that merely cannot be read at this moment — a locked device, a Keychain not yet
     /// available. The former is any error; the latter is specifically

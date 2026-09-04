@@ -23,9 +23,12 @@ private final class RestorableIdentityStore: IdentityStore {
     /// contents.
     var privateKeyFailure: Error?
 
+    /// Key storage that is locked hides the public keys as well, not only the private ones.
+    var publicKeysReadable = true
+
     var pseudonym: String { _pseudonym }
-    var verifyKey: Data { _verifyKey }
-    var encKey: Data { _encKey }
+    var verifyKey: Data? { publicKeysReadable ? _verifyKey : nil }
+    var encKey: Data? { publicKeysReadable ? _encKey : nil }
 
     func save(pseudonym: String, verifyKey: Data, signKey: Data, encKey: Data, decKey: Data) throws {
         self._pseudonym = pseudonym
@@ -110,4 +113,20 @@ private func registered() throws -> (IdentityService, RestorableIdentityStore) {
     let (svc, store) = try registered()
     store.privateKeyFailure = AuthError.identityStorageUnavailable(interactionNotAllowed)
     #expect(svc.integrity == .unreadable)
+}
+
+// Locked storage hides the public keys too, and they are optional — so the probe has to read the
+// private halves first. Reading the public ones first would call this device emptied and offer it a
+// replacement identity over a working one.
+@Test func lockedStorageIsUnreadableEvenWhenThePublicKeysAreHiddenAsWell() throws {
+    let (svc, store) = try registered()
+    store.privateKeyFailure = AuthError.identityStorageUnavailable(interactionNotAllowed)
+    store.publicKeysReadable = false
+    #expect(svc.integrity == .unreadable)
+}
+
+@Test func publicKeysThatAreSimplyGoneAreKeysLost() throws {
+    let (svc, store) = try registered()
+    store.publicKeysReadable = false
+    #expect(svc.integrity == .keysLost)
 }

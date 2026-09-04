@@ -47,20 +47,19 @@ final class KeychainIdentityStore: IdentityStore {
         try? loadFromKeychain(account: Keys.previousDecKeyAccount)
     }
 
+    /// Keeps an empty-string fallback where the keys below are optional, and the difference is
+    /// deliberate: an absent display name is cosmetic, and the keys-lost screen pre-fills from this
+    /// on exactly the device whose keys are already gone.
     var pseudonym: String {
         UserDefaults.standard.string(forKey: Keys.pseudonymKey) ?? ""
     }
 
-    /// Falls back to empty rather than throwing, because the port declares these non-throwing.
-    /// What keeps that survivable is `IdentityIntegrity`: the launch gate refuses to open Home on a
-    /// device whose keys are gone, and `QrDisplayViewModel` refuses to encode a code, so nothing
-    /// hands an empty key to a contact.
-    var verifyKey: Data {
-        (try? loadFromKeychain(account: Keys.verifyKeyAccount)) ?? Data()
+    var verifyKey: Data? {
+        try? loadFromKeychain(account: Keys.verifyKeyAccount)
     }
 
-    var encKey: Data {
-        (try? loadFromKeychain(account: Keys.encKeyAccount)) ?? Data()
+    var encKey: Data? {
+        try? loadFromKeychain(account: Keys.encKeyAccount)
     }
 
     func signKey() throws -> Data {

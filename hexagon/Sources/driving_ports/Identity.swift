@@ -10,10 +10,13 @@ public protocol Identity {
     var integrity: IdentityIntegrity { get }
     func register(pseudonym: String) throws
     var pseudonym: String { get }
-    /// Ed25519 public key — 32 raw bytes
-    var verifyKey: Data { get }
-    /// X25519 public key — 32 raw bytes
-    var encKey: Data { get }
+    /// Ed25519 public key — 32 raw bytes, or nil when this device's keys are gone or cannot be
+    /// read. An ordinary state on a phone restored from a backup, whose files came across without
+    /// the keys, so optional rather than throwing — the same reasoning as `previousDecKey()`.
+    /// Callers wanting the fuller answer, gone versus merely locked, ask `integrity`.
+    var verifyKey: Data? { get }
+    /// X25519 public key — 32 raw bytes, or nil. See `verifyKey`.
+    var encKey: Data? { get }
     /// Signs `message` with the Ed25519 private key. Returns the 64-byte signature.
     func sign(_ message: Data) throws -> Data
 
