@@ -21,3 +21,27 @@ jobs:
     - name: Test with swift
       run: swift test
       working-directory: hexagon
+    - name: Build the app target
+      # Runs even when the tests fail, so one push reports both. Excludes cancellation, which
+      # this workflow does on purpose via cancel-in-progress.
+      #
+      # `swift test` covers hexagon/ only. Without this step nothing under Deposplit/ — the
+      # Keychain store, the API adapter, every view — is built by anything but the author's own
+      # Xcode, so a change written on a machine with no Swift toolchain reaches main having
+      # never been compiled at all.
+      #
+      # Simulator rather than device, which is where this differs from the command in
+      # CLAUDE.md: the target uses automatic signing with no DEVELOPMENT_TEAM, so a device
+      # build asks for a team CI has no way to supply. A simulator build signs nothing and
+      # compiles the same Swift, which is the whole question being asked here.
+      #
+      # Build rather than test: there is no app-target test suite, and `xcodebuild test` would
+      # have to sign an xctest bundle.
+      #
+      # xcodebuild -version first, so a toolchain too old for the iOS 26.4 deployment target
+      # explains itself in the log instead of surfacing as a puzzling SDK error.
+      if: success() || failure()
+      run: |
+        xcodebuild -version
+        xcodebuild build -project Deposplit.xcodeproj -scheme Deposplit \
+          -destination 'generic/platform=iOS Simulator'

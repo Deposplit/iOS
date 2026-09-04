@@ -127,12 +127,12 @@ not a development dependency.
 ## Build and test
 
 ```bash
-# from hexagon/ — no simulator needed, this is what CI runs
+# from hexagon/ — no simulator needed; CI runs this
 swift build
 swift test                                  # 146 tests
 swift test --filter ShareServiceTests
 
-# from the repo root — the app target
+# from the repo root — the app target; CI builds it too, for the simulator (see below)
 xcodebuild build -project Deposplit.xcodeproj -scheme Deposplit \
   -destination 'generic/platform=iOS'
 
@@ -146,6 +146,18 @@ app-target test directory**; do not go looking for one.
 > `xcodebuild test` fails on the development machine with a code-signing error on an
 > unsigned `DeposplitTests.xctest` dylib. This is a machine-level issue unrelated to app
 > code: `xcodebuild build` passes clean, and the domain is covered by the hexagon suite.
+> CI skips the test step for the same reason — signing an xctest bundle needs a provisioning
+> profile it does not have, and there is no app-target suite to run.
+
+**CI builds the app target as well as the hexagon.** That was not true until recently, and the
+gap was easy to miss: `swift test` covers `hexagon/` only, so everything under `Deposplit/` —
+the Keychain store, the API adapter, every view — could reach `main` having been compiled by
+nothing but the author's own Xcode. Written from Windows, where there is no Swift toolchain at
+all, it would have been compiled by nothing whatsoever.
+
+CI targets `generic/platform=iOS Simulator` where the command above targets the device. The
+target uses automatic signing with no `DEVELOPMENT_TEAM`, so a device build asks for a team CI
+cannot supply, while a simulator build signs nothing and compiles the same Swift.
 
 > **On Windows there may be no Swift toolchain at all.** Check with `Get-Command swift`
 > before assuming iOS changes can be verified locally — a previous note claiming Swift was
