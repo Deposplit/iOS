@@ -5,6 +5,9 @@ DerivedData/
 *.xccheckout
 *.moved-aside
 *.xcscmblueprint
+# Xcode recreates this empty whenever the scheme is edited; it has never held
+# a shared setting worth tracking
+Deposplit.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
 
 # macOS
 .DS_Store
