@@ -120,6 +120,14 @@ unlock can be bought for real in the Simulator, and Debug → StoreKit → Manag
 deletes the transaction again to get back to the locked state. Local testing needs no In-App
 Purchase entitlement either.
 
+> **The scheme's `StoreKitConfigurationFileReference` path resolves relative to
+> `Deposplit.xcodeproj/xcshareddata/`**, not to the `xcschemes/` folder the scheme file sits
+> in — so a `Deposplit.storekit` beside the project is `../../`, and `../../../` lands above
+> the repository. Getting it wrong is silent: `xcodebuild build` never reads the launch
+> action, so the local build and CI both stay green while the Simulator shows a paywall with
+> no price and no Buy button. Set it through Edit Scheme → Run → Options and Xcode writes the
+> path itself.
+
 The App Store **Sandbox** — a sandbox Apple ID against Apple's servers — is a different
 thing, and does need a device and an App Store Connect record. That is a pre-ship rehearsal,
 not a development dependency.
