@@ -194,6 +194,16 @@
         }
       }
     },
+    "At least two contacts are needed first — a secret is split among at least two people" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuerst braucht es mindestens zwei Kontakte — ein Geheimnis wird unter mindestens zwei Personen aufgeteilt"
+          }
+        }
+      }
+    },
     "Authenticate to reconstruct your secret" : {
       "localizations" : {
         "de" : {
@@ -1096,16 +1106,6 @@
         }
       }
     },
-    "No contacts added yet." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Noch keine Kontakte hinzugefügt."
-          }
-        }
-      }
-    },
     "No distributed shares" : {
       "localizations" : {
         "de" : {
@@ -1152,6 +1152,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kein gültiger Deposplit-QR-Code."
+          }
+        }
+      }
+    },
+    "Not enough contacts" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zu wenige Kontakte"
           }
         }
       }
