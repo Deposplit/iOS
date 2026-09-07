@@ -1070,16 +1070,6 @@
         }
       }
     },
-    "Naming a contact's relay by hand is part of Premium. A relay carried in a scanned QR code is always free." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Das Relay eines Kontakts von Hand einzutragen gehört zu Premium. Ein Relay aus einem gescannten QR-Code ist immer kostenlos."
-          }
-        }
-      }
-    },
     "Need %lld approved retrieval(s) to reconstruct — %lld so far." : {
       "localizations" : {
         "de" : {
@@ -1328,12 +1318,12 @@
         }
       }
     },
-    "Point this device, or an individual contact, at a relay you run yourself. Accepting shares from someone else's relay stays free." : {
+    "Point this device at a relay you run yourself. Reaching someone else's relay is free either way — scanned from their code or typed in by hand." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Richte dieses Gerät oder einzelne Kontakte auf ein Relay aus, das du selbst betreibst. Teile über das Relay anderer anzunehmen bleibt kostenlos."
+            "value" : "Richte dieses Gerät auf ein Relay aus, das du selbst betreibst. Das Relay anderer zu erreichen ist ohnehin kostenlos — gescannt oder von Hand eingetragen."
           }
         }
       }

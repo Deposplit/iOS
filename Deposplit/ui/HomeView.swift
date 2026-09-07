@@ -128,7 +128,7 @@ struct HomeView: View {
             }
         }
         .sheet(isPresented: $showContacts, onDismiss: { loadContacts() }) {
-            ContactsView(contactManagement: contactManagement, shareManagement: shareManagement, purchaseStore: purchaseStore)
+            ContactsView(contactManagement: contactManagement, shareManagement: shareManagement)
         }
         .sheet(isPresented: $showQrDisplay) {
             QrDisplayView(auth: auth, relaySettings: relaySettings)

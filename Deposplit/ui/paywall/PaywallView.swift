@@ -18,7 +18,7 @@ struct PaywallView: View {
             }
 
             Section("Bring your own relay") {
-                Text("Point this device, or an individual contact, at a relay you run yourself. Accepting shares from someone else's relay stays free.")
+                Text("Point this device at a relay you run yourself. Reaching someone else's relay is free either way — scanned from their code or typed in by hand.")
             }
 
             Section {
