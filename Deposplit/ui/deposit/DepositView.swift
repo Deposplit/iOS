@@ -66,7 +66,9 @@ struct DepositFormContent<LeadingToolbar: ToolbarContent>: View {
                         TextField("e.g. BitLocker recovery key", text: $viewModel.label)
                     }
 
-                    Section("Secret") {
+                    // The header doubles as the editable field's label, so it says what to do with
+                    // it; above picked bytes there is nothing to type into and it just names them.
+                    Section(viewModel.isOpaquePayload ? "Secret" : "Enter secret text or …") {
                         if viewModel.isOpaquePayload {
                             // Bytes rather than editable text — a picked image, or something a repair
                             // carried back. Either way it is split exactly as it stands: re-encoding it
@@ -99,13 +101,18 @@ struct DepositFormContent<LeadingToolbar: ToolbarContent>: View {
                             TextEditor(text: $viewModel.secretText)
                                 .frame(minHeight: 80)
                                 .font(.system(.body, design: .monospaced))
-                            // Photos and Files are separate sources on iOS — Files cannot see the photo
-                            // library — so covering both takes both pickers.
+                            // Two sources, one kind of thing. Both are filtered to PNG and JPEG, so
+                            // neither offers an arbitrary file: Photos and Files are separate on iOS —
+                            // Files cannot see the photo library — so covering both takes both pickers.
+                            // Naming each one is what keeps the second from reading as "any file".
+                            Text("… choose secret photo")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                             PhotosPicker(selection: $photoItem, matching: .images, photoLibrary: .shared()) {
-                                Label("Choose Photo…", systemImage: "photo")
+                                Label("from photo library …", systemImage: "photo")
                             }
                             .font(.caption)
-                            Button("Choose File…", systemImage: "folder") { showFileImporter = true }
+                            Button("from downloads …", systemImage: "folder") { showFileImporter = true }
                                 .font(.caption)
                         }
                         if let pickError = viewModel.pickError {

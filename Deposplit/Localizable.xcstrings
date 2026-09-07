@@ -304,22 +304,12 @@
         }
       }
     },
-    "Choose File…" : {
+    "… choose secret photo" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Datei auswählen…"
-          }
-        }
-      }
-    },
-    "Choose Photo…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Foto auswählen…"
+            "value" : "… geheimes Foto auswählen"
           }
         }
       }
@@ -674,6 +664,16 @@
         }
       }
     },
+    "Enter secret text or …" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geheimen Text eingeben oder …"
+          }
+        }
+      }
+    },
     "Error" : {
       "localizations" : {
         "de" : {
@@ -756,6 +756,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kostenlos sind %lld Geheimnisse gleichzeitig. Ein verworfenes gibt seinen Platz sofort frei."
+          }
+        }
+      }
+    },
+    "from downloads …" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aus den Downloads …"
+          }
+        }
+      }
+    },
+    "from photo library …" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aus der Fotomediathek …"
           }
         }
       }
