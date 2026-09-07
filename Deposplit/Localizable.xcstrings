@@ -7,7 +7,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ hat dich noch nicht erneut verifiziert"
+            "value" : "%@ hat Sie noch nicht erneut verifiziert"
           }
         }
       }
@@ -73,7 +73,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld Kontakte haben noch deinen alten Schlüssel — triff sie und lass sie deinen Code erneut scannen"
+            "value" : "%lld Kontakte haben noch Ihren alten Schlüssel — treffen Sie sie und lassen Sie sie Ihren Code erneut scannen"
           }
         }
       }
@@ -83,7 +83,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld von %lld kostenlosen Geheimnissen sind belegt. Verwirf eines oder schalte Premium frei."
+            "value" : "%lld von %lld kostenlosen Geheimnissen sind belegt. Verwerfen Sie eines oder schalten Sie Premium frei."
           }
         }
       }
@@ -109,7 +109,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "1 Kontakt hat noch deinen alten Schlüssel — triff die Person und lass sie deinen Code erneut scannen"
+            "value" : "1 Kontakt hat noch Ihren alten Schlüssel — treffen Sie die Person und lassen Sie sie Ihren Code erneut scannen"
           }
         }
       }
@@ -139,7 +139,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Füge Kontakte hinzu, um Geheimnisse zu teilen."
+            "value" : "Fügen Sie Kontakte hinzu, um Geheimnisse zu teilen."
           }
         }
       }
@@ -169,7 +169,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bist du sicher?"
+            "value" : "Sind Sie sicher?"
           }
         }
       }
@@ -209,7 +209,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Authentifiziere dich, um dein Geheimnis zu rekonstruieren"
+            "value" : "Authentifizieren Sie sich, um Ihr Geheimnis zu rekonstruieren"
           }
         }
       }
@@ -239,7 +239,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dein eigenes Relay"
+            "value" : "Ihr eigenes Relais"
           }
         }
       }
@@ -379,7 +379,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Erzeuge neue Schlüssel und triff dann deine Kontakte, damit sie deinen neuen Code scannen — sowohl die Personen, die Anteile für dich halten, als auch die, deren Anteile du hältst. Bis dahin können sie dich nicht erreichen."
+            "value" : "Erzeugen Sie neue Schlüssel und treffen Sie dann Ihre Kontakte, damit sie Ihren neuen Code scannen — sowohl die Personen, die Anteile für Sie halten, als auch die, deren Anteile Sie halten. Bis dahin können sie Sie nicht erreichen."
           }
         }
       }
@@ -389,7 +389,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Standard-Relay"
+            "value" : "Standard-Relais"
           }
         }
       }
@@ -479,7 +479,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Daten von Deposplit auf diesem Telefon — deine Kontakte, die Angaben zu deinen Geheimnissen und die Anteile, die du für andere verwahrst — sind in der Gerätesicherung enthalten und überstehen so einen Telefonwechsel. Deine privaten Schlüssel nicht: Sie können dieses Telefon nicht verlassen."
+            "value" : "Die Daten von Deposplit auf diesem Telefon — Ihre Kontakte, die Angaben zu Ihren Geheimnissen und die Anteile, die Sie für andere verwahren — sind in der Gerätesicherung enthalten und überstehen so einen Telefonwechsel. Ihre privaten Schlüssel nicht: Diese können das Telefon nicht verlassen."
           }
         }
       }
@@ -589,7 +589,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Verteilung an %lld Personen ist viel Verwaltungsaufwand — du musst Schlüssel austauschen, jede Abholung genehmigen und den Überblick über alle behalten."
+            "value" : "Die Verteilung an %lld Personen ist viel Verwaltungsaufwand — Sie müssen Schlüssel austauschen, jede Abholung genehmigen und den Überblick über alle behalten."
           }
         }
       }
@@ -649,7 +649,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Richte in den Geräteeinstellungen eine biometrische Methode (Face ID oder Touch ID) ein, um das Geheimnis zu rekonstruieren."
+            "value" : "Richten Sie in den Geräteeinstellungen eine biometrische Methode (Face ID oder Touch ID) ein, um das Geheimnis zu rekonstruieren."
           }
         }
       }
@@ -795,7 +795,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Erzeugt ein brandneues Schlüsselpaar für dieses Gerät und benachrichtigt automatisch alle deine Kontakte. Anfragen, die gerade noch bei jemand anderem ausstehen, können danach unerreichbar werden — lass diese am besten vorher abschliessen. Dies kann nicht rückgängig gemacht werden."
+            "value" : "Erzeugt ein brandneues Schlüsselpaar für dieses Gerät und benachrichtigt automatisch alle Ihre Kontakte. Anfragen, die gerade noch bei jemand anderem ausstehen, können danach unerreichbar werden — lassen Sie diese am besten vorher abschliessen. Dies kann nicht rückgängig gemacht werden."
           }
         }
       }
@@ -845,7 +845,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wie sicher bist du, dass es wirklich diese Person ist? Zähle deine unabhängigen Bestätigungen: ein vertrauenswürdiger Kanal und/oder ein Live-Nachweis, dass du sie gesehen hast."
+            "value" : "Wie sicher sind Sie, dass es wirklich diese Person ist? Zählen Sie Ihre unabhängigen Bestätigungen: ein vertrauenswürdiger Kanal und/oder ein Live-Nachweis, dass Sie sie gesehen haben."
           }
         }
       }
@@ -865,7 +865,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die iCloud-Sicherung ist verschlüsselt, aber nur mit aktiviertem erweitertem Datenschutz für iCloud-Daten Ende-zu-Ende. Du kannst Deposplit in den Einstellungen unter „iCloud-Backup“ ausschließen. Dann startet ein neues iPhone leer — die Menschen, deren Anteile du verwahrst, verlieren diese Redundanz, und dein neues iPhone weiß nichts davon, um es ihnen zu sagen."
+            "value" : "Die iCloud-Sicherung ist verschlüsselt, aber nur mit aktiviertem erweitertem Datenschutz für iCloud-Daten Ende-zu-Ende. Sie können Deposplit in den Einstellungen unter „iCloud-Backup“ ausschließen. Dann startet ein neues iPhone leer — die Menschen, deren Anteile Sie verwahren, verlieren diese Redundanz, und Ihr neues iPhone weiß nichts davon, um es ihnen zu sagen."
           }
         }
       }
@@ -975,7 +975,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lass Kontakte diesen Code scannen, um dich hinzuzufügen."
+            "value" : "Lassen Sie Kontakte diesen Code scannen, um Sie hinzuzufügen."
           }
         }
       }
@@ -1201,7 +1201,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nicht freigeschaltet: %lld Geheimnisse gleichzeitig und deposplit.com als Relay."
+            "value" : "Nicht freigeschaltet: %lld Geheimnisse gleichzeitig und deposplit.com als Relais."
           }
         }
       }
@@ -1211,7 +1211,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sonst ist nichts verloren. Deine aufgeteilten Geheimnisse sind weiterhin wiederherstellbar, und die Anteile, die du für andere verwahrst, sind noch da."
+            "value" : "Sonst ist nichts verloren. Ihre aufgeteilten Geheimnisse sind weiterhin wiederherstellbar, und die Anteile, die Sie für andere verwahren, sind noch da."
           }
         }
       }
@@ -1247,7 +1247,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nur %1$lld von %2$lld Inhabern müssen zusammenarbeiten, um dieses Geheimnis zu rekonstruieren — eine kleine Gruppe könnte dies ohne dein Wissen tun."
+            "value" : "Nur %1$lld von %2$lld Inhabern müssen zusammenarbeiten, um dieses Geheimnis zu rekonstruieren — eine kleine Gruppe könnte dies ohne Ihr Wissen tun."
           }
         },
         "en" : {
@@ -1263,7 +1263,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tue dies nur, wenn du ausserhalb der App einen Grund hast anzunehmen, dass der Schlüssel von %@ gestohlen wurde. Deposplit wird künftig jede Schlüsseländerung, die Kontinuität von diesem Schlüssel beansprucht, nicht mehr automatisch akzeptieren — du musst die Person frisch verifizieren, persönlich oder über einen vertrauenswürdigen Kanal, um die Verbindung wiederherzustellen."
+            "value" : "Tun Sie dies nur, wenn Sie ausserhalb der App einen Grund haben anzunehmen, dass der Schlüssel von %@ gestohlen wurde. Deposplit wird künftig jede Schlüsseländerung, die Kontinuität von diesem Schlüssel beansprucht, nicht mehr automatisch akzeptieren — Sie müssen die Person frisch verifizieren, persönlich oder über einen vertrauenswürdigen Kanal, um die Verbindung wiederherzustellen."
           }
         }
       }
@@ -1323,7 +1323,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Richte dieses Gerät auf ein Relay aus, das du selbst betreibst. Das Relay anderer zu erreichen ist ohnehin kostenlos — gescannt oder von Hand eingetragen."
+            "value" : "Richten Sie dieses Gerät auf ein Relais aus, das Sie selbst betreiben. Das Relais anderer zu erreichen ist ohnehin kostenlos — gescannt oder von Hand eingetragen."
           }
         }
       }
@@ -1479,7 +1479,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deine Identität neu erzeugen?"
+            "value" : "Ihre Identität neu erzeugen?"
           }
         }
       }
@@ -1489,7 +1489,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Relay nicht erreichbar"
+            "value" : "Relais nicht erreichbar"
           }
         }
       }
@@ -1499,7 +1499,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Relay-Override (optional, BYOR)"
+            "value" : "Relais-Override (optional, BYOR)"
           }
         }
       }
@@ -1619,7 +1619,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fordert die Löschung bei allen %lld Inhabern an. Jeder muss zustimmen — es wird erst aus der Liste deines Geräts entfernt, sobald jeder Inhaber bestätigt hat (oder du es erzwungen vergisst)."
+            "value" : "Fordert die Löschung bei allen %lld Inhabern an. Jeder muss zustimmen — es wird erst aus der Liste Ihres Geräts entfernt, sobald jeder Inhaber bestätigt hat (oder Sie es erzwungen vergessen)."
           }
         }
       }
@@ -1779,7 +1779,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Einige Relays waren nicht erreichbar, daher wurden noch offene Übertragungen nicht vorab eingesammelt — sie kommen bei einer späteren Synchronisierung an."
+            "value" : "Einige Relais waren nicht erreichbar, daher wurden noch offene Übertragungen nicht vorab eingesammelt — sie kommen bei einer späteren Synchronisierung an."
           }
         }
       }
@@ -1825,7 +1825,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dies erzeugt ein neues Schlüsselpaar und benachrichtigt %lld Kontakt(e). Ein bereits an dich unterwegs befindlicher Anteil kann danach weiterhin abgeholt werden; ein jetzt nicht erreichbarer Kontakt erfährt nichts vom neuen Schlüssel."
+            "value" : "Dies erzeugt ein neues Schlüsselpaar und benachrichtigt %lld Kontakt(e). Ein bereits an Sie unterwegs befindlicher Anteil kann danach weiterhin abgeholt werden; ein jetzt nicht erreichbarer Kontakt erfährt nichts vom neuen Schlüssel."
           }
         }
       }
@@ -1845,7 +1845,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieses Telefon hat alles wiederhergestellt außer deinen Schlüsseln. Dein altes Telefon hat sie so verwahrt, dass sie sich nicht kopieren lassen — dieses Gerät kann daher weder als du signieren noch entschlüsseln."
+            "value" : "Dieses Telefon hat alles wiederhergestellt außer Ihren Schlüsseln. Ihr altes Telefon hat sie so verwahrt, dass sie sich nicht kopieren lassen — dieses Gerät kann daher weder als Sie signieren noch entschlüsseln."
           }
         }
       }
@@ -1855,7 +1855,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieses Pseudonym wird auf deinem Gerät gespeichert und mit Kontakten geteilt, wenn sie deinen QR-Code scannen."
+            "value" : "Dieses Pseudonym wird auf Ihrem Gerät gespeichert und mit Kontakten geteilt, wenn sie Ihren QR-Code scannen."
           }
         }
       }
@@ -1875,7 +1875,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieses Geheimnis ist kein Text und kann hier nicht angezeigt werden. Exportiere es, um es woanders zu öffnen."
+            "value" : "Dieses Geheimnis ist kein Text und kann hier nicht angezeigt werden. Exportieren Sie es, um es woanders zu öffnen."
           }
         }
       }
@@ -1945,7 +1945,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wird für Kontakte ohne BYOR-Override verwendet und in deinem eigenen QR-Code angegeben."
+            "value" : "Wird für Kontakte ohne BYOR-Override verwendet und in Ihrem eigenen QR-Code angegeben."
           }
         }
       }
@@ -1955,7 +1955,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wird für Kontakte ohne eigenes BYOR-Relay verwendet und in deinem QR-Code mitgeteilt. Ein eigenes Standard-Relay zu wählen gehört zu Premium."
+            "value" : "Wird für Kontakte ohne eigenes BYOR-Relais verwendet und in Ihrem QR-Code mitgeteilt. Ein eigenes Standard-Relais zu wählen gehört zu Premium."
           }
         }
       }
@@ -2005,7 +2005,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ob Premium freigeschaltet ist, entscheidet dieses Gerät. Das Relay erfährt davon nichts."
+            "value" : "Ob Premium freigeschaltet ist, entscheidet dieses Gerät. Das Relais erfährt davon nichts."
           }
         }
       }
@@ -2025,7 +2025,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deine Schlüssel sind nicht mitgekommen"
+            "value" : "Ihre Schlüssel sind nicht mitgekommen"
           }
         }
       }
@@ -2035,7 +2035,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dein Pseudonym"
+            "value" : "Ihr Pseudonym"
           }
         }
       }
