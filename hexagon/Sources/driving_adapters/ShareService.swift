@@ -71,12 +71,19 @@ public final class ShareService: ShareManagement {
     /// Every distinct relay referenced across the contact list, plus the default — used by
     /// fan-out methods (syncInbox, listPendingRequests, syncDistributed, listSentRequests) since
     /// a device has no other way to know in advance which relay a given contact's pending item
-    /// lives on. Deduped by URL, not per-contact; each relay call is independently soft-failed so
-    /// one unreachable BYOR relay doesn't blank out results from the default relay or others.
+    /// lives on. Each relay call is independently soft-failed so one unreachable BYOR relay
+    /// doesn't blank out results from the default relay or others.
+    ///
+    /// Resolve first, then dedupe: `nil` and a contact pinned to this device's own default relay
+    /// are two names for one relay, and only the resolver knows that. Deduping the overrides
+    /// instead leaves the same relay in the list twice, so every row is seen twice — which
+    /// reconstruct cannot survive, since it then combines each share twice and fails on duplicate
+    /// x-coordinates.
     private func allRelays() -> [any ShareRelay] {
-        var urls = Set(contactRepository.getAll().map { $0.relayBaseUrl })
-        urls.insert(nil)
-        return urls.map { relayResolver.resolve($0) }
+        var seen = Set<ObjectIdentifier>()
+        return (contactRepository.getAll().map { $0.relayBaseUrl } + [nil])
+            .map { relayResolver.resolve($0) }
+            .filter { seen.insert(ObjectIdentifier($0)).inserted }
     }
 
     private func relay(for contact: Contact) -> any ShareRelay {

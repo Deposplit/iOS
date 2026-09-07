@@ -457,10 +457,59 @@ private final class TwoRelayResolver: ShareRelayResolver {
         self.byorRelay = byorRelay
     }
 
+    // Memoized per resolved URL, as the port requires and as the real resolver does: naming this
+    // device's own default relay explicitly hands back the very instance `nil` hands back, or the
+    // caller's dedupe cannot see the two as one.
     func resolve(_ relayBaseUrl: String?) -> any ShareRelay {
         guard let relayBaseUrl else { return defaultRelay }
         return relayBaseUrl == byorUrl ? byorRelay : defaultRelay
     }
+}
+
+/// A contact may pin the very relay this device already uses by default — the common case, since
+/// a QR code advertises the sender's relay verbatim and two people usually share one. The override
+/// and `nil` then name one relay, and it must be polled once: polling it twice returns every row
+/// twice, which shows up as duplicated requests on screen and, in reconstruct, as the same share
+/// counted twice.
+@Test func aContactPinnedToThisDevicesOwnDefaultRelayIsPolledOnceNotTwice() async throws {
+    let defaultUrl = "http://default.example:9000"
+    let pinnedToDefault = Contact(
+        id: UUID(), pseudonym: "alice", verifyKey: aliceKeys.publicKey,
+        encKey: Data(repeating: 0x01, count: 32),
+        verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date(),
+        relayBaseUrl: defaultUrl
+    )
+    let defaultRelay = FakeShareRelay()
+    let byorRelay = FakeShareRelay()
+    let bobIdentity = IdentityService(identityStore: InMemoryIdentityStoreForShareServiceTest())
+    try bobIdentity.register(pseudonym: "bob")
+    let contactRepo = FakeContactRepository([pinnedToDefault])
+    let purchases = FakePurchaseRepository()
+    let svc = ShareService(
+        relayResolver: TwoRelayResolver(default: defaultRelay, byorUrl: "http://byor.example:9000", byor: byorRelay),
+        encryption: NoOpShareEncryption(),
+        shareRepository: FakeShareRepository(),
+        shareMetadataRepository: FakeShareMetadataRepository(),
+        secretRepository: FakeSecretRepository(),
+        contactRepository: contactRepo,
+        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
+        keyConflictRepository: FakeKeyConflictRepository(),
+        retainedDepositRepository: FakeRetainedDepositRepository(),
+        identity: bobIdentity,
+        purchases: purchases
+    )
+
+    let id = UUID()
+    let askedOfBob = try makeSignedRow(
+        id: id, senderKey: aliceKeys.publicKey, recipientKey: bobIdentity.verifyKey!, signer: aliceKeys,
+        transactionType: .retrieval, ciphertext: nil
+    )
+    defaultRelay.pending = [askedOfBob]
+
+    let pending = try await svc.listPendingRequests()
+    let sent = try await svc.listSentRequests()
+    #expect(pending.map(\.id) == [id])
+    #expect(sent.map(\.id) == [id])
 }
 
 @Test func syncInboxPollsBothTheDefaultRelayAndAContactsBYORRelayMergingResults() async throws {
