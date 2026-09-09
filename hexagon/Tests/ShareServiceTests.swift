@@ -512,6 +512,64 @@ private final class TwoRelayResolver: ShareRelayResolver {
     #expect(sent.map(\.id) == [id])
 }
 
+/// One relay under two names, which is what the world actually hands you: a contact's QR code
+/// advertises the relay as `http://127.0.0.1:9000` while this device spells its own default
+/// `http://localhost:9000`. A resolver keys on the string and nothing else, so it hands back a
+/// separate instance per name — and both instances answer for the same relay, with the same rows.
+private final class AliasingRelayResolver: ShareRelayResolver {
+    private let defaultUrl: String
+    private let rows: [ShareRequest]
+    private var instances: [String: FakeShareRelay] = [:]
+
+    init(defaultUrl: String, rows: [ShareRequest]) {
+        self.defaultUrl = defaultUrl
+        self.rows = rows
+    }
+
+    func resolve(_ relayBaseUrl: String?) -> any ShareRelay {
+        let url = relayBaseUrl ?? defaultUrl
+        if let existing = instances[url] { return existing }
+        let relay = FakeShareRelay()
+        relay.pending = rows
+        instances[url] = relay
+        return relay
+    }
+}
+
+/// `allRelays` can only tell two relays apart by name, and one relay answers to several. When it
+/// does, the fan-out asks the same relay twice and gets every row back twice — so the rows have to
+/// settle it, on the id the relay minted for each.
+///
+/// Reconstruct is where this stops being cosmetic: two copies of one share are two identical
+/// x-coordinates, which the combiner refuses outright, so the secret cannot be recovered at all.
+@Test func oneRelayUnderTwoNamesStillCollectsEachShareOnce() async throws {
+    let holders = (0..<2).map { makeHolderFixture(pseudonym: "holder\($0)") }
+    let pinned = [
+        Contact(id: holders[0].contact.id, pseudonym: "holder0", verifyKey: holders[0].contact.verifyKey,
+                encKey: holders[0].contact.encKey, verificationLevel: .veryHigh, verifiedAt: nil,
+                addedAt: Date(), relayBaseUrl: "http://127.0.0.1:9000"),
+        Contact(id: holders[1].contact.id, pseudonym: "holder1", verifyKey: holders[1].contact.verifyKey,
+                encKey: holders[1].contact.encKey, verificationLevel: .veryHigh, verifiedAt: nil,
+                addedAt: Date(), relayBaseUrl: "http://localhost:9000"),
+    ]
+    let secretBytes: [UInt8] = Array("one relay, two names".utf8)
+    let shares = try split(secret: secretBytes, shares: 2, threshold: 2)
+    let secretId = UUID()
+    let rows = try zip(holders, shares).map { try makeApprovedRetrievalRow(secretId: secretId, holder: $0, ciphertext: Data($1)) }
+
+    let (svc, _, _, secretRepo, _, _) = try makeServiceForRecoveryTest(
+        relay: FakeShareRelay(), contacts: pinned,
+        resolver: AliasingRelayResolver(defaultUrl: "http://localhost:9000", rows: rows)
+    )
+    try secretRepo.save(Secret(id: secretId, label: "s", mimeType: .default, k: 2, n: 2, secretCreatedAt: Date(), state: .active))
+
+    let result = try await svc.reconstruct(secretId: secretId)
+
+    #expect(Array(result.secret) == secretBytes)
+    #expect(try await svc.listSentRequests().map(\.id).sorted(by: { $0.uuidString < $1.uuidString })
+        == rows.map(\.id).sorted(by: { $0.uuidString < $1.uuidString }))
+}
+
 @Test func syncInboxPollsBothTheDefaultRelayAndAContactsBYORRelayMergingResults() async throws {
     let byorUrl = "http://byor.example:9000"
     let charlieKeys = TestKeyPair()
@@ -602,7 +660,9 @@ private final class TwoRelayResolver: ShareRelayResolver {
 
 // MARK: - Identity recovery
 
-private func makeServiceForRecoveryTest(relay: FakeShareRelay, contacts: [Contact] = [aliceContact]) throws -> (
+private func makeServiceForRecoveryTest(
+    relay: FakeShareRelay, contacts: [Contact] = [aliceContact], resolver: (any ShareRelayResolver)? = nil
+) throws -> (
     svc: ShareService, bob: IdentityService, shareRepo: FakeShareRepository,
     secretRepo: FakeSecretRepository, metaRepo: FakeShareMetadataRepository, contactRepo: FakeContactRepository
 ) {
@@ -614,7 +674,7 @@ private func makeServiceForRecoveryTest(relay: FakeShareRelay, contacts: [Contac
     let contactRepo = FakeContactRepository(contacts)
     let purchases = FakePurchaseRepository()
     let svc = ShareService(
-        relayResolver: FixedShareRelayResolver(relay),
+        relayResolver: resolver ?? FixedShareRelayResolver(relay),
         encryption: NoOpShareEncryption(),
         shareRepository: shareRepo,
         shareMetadataRepository: metaRepo,

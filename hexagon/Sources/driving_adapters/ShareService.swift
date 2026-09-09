@@ -90,6 +90,30 @@ public final class ShareService: ShareManagement {
         relayResolver.resolve(contact.relayBaseUrl)
     }
 
+    /// Every row this device is a party to, from every relay it knows, listed once — each paired
+    /// with the relay it was found on, so a caller can act on it through that same one.
+    ///
+    /// Deduplicated by request id, because `allRelays()` can only deduplicate by *name* and one
+    /// relay answers to several: a contact pinned to `http://127.0.0.1:9000` while this device's
+    /// own default says `http://localhost:9000` is one host under two names, and nothing short of
+    /// asking the relay could tell. The rows settle it instead — a request id is minted by the
+    /// relay that holds the row, so two rows sharing one are one row seen twice.
+    ///
+    /// This is not only about a list showing an entry twice. Reconstruct would collect each
+    /// approved share twice, decrypt both copies, and hand the combiner duplicate x-coordinates,
+    /// which it rightly refuses.
+    private func rowsAcrossRelays(role: Role, transactionType: ShareTransactionType? = nil, state: ShareRequestState? = nil) async -> [(relay: any ShareRelay, request: ShareRequest)] {
+        var rows: [(relay: any ShareRelay, request: ShareRequest)] = []
+        var seen = Set<UUID>()
+        for relay in allRelays() {
+            let found = (try? await relay.listShareRequests(role: role, transactionType: transactionType, state: state)) ?? []
+            for request in found where seen.insert(request.id).inserted {
+                rows.append((relay: relay, request: request))
+            }
+        }
+        return rows
+    }
+
     /// Finds a row by id across every known relay — the caller (UI) has no relay context for a
     /// bare requestId, only the fan-out list already used to discover it. Returns the relay it
     /// was found on too, so the caller can act on it through the *same* relay rather than
@@ -245,11 +269,8 @@ public final class ShareService: ShareManagement {
         guard !discarding.isEmpty else { return }
         let discardingIds = Set(discarding.map(\.id))
 
-        var removalRequests: [(relay: any ShareRelay, request: ShareRequest)] = []
-        for relay in allRelays() {
-            let reqs = (try? await relay.listShareRequests(role: .sender, transactionType: .removal, state: nil)) ?? []
-            removalRequests += reqs.filter { discardingIds.contains($0.secretId) }.map { (relay: relay, request: $0) }
-        }
+        let removalRequests = await rowsAcrossRelays(role: .sender, transactionType: .removal)
+            .filter { discardingIds.contains($0.request.secretId) }
 
         for secret in discarding {
             let metasForSecret = ((try? shareMetadataRepository.getAll()) ?? []).filter { $0.secretId == secret.id }
@@ -271,11 +292,9 @@ public final class ShareService: ShareManagement {
     }
 
     public func listSentRequests() async throws -> [ShareRequest] {
-        var all: [ShareRequest] = []
-        for relay in allRelays() {
-            all += (try? await relay.listShareRequests(role: .sender, transactionType: nil, state: nil)) ?? []
-        }
-        return all.filter { $0.transactionType != .deposit }
+        await rowsAcrossRelays(role: .sender)
+            .map(\.request)
+            .filter { $0.transactionType != .deposit }
     }
 
     // A holder is worth prioritizing for a fresh retrieval ask when the custody-freshness rule
@@ -293,10 +312,7 @@ public final class ShareService: ShareManagement {
         guard let secret = (try? secretRepository.getAll())?.first(where: { $0.id == secretId }) else { return }
         let deposited = (try? shareMetadataRepository.getAll()) ?? []
         let forSecret = deposited.filter { $0.secretId == secretId }
-        var existing: [ShareRequest] = []
-        for relay in allRelays() {
-            existing += (try? await relay.listShareRequests(role: .sender, transactionType: .retrieval, state: nil)) ?? []
-        }
+        let existing = await rowsAcrossRelays(role: .sender, transactionType: .retrieval).map(\.request)
         // Fan out to the health-informed fresh set first; widen to everyone only when
         // there aren't enough confirmed holders to reach k. A retrieval request exists solely to
         // feed an eventual reconstruct(), so this targeting applies here rather than as a
@@ -367,11 +383,7 @@ public final class ShareService: ShareManagement {
         guard let secret = (try? secretRepository.getAll())?.first(where: { $0.id == secretId }) else {
             throw ShareServiceError.secretNotFound
         }
-        var allRequests: [(relay: any ShareRelay, request: ShareRequest)] = []
-        for relay in allRelays() {
-            let reqs = (try? await relay.listShareRequests(role: .sender, transactionType: .retrieval, state: nil)) ?? []
-            allRequests += reqs.map { (relay: relay, request: $0) }
-        }
+        let allRequests = await rowsAcrossRelays(role: .sender, transactionType: .retrieval)
         // An unverified recipientSignature is treated as "not yet approved" rather than a hard
         // error — a forged approval simply doesn't count toward the threshold.
         let approved = allRequests.filter { pair in
@@ -732,12 +744,10 @@ public final class ShareService: ShareManagement {
     }
 
     public func listPendingRequests() async throws -> [ShareRequest] {
-        var all: [ShareRequest] = []
-        for relay in allRelays() {
-            all += (try? await relay.listShareRequests(role: .recipient, transactionType: nil, state: .pending)) ?? []
-        }
         // A forged removal/retrieval request has no AEAD backstop — must never reach the UI.
-        return all.filter { $0.transactionType != .deposit && verifyOpen($0) }
+        return await rowsAcrossRelays(role: .recipient, state: .pending)
+            .map(\.request)
+            .filter { $0.transactionType != .deposit && verifyOpen($0) }
     }
 
     public func respond(requestId: UUID, approved: Bool) async throws {
