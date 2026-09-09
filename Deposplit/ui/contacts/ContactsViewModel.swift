@@ -31,10 +31,11 @@ final class ContactsViewModel {
         load()
     }
 
-    func delete(at offsets: IndexSet) {
-        let toDelete = offsets.map { contacts[$0] }
-        toDelete.forEach { try? contactManagement.deleteContact(contactId: $0.id) }
-        contacts = (try? contactManagement.listContacts()) ?? []
+    /// By id rather than by row offset: the list reaches this from a button as well as from a
+    /// swipe, and only one of those has an IndexSet to offer.
+    func delete(_ contactId: UUID) {
+        try? contactManagement.deleteContact(contactId: contactId)
+        load()
     }
 
     /// Flags this contact's *current* key as compromised, out-of-band-triggered (the

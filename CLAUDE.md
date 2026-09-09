@@ -182,8 +182,10 @@ Manual end-to-end flows are in the hub's
 
 German and English in `Deposplit/Localizable.xcstrings`. Xcode auto-extracts strings but
 leaves the `"de"` `stringUnit` empty, so new strings need filling in by hand. Established
-terminology: *Abrufanfrage* (retrieval request), *Inhaber* (holder), *Bestand* (inventory),
-informal *du*. Plurals use `variations.plural` with `one` and `other`.
+terminology: *Abrufanfrage* (retrieval request), *Inhaber* (holder), *Bestand* (inventory).
+The reader is addressed formally, with *Sie*, and never with *du* — the hub's `CLAUDE.md`
+carries that rule and the `Ihr`/*their* trap that comes with it. Plurals use
+`variations.plural` with `one` and `other`.
 
 > **Watch for the `String` vs `LocalizedStringKey` trap.** A view that takes `title: String`
 > and passes it to `Text` silently defeats localisation — the string is interpolated rather

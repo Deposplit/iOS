@@ -844,7 +844,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die iCloud-Sicherung ist verschlüsselt, aber nur mit aktiviertem erweitertem Datenschutz für iCloud-Daten Ende-zu-Ende. Sie können Deposplit in den Einstellungen unter „iCloud-Backup“ ausschließen. Dann startet ein neues iPhone leer — die Menschen, deren Anteile Sie verwahren, verlieren diese Redundanz, und Ihr neues iPhone weiß nichts davon, um es ihnen zu sagen."
+            "value" : "Die iCloud-Sicherung ist verschlüsselt, aber nur mit aktiviertem erweitertem Datenschutz für iCloud-Daten Ende-zu-Ende. Sie können Deposplit in den Einstellungen unter „iCloud-Backup“ ausschliessen. Dann startet ein neues iPhone leer — die Menschen, deren Anteile Sie verwahren, verlieren diese Redundanz, und Ihr neues iPhone weiss nichts davon, um es ihnen zu sagen."
           }
         }
       }
@@ -1884,7 +1884,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieses Telefon hat alles wiederhergestellt außer Ihren Schlüsseln. Ihr altes Telefon hat sie so verwahrt, dass sie sich nicht kopieren lassen — dieses Gerät kann daher weder als Sie signieren noch entschlüsseln."
+            "value" : "Dieses Telefon hat alles wiederhergestellt ausser Ihren Schlüsseln. Ihr altes Telefon hat sie so verwahrt, dass sie sich nicht kopieren lassen — dieses Gerät kann daher weder als Sie signieren noch entschlüsseln."
           }
         }
       }
@@ -2075,6 +2075,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ihr Pseudonym"
+          }
+        }
+      }
+    },
+    "Delete Contact" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontakt löschen"
+          }
+        }
+      }
+    },
+    "Delete this contact?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diesen Kontakt löschen?"
+          }
+        }
+      }
+    },
+    "Anything they hold for you stays with them — deleting only affects this device. But the shares linked to %@ lose that link, and adding them again creates a new contact rather than restoring this one." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was sie für Sie verwahren, bleibt bei ihnen — das Löschen wirkt nur auf diesem Gerät. Anteile, die mit %@ verknüpft sind, verlieren diese Verknüpfung, und ein erneutes Hinzufügen legt einen neuen Kontakt an, statt diesen wiederherzustellen."
           }
         }
       }
