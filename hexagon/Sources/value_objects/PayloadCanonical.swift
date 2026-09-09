@@ -39,7 +39,7 @@ public enum PayloadCanonical {
         n: Int? = nil,
         mimeType: MimeType? = nil
     ) -> Data {
-        let epochMs = Int64(secretCreatedAt.timeIntervalSince1970 * 1000)
+        let epochMs = epochMilliseconds(secretCreatedAt)
         let parts = [
             secretId.uuidString.lowercased(),
             wire(transactionType),
@@ -52,6 +52,37 @@ public enum PayloadCanonical {
             mimeType?.value ?? "",
         ]
         return Data(parts.joined(separator: "\n").utf8)
+    }
+
+    /// The epoch-millisecond value `forOpen` signs for a `secretCreatedAt`.
+    ///
+    /// Public because the ISO-8601 string that travels beside the signature has to carry exactly
+    /// these milliseconds. The relay does not take the signature on trust against the bytes we
+    /// built: it rebuilds them from the timestamp it parsed off the wire, so a wire form that
+    /// carries a different millisecond than the one signed here fails to verify — every time,
+    /// not occasionally.
+    public static func epochMilliseconds(_ date: Date) -> Int64 {
+        Int64(date.timeIntervalSince1970 * 1000)
+    }
+
+    /// A `secretCreatedAt` in the form the relay parses, carrying exactly the milliseconds
+    /// `epochMilliseconds` signs.
+    ///
+    /// Built from that integer rather than by formatting the `Date` again, so no rounding of its
+    /// own can put a different millisecond on the wire than in the signature. Foundation's
+    /// default `ISO8601DateFormatter` omits fractional seconds altogether, which is the trap this
+    /// exists to close: `Date()` is never on a whole second, so every share request iOS opened
+    /// was signed at one millisecond and transmitted at another, and the relay rejected all of
+    /// them. Kotlin and Scala reach the same place for free — `Instant.toString` keeps the
+    /// fraction and `Instant.parse` gives it back.
+    public static func wireInstant(_ date: Date) -> String {
+        let epochMs = epochMilliseconds(date)
+        // Floored, not truncated toward zero, so a pre-1970 instant still lands on a whole second
+        // with a millisecond remainder in 0..<1000 rather than a negative one.
+        let seconds = epochMs >= 0 ? epochMs / 1000 : (epochMs - 999) / 1000
+        let milliseconds = String(epochMs - seconds * 1000)
+        let whole = ISO8601DateFormatter().string(from: Date(timeIntervalSince1970: TimeInterval(seconds)))
+        return whole.dropLast() + "." + String(repeating: "0", count: 3 - milliseconds.count) + milliseconds + "Z"
     }
 
     /// Signed by the recipient when responding to a share request (`recipientSignature`).

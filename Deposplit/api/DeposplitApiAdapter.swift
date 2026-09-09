@@ -25,7 +25,9 @@ final class DeposplitApiAdapter: ShareRelay {
             secretId: secretId.uuidString,
             recipientKey: recipientKey.base64URLEncoded,
             label: label,
-            secretCreatedAt: _iso8601.string(from: secretCreatedAt),
+            // Not a plain ISO-8601 string: the relay rebuilds the signed bytes from what it
+            // parses here, and those bytes carry the milliseconds. See PayloadCanonical.
+            secretCreatedAt: PayloadCanonical.wireInstant(secretCreatedAt),
             transactionType: transactionType.rawValue,
             ciphertext: ciphertext?.base64EncodedString(),
             k: k,

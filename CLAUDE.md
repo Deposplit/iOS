@@ -138,7 +138,7 @@ not a development dependency.
 ```bash
 # from hexagon/ — no simulator needed; CI runs this
 swift build
-swift test                                  # 153 tests
+swift test                                  # 155 tests
 swift test --filter ShareServiceTests
 
 # from the repo root — the app target; CI builds it too, for the simulator (see below)
@@ -149,7 +149,7 @@ xcodebuild test -project Deposplit.xcodeproj -scheme Deposplit \
   -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
 
-All tests live in `hexagon/Tests/` — a flat directory, eight files. **There is no
+All tests live in `hexagon/Tests/` — a flat directory, nine files. **There is no
 app-target test directory**; do not go looking for one.
 
 > `xcodebuild test` fails on the development machine with a code-signing error on an
