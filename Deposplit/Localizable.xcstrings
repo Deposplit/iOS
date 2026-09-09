@@ -153,6 +153,16 @@
         }
       }
     },
+    "Anything they hold for you stays with them — deleting only affects this device. But the shares linked to %@ lose that link, and adding them again creates a new contact rather than restoring this one." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was sie für Sie verwahren, bleibt bei ihnen — das Löschen wirkt nur auf diesem Gerät. Anteile, die mit %@ verknüpft sind, verlieren diese Verknüpfung, und ein erneutes Hinzufügen legt einen neuen Kontakt an, statt diesen wiederherzustellen."
+          }
+        }
+      }
+    },
     "Approve" : {
       "localizations" : {
         "de" : {
@@ -389,6 +399,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Standard-Relais"
+          }
+        }
+      }
+    },
+    "Delete Contact" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontakt löschen"
+          }
+        }
+      }
+    },
+    "Delete this contact?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diesen Kontakt löschen?"
           }
         }
       }
@@ -2075,36 +2105,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ihr Pseudonym"
-          }
-        }
-      }
-    },
-    "Delete Contact" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kontakt löschen"
-          }
-        }
-      }
-    },
-    "Delete this contact?" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diesen Kontakt löschen?"
-          }
-        }
-      }
-    },
-    "Anything they hold for you stays with them — deleting only affects this device. But the shares linked to %@ lose that link, and adding them again creates a new contact rather than restoring this one." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Was sie für Sie verwahren, bleibt bei ihnen — das Löschen wirkt nur auf diesem Gerät. Anteile, die mit %@ verknüpft sind, verlieren diese Verknüpfung, und ein erneutes Hinzufügen legt einen neuen Kontakt an, statt diesen wiederherzustellen."
           }
         }
       }
