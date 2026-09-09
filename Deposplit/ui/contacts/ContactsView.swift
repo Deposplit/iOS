@@ -35,7 +35,7 @@ struct ContactsView: View {
         NavigationStack {
             Group {
                 if viewModel.contacts.isEmpty {
-                    ContentUnavailableView("No contacts", systemImage: "person.crop.circle.badge.plus",
+                    ContentUnavailableView("No contacts yet", systemImage: "person.2.slash",
                                           description: Text("Add contacts to start sharing secrets."))
                 } else {
                     List {

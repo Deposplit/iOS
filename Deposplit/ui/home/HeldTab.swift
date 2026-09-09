@@ -8,7 +8,7 @@ struct HeldTab: View {
     var body: some View {
         VStack(spacing: 0) {
             if shares.isEmpty {
-                ContentUnavailableView("No held shares", systemImage: "tray")
+                ContentUnavailableView("No shares to keep safe yet", systemImage: "puzzlepiece")
             } else {
                 List {
                     ForEach(shares) { share in

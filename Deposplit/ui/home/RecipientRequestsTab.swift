@@ -27,7 +27,7 @@ struct RecipientRequestsTab: View {
             } else if viewModel.error != nil && viewModel.pendingRequests.isEmpty && viewModel.keyConflicts.isEmpty {
                 Spacer()
             } else if viewModel.pendingRequests.isEmpty && viewModel.keyConflicts.isEmpty {
-                ContentUnavailableView("No pending requests", systemImage: "checkmark.circle")
+                ContentUnavailableView("No pending requests", systemImage: "checklist.checked")
             } else {
                 List {
                     if !viewModel.keyConflicts.isEmpty {

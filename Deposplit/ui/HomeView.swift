@@ -70,13 +70,13 @@ struct HomeView: View {
                     Divider()
                 }
                 TabView(selection: $selectedTab) {
-                    Tab("Distributed", systemImage: "arrow.up.circle", value: 0) {
+                    Tab("Split & shared", systemImage: "photo.stack.fill", value: 0) {
                         distributedContent
                     }
-                    Tab("Held", systemImage: "tray.fill", value: 1) {
+                    Tab("Keeping safe", systemImage: "puzzlepiece.fill", value: 1) {
                         heldContent
                     }
-                    Tab("Requests", systemImage: "bell", value: 2) {
+                    Tab("Requests", systemImage: "checklist", value: 2) {
                         RecipientRequestsTab(viewModel: requestsViewModel)
                     }
                 }
@@ -169,8 +169,8 @@ struct HomeView: View {
 
     private var tabTitle: LocalizedStringKey {
         switch selectedTab {
-        case 0: "Distributed"
-        case 1: "Held"
+        case 0: "Split & shared"
+        case 1: "Keeping safe"
         default: "Requests"
         }
     }

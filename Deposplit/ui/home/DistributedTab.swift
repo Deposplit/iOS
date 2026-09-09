@@ -25,7 +25,7 @@ struct DistributedTab: View {
     var body: some View {
         VStack(spacing: 0) {
             if groups.isEmpty {
-                ContentUnavailableView("No distributed shares", systemImage: "lock.open")
+                ContentUnavailableView("No secrets split & shared yet", systemImage: "photo")
             } else {
                 List {
                     ForEach(groups) { group in

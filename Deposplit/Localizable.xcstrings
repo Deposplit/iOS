@@ -1,7 +1,16 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "" : {},
+    "… choose secret photo" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "… geheimes Foto auswählen"
+          }
+        }
+      }
+    },
     "%@ has not re-verified you yet" : {
       "localizations" : {
         "de" : {
@@ -14,24 +23,6 @@
     },
     "%@'s key changed %lld days ago — verify fresh before approving" : {
       "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%@'s key changed %lld day ago — verify fresh before approving"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%@'s key changed %lld days ago — verify fresh before approving"
-                }
-              }
-            }
-          }
-        },
         "de" : {
           "variations" : {
             "plural" : {
@@ -45,6 +36,24 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Der Schlüssel von %@ hat sich vor %lld Tagen geändert — vor der Genehmigung frisch verifizieren"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%@'s key changed %lld day ago — verify fresh before approving"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%@'s key changed %lld days ago — verify fresh before approving"
                 }
               }
             }
@@ -300,16 +309,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ein Pseudonym wählen"
-          }
-        }
-      }
-    },
-    "… choose secret photo" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "… geheimes Foto auswählen"
           }
         }
       }
@@ -574,16 +573,6 @@
         }
       }
     },
-    "Distributed" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verteilt"
-          }
-        }
-      }
-    },
     "Distributing to %lld people is a lot to manage — you'll need to exchange keys, approve every pickup, and keep track of all of them." : {
       "localizations" : {
         "de" : {
@@ -820,16 +809,6 @@
         }
       }
     },
-    "Held" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verwahrt"
-          }
-        }
-      }
-    },
     "Holders" : {
       "localizations" : {
         "de" : {
@@ -946,6 +925,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bestand"
+          }
+        }
+      }
+    },
+    "Keeping safe" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwahrt"
           }
         }
       }
@@ -1106,32 +1095,32 @@
         }
       }
     },
-    "No contacts" : {
+    "Nickname" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keine Kontakte"
+            "value" : "Spitzname"
           }
         }
       }
     },
-    "No distributed shares" : {
+    "Nickname (optional)" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keine verteilten Anteile"
+            "value" : "Spitzname (optional)"
           }
         }
       }
     },
-    "No held shares" : {
+    "No contacts yet" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keine verwahrten Anteile"
+            "value" : "Noch keine Kontakte"
           }
         }
       }
@@ -1152,6 +1141,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keine ausstehenden Anfragen"
+          }
+        }
+      }
+    },
+    "No secrets split & shared yet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Geheimnisse aufgeteilt & verteilt"
+          }
+        }
+      }
+    },
+    "No shares to keep safe yet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Anteile zu verwahren"
           }
         }
       }
@@ -1544,6 +1553,26 @@
         }
       }
     },
+    "Rename" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Umbenennen"
+          }
+        }
+      }
+    },
+    "Rename contact" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontakt umbenennen"
+          }
+        }
+      }
+    },
     "Repair" : {
       "localizations" : {
         "de" : {
@@ -1554,22 +1583,22 @@
         }
       }
     },
-    "Repair %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ reparieren"
-          }
-        }
-      }
-    },
     "Repair — Re-deposit" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reparatur — Neu hinterlegen"
+          }
+        }
+      }
+    },
+    "Repair %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ reparieren"
           }
         }
       }
@@ -1794,6 +1823,16 @@
         }
       }
     },
+    "Split & shared" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufgeteilt & verteilt"
+          }
+        }
+      }
+    },
     "That image is %@. The largest secret Deposplit can split is %@." : {
       "localizations" : {
         "de" : {
@@ -1960,26 +1999,6 @@
         }
       }
     },
-    "Verification level" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verifizierungsstufe"
-          }
-        }
-      }
-    },
-    "Verification Level" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verifizierungsstufe"
-          }
-        }
-      }
-    },
     "Verification key" : {
       "localizations" : {
         "de" : {
@@ -1996,6 +2015,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verifizierungsschlüssel (base64url)"
+          }
+        }
+      }
+    },
+    "Verification level" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verifizierungsstufe"
+          }
+        }
+      }
+    },
+    "Verification Level" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verifizierungsstufe"
           }
         }
       }
