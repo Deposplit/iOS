@@ -103,13 +103,13 @@
               "one": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "%lld Inhaber"
+                  "value": "%lld Verwahrer"
                 }
               },
               "other": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "%lld Inhaber"
+                  "value": "%lld Verwahrer"
                 }
               }
             }
@@ -122,7 +122,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld Inhaber müssen ihren Teil noch zurückgeben."
+            "value": "%lld Verwahrer müssen ihren Teil noch zurückgeben."
           }
         }
       }
@@ -142,7 +142,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$lld von %2$lld ist ein relativ niedriger Schwellenwert — eine Minderheit der Inhaber könnte dieses Geheimnis gemeinsam rekonstruieren."
+            "value": "%1$lld von %2$lld ist ein relativ niedriger Schwellenwert — eine Minderheit der Verwahrer könnte dieses Geheimnis gemeinsam rekonstruieren."
           }
         },
         "en": {
@@ -218,7 +218,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alle %lld Inhaber werden gebeten, ihren Teil zu vernichten. Sobald alle es getan haben, kann dieses Geheimnis nie wieder zusammengesetzt werden. Bis dahin bleibt es in dieser Liste."
+            "value": "Alle %lld Verwahrer werden gebeten, ihren Teil zu vernichten. Sobald alle es getan haben, kann dieses Geheimnis nie wieder zusammengesetzt werden. Bis dahin bleibt es in dieser Liste."
           }
         }
       }
@@ -278,7 +278,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mindestens %lld Inhaber müssen kooperieren, um das Geheimnis wiederherzustellen."
+            "value": "Mindestens %lld Verwahrer müssen kooperieren, um das Geheimnis wiederherzustellen."
           }
         }
       }
@@ -418,7 +418,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die gesammelten Kopien nach Gebrauch freigeben — die Inhaber behalten ihre Teile in jedem Fall."
+            "value": "Die gesammelten Kopien nach Gebrauch freigeben — die Verwahrer behalten ihre Teile in jedem Fall."
           }
         }
       }
@@ -568,7 +568,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bei %lld neuen Inhabern hinterlegt. Alte Verteilung jetzt vernichten? Jeder ihrer Inhaber wird gebeten, seinen Teil zu vernichten."
+            "value": "Bei %lld neuen Verwahrern hinterlegt. Alte Verteilung jetzt vernichten? Jeder ihrer Verwahrer wird gebeten, seinen Teil zu vernichten."
           }
         }
       }
@@ -708,7 +708,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Verteilung an %lld Personen bedeutet mehr Inhaber als üblich, um den Überblick zu behalten."
+            "value": "Die Verteilung an %lld Personen bedeutet mehr Verwahrer als üblich, um den Überblick zu behalten."
           }
         }
       }
@@ -798,7 +798,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Alle Inhaber wurden bereits gefragt."
+            "value": "Alle Verwahrer wurden bereits gefragt."
           }
         }
       }
@@ -808,7 +808,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Jeder einzelne Inhaber muss verfügbar sein — verliert auch nur einer seinen Anteil, wird dieses Geheimnis unwiederbringlich."
+            "value": "Jeder einzelne Verwahrer muss verfügbar sein — verliert auch nur einer seinen Anteil, wird dieses Geheimnis unwiederbringlich."
           }
         }
       }
@@ -924,7 +924,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inhaber"
+            "value": "Verwahrer"
           }
         }
       }
@@ -1210,7 +1210,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keine Inhaber für dieses Geheimnis erfasst."
+            "value": "Keine Verwahrer für dieses Geheimnis erfasst."
           }
         }
       }
@@ -1346,7 +1346,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nur %1$lld von %2$lld Inhabern müssen zusammenarbeiten, um dieses Geheimnis zu rekonstruieren — eine kleine Gruppe könnte dies ohne Ihr Wissen tun."
+            "value": "Nur %1$lld von %2$lld Verwahrern müssen zusammenarbeiten, um dieses Geheimnis zu rekonstruieren — eine kleine Gruppe könnte dies ohne Ihr Wissen tun."
           }
         },
         "en": {
@@ -1944,7 +1944,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Inhaber behalten ihre Teile — Kopien lassen sich jederzeit erneut anfragen."
+            "value": "Die Verwahrer behalten ihre Teile — Kopien lassen sich jederzeit erneut anfragen."
           }
         }
       }
@@ -1954,7 +1954,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Das Geheimnis wurde hier noch nicht angezeigt. Werden die gesammelten Kopien freigegeben, müssen die Inhaber erneut gefragt werden, bevor es wieder zusammengesetzt werden kann."
+            "value": "Das Geheimnis wurde hier noch nicht angezeigt. Werden die gesammelten Kopien freigegeben, müssen die Verwahrer erneut gefragt werden, bevor es wieder zusammengesetzt werden kann."
           }
         }
       }
@@ -2034,7 +2034,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dies verkraftet nur den Verlust eines einzigen Inhabers, bevor das Geheimnis unwiederbringlich wird."
+            "value": "Dies verkraftet nur den Verlust eines einzigen Verwahrers, bevor das Geheimnis unwiederbringlich wird."
           }
         }
       }

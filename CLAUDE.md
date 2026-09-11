@@ -182,7 +182,10 @@ Manual end-to-end flows are in the hub's
 
 German and English in `Deposplit/Localizable.xcstrings`. Xcode auto-extracts strings but
 leaves the `"de"` `stringUnit` empty, so new strings need filling in by hand. Established
-terminology: *Abrufanfrage* (retrieval request), *Inhaber* (holder), *Bestand* (inventory).
+terminology: *Abrufanfrage* (retrieval request), *Verwahrer* (holder), *Bestand* (inventory).
+*Verwahrer* follows *verwahren*, the verb the German uses for holding a share throughout — and
+not *Inhaber*, which names the party entitled to a thing (Kontoinhaber, Rechteinhaber) and so
+says the one thing a holder is not.
 The reader is addressed formally, with *Sie*, and never with *du* — the hub's `CLAUDE.md`
 carries that rule and the `Ihr`/*their* trap that comes with it. Plurals use
 `variations.plural` with `one` and `other`.
