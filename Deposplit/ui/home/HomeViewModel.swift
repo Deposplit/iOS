@@ -65,6 +65,45 @@ struct SecretGroup: Identifiable {
     }
 
     var unmonitoredCount: Int { holders.filter { $0.freshnessBucket == .unmonitored }.count }
+
+    /// Mirrors what `requestAll` actually does — it skips a holder whose retrieval row is
+    /// `.pending` or `.approved` — so the press is worth offering while any holder still lacks one,
+    /// and is a no-op only once nobody is left to ask.
+    ///
+    /// Deliberately still enabled once k copies are in: a surplus beyond the threshold is what lets
+    /// reconstruct cross-check the shares it has, so asking the stragglers is how a "no integrity
+    /// margin" outcome becomes a confirmed one.
+    var canRequestRetrieval: Bool {
+        secret.state == .active && holders.contains { holder in
+            let state = holder.retrievalRequest?.state
+            return state != .pending && state != .approved
+        }
+    }
+
+    /// Why **Retrieve shares** cannot be pressed, or nil when it can be. A control that cannot work
+    /// says so in words rather than disappearing.
+    var retrievalUnavailableReason: String? {
+        if secret.state != .active {
+            return String(localized: "This secret is being discarded.")
+        }
+        if !canRequestRetrieval {
+            return String(localized: "Every holder has been asked already.")
+        }
+        return nil
+    }
+
+    var approvedRetrievals: Int {
+        holders.filter { $0.retrievalRequest?.state == .approved }.count
+    }
+
+    var canReconstruct: Bool { approvedRetrievals >= secret.k }
+
+    /// How many more holders have to hand a piece back before the secret can be put together.
+    var reconstructShortfall: Int { max(0, secret.k - approvedRetrievals) }
+
+    /// Collected copies are what there is to clear. An ask still waiting for an answer is cleared
+    /// along with them, but on its own means nothing has been collected yet.
+    var canClearCollected: Bool { approvedRetrievals > 0 }
 }
 
 @Observable
@@ -79,7 +118,6 @@ final class HomeViewModel {
     /// contact gets back in touch.
     var awaitingRelinkCount = 0
     var error: String?
-    var requestingAllIds: Set<UUID> = []
 
     private let shareManagement: any ShareManagement
     private let contactManagement: any ContactManagement
@@ -126,24 +164,9 @@ final class HomeViewModel {
         }
     }
 
-    func requestAll(secretId: UUID) async {
-        requestingAllIds.insert(secretId)
-        try? await shareManagement.requestAll(secretId: secretId)
-        requestingAllIds.remove(secretId)
-        await load()
-    }
-
-    func discardSecret(_ secretId: UUID) async {
-        try? await shareManagement.discardSecret(secretId: secretId)
-        await load()
-    }
-
-    func forceForgetSecret(_ secretId: UUID) async {
-        try? shareManagement.forceForgetSecret(secretId: secretId)
-        await load()
-    }
-
-    private static func buildGroups(secrets: [Secret], distributed: [ShareMetadata], allRequests: [ShareRequest], contacts: [Contact]) -> [SecretGroup] {
+    /// One group per secret, holders folded in — shared with a single secret's own screen, so both
+    /// read the same rules off the same rows.
+    static func buildGroups(secrets: [Secret], distributed: [ShareMetadata], allRequests: [ShareRequest], contacts: [Contact]) -> [SecretGroup] {
         let bySecret = Dictionary(grouping: distributed, by: { $0.secretId })
         let contactsById = Dictionary(uniqueKeysWithValues: contacts.map { ($0.id, $0) })
         return secrets.map { secret in

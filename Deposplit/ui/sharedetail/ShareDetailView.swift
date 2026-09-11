@@ -29,31 +29,6 @@ struct ShareDetailView: View {
                 }
             }
 
-            Section("Reconstruct") {
-                switch viewModel.reconstructState {
-                case .unavailable(let reason):
-                    Text(reason).foregroundStyle(.secondary).font(.caption)
-                case .ready:
-                    BiometricGatedButton(
-                        label: "Reconstruct secret…",
-                        reason: String(localized: "Authenticate to reconstruct your secret")
-                    ) {
-                        await viewModel.reconstruct()
-                    }
-                case .reconstructed(let secret, let integrity):
-                    VStack(alignment: .leading, spacing: 8) {
-                        ReconstructedSecretView(
-                            secret: secret,
-                            mimeType: viewModel.mimeType,
-                            label: viewModel.label
-                        )
-                        ReconstructionAdvisoryView(integrity: integrity, contactName: viewModel.contactName)
-                    }
-                case .failed(let msg):
-                    Text("Error: \(msg)").foregroundStyle(.red).font(.caption)
-                }
-            }
-
             if let error = viewModel.error {
                 Section { Text(error).foregroundStyle(.red) }
             }

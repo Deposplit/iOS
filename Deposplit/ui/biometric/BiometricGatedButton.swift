@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Wraps a reconstruct action behind Face ID/Touch ID — shared by `ShareDetailView` and
-/// `RepairView` so both reconstruct call sites gate identically. When biometrics are unavailable,
-/// shows an explanatory message in place of the button rather than blocking reconstruction
-/// outright, mirroring Android's `BiometricGate.kt`-driven per-availability messaging.
+/// Wraps a reconstruct action behind Face ID/Touch ID — shared by `SecretDetailView` and
+/// `RepairView` so both reconstruct call sites gate identically. When biometrics are unavailable it
+/// says which of the three reasons applies, in place of the button: what cannot work is never left
+/// standing with nothing behind it. Mirrors Android's `BiometricGate.kt`-driven messaging.
 struct BiometricGatedButton: View {
     let label: LocalizedStringKey
     let reason: String

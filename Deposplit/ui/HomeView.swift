@@ -18,6 +18,7 @@ struct HomeView: View {
     @State private var showDeposit = false
     @State private var showSettings = false
     @State private var selectedShareTarget: ShareDetailTarget?
+    @State private var selectedSecret: Secret?
     @State private var repairSecret: Secret?
 
     init(auth: any Identity, shareManagement: any ShareManagement, contactManagement: any ContactManagement, catalogManagement: any CatalogManagement, relaySettings: any RelaySettings, purchaseStore: StoreKitPurchaseStore) {
@@ -123,6 +124,15 @@ struct HomeView: View {
                     }
                 }
             }
+            .navigationDestination(item: $selectedSecret) { secret in
+                SecretDetailView(
+                    secretId: secret.id,
+                    shareManagement: shareManagement,
+                    contactManagement: contactManagement,
+                    onTapHolder: { selectedShareTarget = $0 },
+                    onRepair: { repairSecret = $0 }
+                )
+            }
             .navigationDestination(item: $selectedShareTarget) { target in
                 ShareDetailView(target: target, shareManagement: shareManagement, contactManagement: contactManagement)
             }
@@ -185,13 +195,7 @@ struct HomeView: View {
             } else {
                 DistributedTab(
                     groups: homeViewModel.groupedSecrets,
-                    contacts: allContacts,
-                    requestingAllIds: homeViewModel.requestingAllIds,
-                    onTapHolder: { selectedShareTarget = $0 },
-                    onRequestAll: { secretId in Task { await homeViewModel.requestAll(secretId: secretId) } },
-                    onDiscard: { secretId in Task { await homeViewModel.discardSecret(secretId) } },
-                    onForceForget: { secretId in Task { await homeViewModel.forceForgetSecret(secretId) } },
-                    onRepair: { secret in repairSecret = secret }
+                    onOpenSecret: { selectedSecret = $0 }
                 )
             }
         }

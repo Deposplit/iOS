@@ -9,18 +9,12 @@ struct ShareDetailTarget: Identifiable, Hashable {
     var id: UUID { share.id }
 }
 
+/// Secrets this device split and handed out, one row per secret. The row summarises and nothing
+/// more; holders and every action live on the secret's own screen, so that a list of ten secrets
+/// does not become ten places where buttons appear and disappear.
 struct DistributedTab: View {
     let groups: [SecretGroup]
-    let contacts: [Contact]
-    let requestingAllIds: Set<UUID>
-    let onTapHolder: (ShareDetailTarget) -> Void
-    let onRequestAll: (UUID) -> Void
-    let onDiscard: (UUID) -> Void
-    let onForceForget: (UUID) -> Void
-    let onRepair: (Secret) -> Void
-
-    @State private var expandedSecretId: UUID?
-    @State private var pendingDiscard: SecretGroup?
+    let onOpenSecret: (Secret) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,158 +23,38 @@ struct DistributedTab: View {
             } else {
                 List {
                     ForEach(groups) { group in
-                        SecretGroupRow(
-                            group: group,
-                            isExpanded: expandedSecretId == group.id,
-                            isRequestingAll: requestingAllIds.contains(group.id),
-                            contactName: { contactId in contactName(for: contactId) },
-                            contactSubtitle: { contactId in contactSubtitle(for: contactId) },
-                            onToggle: {
-                                expandedSecretId = expandedSecretId == group.id ? nil : group.id
-                            },
-                            onHolderTap: { holder in
-                                onTapHolder(ShareDetailTarget(secret: group.secret, share: ShareMetadata(id: holder.shareId, secretId: group.secret.id, contactId: holder.contactId)))
-                            },
-                            onRequestAll: { onRequestAll(group.id) },
-                            onDiscard: { pendingDiscard = group },
-                            onForceForget: { onForceForget(group.id) },
-                            onRepair: { onRepair(group.secret) }
-                        )
+                        Button {
+                            onOpenSecret(group.secret)
+                        } label: {
+                            SecretSummaryRow(group: group)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
         }
-        .confirmationDialog(
-            "Discard this secret?",
-            isPresented: Binding(get: { pendingDiscard != nil }, set: { if !$0 { pendingDiscard = nil } }),
-            presenting: pendingDiscard
-        ) { group in
-            Button("Discard \(group.secret.label)", role: .destructive) {
-                onDiscard(group.id)
-                pendingDiscard = nil
-            }
-        } message: { group in
-            Text("Requests deletion from all \(group.holders.count) holder(s). Each must approve — this only removes it from your device's list once every holder confirms (or you force-forget it).")
-        }
-    }
-
-    private func contactName(for contactId: UUID) -> String {
-        contacts.first(where: { $0.id == contactId })?.displayName ?? String(localized: "Unknown contact")
-    }
-
-    // The contact's pseudonym, shown as a secondary line, but only when contactName
-    // above is actually a nickname; nil otherwise.
-    private func contactSubtitle(for contactId: UUID) -> String? {
-        contacts.first(where: { $0.id == contactId }).flatMap { $0.nickname != nil ? $0.pseudonym : nil }
     }
 }
 
-private struct SecretGroupRow: View {
+private struct SecretSummaryRow: View {
     let group: SecretGroup
-    let isExpanded: Bool
-    let isRequestingAll: Bool
-    let contactName: (UUID) -> String
-    let contactSubtitle: (UUID) -> String?
-    let onToggle: () -> Void
-    let onHolderTap: (HolderStatus) -> Void
-    let onRequestAll: () -> Void
-    let onDiscard: () -> Void
-    let onForceForget: () -> Void
-    let onRepair: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Button(action: onToggle) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(group.secret.label).font(.headline)
-                        HStack(spacing: 6) {
-                            Text(group.secret.secretCreatedAt.formatted(date: .abbreviated, time: .omitted))
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
-                            healthBadge
-                        }
-                    }
-                    Spacer()
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(group.secret.label).font(.headline)
+                HStack(spacing: 6) {
+                    Text(group.secret.secretCreatedAt.formatted(date: .abbreviated, time: .omitted))
+                        .font(.caption2)
                         .foregroundStyle(.tertiary)
+                    Text("\(group.holders.count) holder")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    healthBadge
                 }
             }
-            .buttonStyle(.plain)
-
-            if isExpanded {
-                ForEach(group.holders) { holder in
-                    Button {
-                        onHolderTap(holder)
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(contactName(holder.contactId))
-                                if let subtitle = contactSubtitle(holder.contactId) {
-                                    Text(subtitle).font(.caption2).foregroundStyle(.secondary)
-                                }
-                                // Early nudge, surfaced before the holder actually
-                                // drops out of n_live.
-                                if holder.isGettingStale {
-                                    Label("Getting stale", systemImage: "clock.badge.exclamationmark")
-                                        .font(.caption2)
-                                        .foregroundStyle(.yellow)
-                                } else if holder.freshnessBucket == .unmonitored {
-                                    Label("Unmonitored by choice", systemImage: "eye.slash")
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                } else if holder.freshnessBucket == .silentOverdue {
-                                    Label("Silent — possible loss", systemImage: "exclamationmark.triangle")
-                                        .font(.caption2)
-                                        .foregroundStyle(.orange)
-                                }
-                            }
-                            Spacer()
-                            if let state = holder.retrievalRequest?.state {
-                                Text(state.label).font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.leading, 8)
-                }
-
-                HStack {
-                    Button {
-                        onRequestAll()
-                    } label: {
-                        if isRequestingAll {
-                            ProgressView()
-                        } else {
-                            Text("Request Retrieval (all)")
-                        }
-                    }
-                    .disabled(isRequestingAll || group.secret.state == .discarding)
-                    .buttonStyle(.bordered)
-                    .font(.caption)
-
-                    if group.health == .caution || group.health == .critical {
-                        Button("Repair", action: onRepair)
-                            .buttonStyle(.bordered)
-                            .font(.caption)
-                            .tint(group.health == .critical ? .orange : nil)
-                    }
-
-                    Spacer()
-
-                    if group.secret.state == .discarding {
-                        Text("Discarding…").font(.caption).foregroundStyle(.orange)
-                        Button("Force Forget", role: .destructive, action: onForceForget)
-                            .buttonStyle(.bordered)
-                            .font(.caption)
-                    } else {
-                        Button("Discard", role: .destructive, action: onDiscard)
-                            .buttonStyle(.bordered)
-                            .font(.caption)
-                    }
-                }
-                .padding(.top, 4)
-            }
+            Spacer()
+            Image(systemName: "chevron.right").foregroundStyle(.tertiary)
         }
         .padding(.vertical, 4)
     }
@@ -198,17 +72,6 @@ private struct SecretGroupRow: View {
             Label("Reconstruct + re-split now", systemImage: "exclamationmark.triangle.fill").font(.caption2).foregroundStyle(.orange)
         case .lost:
             Label("Unrecoverable", systemImage: "xmark.octagon.fill").font(.caption2).foregroundStyle(.red)
-        }
-    }
-}
-
-private extension ShareRequestState {
-    var label: LocalizedStringKey {
-        switch self {
-        case .pending: "Pending"
-        case .approved: "Approved"
-        case .denied: "Denied"
-        case .withdrawn: "Withdrawn"
         }
     }
 }

@@ -1,59 +1,49 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "… choose secret photo" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "… geheimes Foto auswählen"
+  "sourceLanguage": "en",
+  "strings": {
+    "%@ has not re-verified you yet": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ hat Sie noch nicht erneut verifiziert"
           }
         }
       }
     },
-    "%@ has not re-verified you yet" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ hat Sie noch nicht erneut verifiziert"
-          }
-        }
-      }
-    },
-    "%@'s key changed %lld days ago — verify fresh before approving" : {
-      "localizations" : {
-        "de" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Der Schlüssel von %@ hat sich vor %lld Tag geändert — vor der Genehmigung frisch verifizieren"
+    "%@'s key changed %lld days ago — verify fresh before approving": {
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Der Schlüssel von %@ hat sich vor %lld Tag geändert — vor der Genehmigung frisch verifizieren"
                 }
               },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Der Schlüssel von %@ hat sich vor %lld Tagen geändert — vor der Genehmigung frisch verifizieren"
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Der Schlüssel von %@ hat sich vor %lld Tagen geändert — vor der Genehmigung frisch verifizieren"
                 }
               }
             }
           }
         },
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%@'s key changed %lld day ago — verify fresh before approving"
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%@'s key changed %lld day ago — verify fresh before approving"
                 }
               },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%@'s key changed %lld days ago — verify fresh before approving"
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%@'s key changed %lld days ago — verify fresh before approving"
                 }
               }
             }
@@ -61,2054 +51,2214 @@
         }
       }
     },
-    "%@'s key changed, but their previous key is flagged compromised. This could be an attacker with the stolen key, or a false alarm. To reconnect, verify %@ fresh — in person or over a trusted channel — then use Relink from the Contacts screen. Do not accept this automatically." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Schlüssel von %1$@ hat sich geändert, aber der vorherige Schlüssel ist als kompromittiert markiert. Das könnte ein Angreifer mit dem gestohlenen Schlüssel sein oder ein Fehlalarm. Um die Verbindung wiederherzustellen, verifiziere %2$@ frisch — persönlich oder über einen vertrauenswürdigen Kanal — und nutze dann „Neu verknüpfen“ auf dem Kontakte-Bildschirm. Akzeptiere dies nicht automatisch."
+    "%@'s key changed, but their previous key is flagged compromised. This could be an attacker with the stolen key, or a false alarm. To reconnect, verify %@ fresh — in person or over a trusted channel — then use Relink from the Contacts screen. Do not accept this automatically.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Schlüssel von %1$@ hat sich geändert, aber der vorherige Schlüssel ist als kompromittiert markiert. Das könnte ein Angreifer mit dem gestohlenen Schlüssel sein oder ein Fehlalarm. Um die Verbindung wiederherzustellen, verifiziere %2$@ frisch — persönlich oder über einen vertrauenswürdigen Kanal — und nutze dann „Neu verknüpfen“ auf dem Kontakte-Bildschirm. Akzeptiere dies nicht automatisch."
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@'s key changed, but their previous key is flagged compromised. This could be an attacker with the stolen key, or a false alarm. To reconnect, verify %2$@ fresh — in person or over a trusted channel — then use Relink from the Contacts screen. Do not accept this automatically."
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@'s key changed, but their previous key is flagged compromised. This could be an attacker with the stolen key, or a false alarm. To reconnect, verify %2$@ fresh — in person or over a trusted channel — then use Relink from the Contacts screen. Do not accept this automatically."
           }
         }
       }
     },
-    "%lld contacts still have your old key — meet them and let them re-scan your code" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Kontakte haben noch Ihren alten Schlüssel — treffen Sie sie und lassen Sie sie Ihren Code erneut scannen"
+    "%lld contacts still have your old key — meet them and let them re-scan your code": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Kontakte haben noch Ihren alten Schlüssel — treffen Sie sie und lassen Sie sie Ihren Code erneut scannen"
           }
         }
       }
     },
-    "%lld of %lld free secrets are in use. Discard one, or unlock Premium." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld von %lld kostenlosen Geheimnissen sind belegt. Verwerfen Sie eines oder schalten Sie Premium frei."
-          }
-        }
-      }
-    },
-    "%lld of %lld is a relatively low threshold — a minority of holders could reconstruct this secret together." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld von %2$lld ist ein relativ niedriger Schwellenwert — eine Minderheit der Inhaber könnte dieses Geheimnis gemeinsam rekonstruieren."
+    "%lld holder": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld holder"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld holders"
+                }
+              }
+            }
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld of %2$lld is a relatively low threshold — a minority of holders could reconstruct this secret together."
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Inhaber"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Inhaber"
+                }
+              }
+            }
           }
         }
       }
     },
-    "1 contact still has your old key — meet them and let them re-scan your code" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 Kontakt hat noch Ihren alten Schlüssel — treffen Sie die Person und lassen Sie sie Ihren Code erneut scannen"
+    "%lld more holder(s) have to hand a piece back first.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Inhaber müssen ihren Teil noch zurückgeben."
           }
         }
       }
     },
-    "A key change always requires re-choosing a verification level fresh — it can never inherit the old one." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Eine Schlüsseländerung erfordert immer eine frisch gewählte Verifizierungsstufe — sie kann nie von der vorherigen übernommen werden."
+    "%lld of %lld free secrets are in use. Discard one, or unlock Premium.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld von %lld kostenlosen Geheimnissen sind belegt. Verwerfen Sie eines oder schalten Sie Premium frei."
           }
         }
       }
     },
-    "Add Contact" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kontakt hinzufügen"
-          }
-        }
-      }
-    },
-    "Add contacts to start sharing secrets." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fügen Sie Kontakte hinzu, um Geheimnisse zu teilen."
-          }
-        }
-      }
-    },
-    "Anything they hold for you stays with them — deleting only affects this device. But the shares linked to %@ lose that link, and adding them again creates a new contact rather than restoring this one." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Was sie für Sie verwahren, bleibt bei ihnen — das Löschen wirkt nur auf diesem Gerät. Anteile, die mit %@ verknüpft sind, verlieren diese Verknüpfung, und ein erneutes Hinzufügen legt einen neuen Kontakt an, statt diesen wiederherzustellen."
-          }
-        }
-      }
-    },
-    "Approve" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Genehmigen"
-          }
-        }
-      }
-    },
-    "Approved" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Genehmigt"
-          }
-        }
-      }
-    },
-    "Are you sure?" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sind Sie sicher?"
-          }
-        }
-      }
-    },
-    "As many secrets as you like" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beliebig viele Geheimnisse"
-          }
-        }
-      }
-    },
-    "At least %lld holder(s) must cooperate to reconstruct the secret." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mindestens %lld Inhaber müssen kooperieren, um das Geheimnis wiederherzustellen."
-          }
-        }
-      }
-    },
-    "At least two contacts are needed first — a secret is split among at least two people" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zuerst braucht es mindestens zwei Kontakte — ein Geheimnis wird unter mindestens zwei Personen aufgeteilt"
-          }
-        }
-      }
-    },
-    "Authenticate to reconstruct your secret" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Authentifizieren Sie sich, um Ihr Geheimnis zu rekonstruieren"
-          }
-        }
-      }
-    },
-    "Authentication failed." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Authentifizierung fehlgeschlagen."
-          }
-        }
-      }
-    },
-    "Biometric authentication is currently unavailable." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Biometrische Authentifizierung ist derzeit nicht verfügbar."
-          }
-        }
-      }
-    },
-    "Bring your own relay" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ihr eigenes Relais"
-          }
-        }
-      }
-    },
-    "Camera access is required to scan QR codes." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Für das Scannen von QR-Codes wird Kamerazugriff benötigt."
-          }
-        }
-      }
-    },
-    "Camera unavailable" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kamera nicht verfügbar"
-          }
-        }
-      }
-    },
-    "Cancel" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abbrechen"
-          }
-        }
-      }
-    },
-    "Carried through unchanged — this secret is not text and cannot be edited here." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unverändert übernommen — dieses Geheimnis ist kein Text und kann hier nicht bearbeitet werden."
-          }
-        }
-      }
-    },
-    "Catalog Backup" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Katalog-Sicherung"
-          }
-        }
-      }
-    },
-    "Choose a pseudonym" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ein Pseudonym wählen"
-          }
-        }
-      }
-    },
-    "Close" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schliessen"
-          }
-        }
-      }
-    },
-    "Confirm Relink" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neuverknüpfung bestätigen"
-          }
-        }
-      }
-    },
-    "Contacts" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kontakte"
-          }
-        }
-      }
-    },
-    "Contacts, verification levels, and secret metadata only — never shares or private keys." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nur Kontakte, Verifizierungsstufen und Geheimnis-Metadaten — niemals Anteile oder private Schlüssel."
-          }
-        }
-      }
-    },
-    "Copy" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kopieren"
-          }
-        }
-      }
-    },
-    "Create new keys" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neue Schlüssel erzeugen"
-          }
-        }
-      }
-    },
-    "Create new keys, then meet your contacts and let them scan your new code — both the people holding shares for you and the people whose shares you hold. Until they do, they cannot reach you." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erzeugen Sie neue Schlüssel und treffen Sie dann Ihre Kontakte, damit sie Ihren neuen Code scannen — sowohl die Personen, die Anteile für Sie halten, als auch die, deren Anteile Sie halten. Bis dahin können sie Sie nicht erreichen."
-          }
-        }
-      }
-    },
-    "Default relay" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Standard-Relais"
-          }
-        }
-      }
-    },
-    "Delete Contact" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kontakt löschen"
-          }
-        }
-      }
-    },
-    "Delete this contact?" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diesen Kontakt löschen?"
-          }
-        }
-      }
-    },
-    "Denied" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abgelehnt"
-          }
-        }
-      }
-    },
-    "Deny" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ablehnen"
-          }
-        }
-      }
-    },
-    "Deposit" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hinterlegen"
-          }
-        }
-      }
-    },
-    "Deposit Anyway" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Trotzdem hinterlegen"
-          }
-        }
-      }
-    },
-    "Deposited to %lld new holder(s). Discard the old distribution now? Each of its holders will be asked to delete their copy." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bei %lld neuen Inhabern hinterlegt. Alte Verteilung jetzt verwerfen? Jeder ihrer Inhaber wird gebeten, seine Kopie zu löschen."
-          }
-        }
-      }
-    },
-    "Depositing…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wird hinterlegt…"
-          }
-        }
-      }
-    },
-    "Deposplit" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deposplit"
-          }
-        }
-      }
-    },
-    "Deposplit Premium" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deposplit Premium"
-          }
-        }
-      }
-    },
-    "Deposplit's data on this phone — your contacts, your secrets' details, and the shares you hold for other people — is included in your device backup, so it survives a phone switch. Your private keys are not: they cannot leave this phone." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Daten von Deposplit auf diesem Telefon — Ihre Kontakte, die Angaben zu Ihren Geheimnissen und die Anteile, die Sie für andere verwahren — sind in der Gerätesicherung enthalten und überstehen so einen Telefonwechsel. Ihre privaten Schlüssel nicht: Diese können das Telefon nicht verlassen."
-          }
-        }
-      }
-    },
-    "Detected %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ erkannt"
-          }
-        }
-      }
-    },
-    "Device Backup" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gerätesicherung"
-          }
-        }
-      }
-    },
-    "Discard" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verwerfen"
-          }
-        }
-      }
-    },
-    "Discard %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ verwerfen"
-          }
-        }
-      }
-    },
-    "Discard Old Distribution" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alte Verteilung verwerfen"
-          }
-        }
-      }
-    },
-    "Discard this secret?" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieses Geheimnis verwerfen?"
-          }
-        }
-      }
-    },
-    "Discarding" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wird verworfen"
-          }
-        }
-      }
-    },
-    "Discarding…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wird verworfen…"
-          }
-        }
-      }
-    },
-    "Dismiss" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ignorieren"
-          }
-        }
-      }
-    },
-    "Distributing to %lld people is a lot to manage — you'll need to exchange keys, approve every pickup, and keep track of all of them." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Verteilung an %lld Personen ist viel Verwaltungsaufwand — Sie müssen Schlüssel austauschen, jede Abholung genehmigen und den Überblick über alle behalten."
-          }
-        }
-      }
-    },
-    "Distributing to %lld people is more holders than usual to keep track of." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Verteilung an %lld Personen bedeutet mehr Inhaber als üblich, um den Überblick zu behalten."
-          }
-        }
-      }
-    },
-    "Done" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fertig"
-          }
-        }
-      }
-    },
-    "e.g. BitLocker recovery key" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "z. B. BitLocker-Wiederherstellungsschlüssel"
-          }
-        }
-      }
-    },
-    "Encryption key" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verschlüsselungsschlüssel"
-          }
-        }
-      }
-    },
-    "Encryption key (base64url)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verschlüsselungsschlüssel (base64url)"
-          }
-        }
-      }
-    },
-    "Enrol a biometric (Face ID or Touch ID) in device settings to reconstruct the secret." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Richten Sie in den Geräteeinstellungen eine biometrische Methode (Face ID oder Touch ID) ein, um das Geheimnis zu rekonstruieren."
-          }
-        }
-      }
-    },
-    "Enter Keys Manually" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schlüssel manuell eingeben"
-          }
-        }
-      }
-    },
-    "Enter secret text or …" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Geheimen Text eingeben oder …"
-          }
-        }
-      }
-    },
-    "Error" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fehler"
-          }
-        }
-      }
-    },
-    "Error: %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fehler: %@"
-          }
-        }
-      }
-    },
-    "Every single holder must be available — if even one loses their share, this secret becomes unrecoverable." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jeder einzelne Inhaber muss verfügbar sein — verliert auch nur einer seinen Anteil, wird dieses Geheimnis unwiederbringlich."
-          }
-        }
-      }
-    },
-    "Excluded %lld inconsistent share(s) (from: %@). Reconstructed from the remaining consistent shares." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld inkonsistente(r) Anteil(e) ausgeschlossen (von: %2$@). Aus den verbleibenden konsistenten Anteilen rekonstruiert."
+    "%lld of %lld is a relatively low threshold — a minority of holders could reconstruct this secret together.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld von %2$lld ist ein relativ niedriger Schwellenwert — eine Minderheit der Inhaber könnte dieses Geheimnis gemeinsam rekonstruieren."
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Excluded %1$lld inconsistent share(s) (from: %2$@). Reconstructed from the remaining consistent shares."
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld of %2$lld is a relatively low threshold — a minority of holders could reconstruct this secret together."
           }
         }
       }
     },
-    "Export Catalog…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Katalog exportieren…"
+    "%lld of %lld needed": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld von %2$lld nötig"
           }
         }
       }
     },
-    "Export…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Exportieren…"
+    "%lld of the %lld needed have handed their piece back": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld von %2$lld nötigen haben ihren Teil zurückgegeben"
           }
         }
       }
     },
-    "Force Forget" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vergessen erzwingen"
+    "1 contact still has your old key — meet them and let them re-scan your code": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 Kontakt hat noch Ihren alten Schlüssel — treffen Sie die Person und lassen Sie sie Ihren Code erneut scannen"
           }
         }
       }
     },
-    "Free covers %lld secrets at a time. Discarding one frees its slot straight away." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kostenlos sind %lld Geheimnisse gleichzeitig. Ein verworfenes gibt seinen Platz sofort frei."
+    "A key change always requires re-choosing a verification level fresh — it can never inherit the old one.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Schlüsseländerung erfordert immer eine frisch gewählte Verifizierungsstufe — sie kann nie von der vorherigen übernommen werden."
           }
         }
       }
     },
-    "from downloads …" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "aus den Downloads …"
+    "Add Contact": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kontakt hinzufügen"
           }
         }
       }
     },
-    "from photo library …" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "aus der Fotomediathek …"
+    "Add contacts to start sharing secrets.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fügen Sie Kontakte hinzu, um Geheimnisse zu teilen."
           }
         }
       }
     },
-    "From: %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Von: %@"
+    "Anything they hold for you stays with them — deleting only affects this device. But the shares linked to %@ lose that link, and adding them again creates a new contact rather than restoring this one.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Was sie für Sie verwahren, bleibt bei ihnen — das Löschen wirkt nur auf diesem Gerät. Anteile, die mit %@ verknüpft sind, verlieren diese Verknüpfung, und ein erneutes Hinzufügen legt einen neuen Kontakt an, statt diesen wiederherzustellen."
           }
         }
       }
     },
-    "Generates a brand-new keypair for this device and automatically notifies all your contacts. Requests still pending with someone else at this moment may become unreachable afterward — best to let those settle first. This cannot be undone." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erzeugt ein brandneues Schlüsselpaar für dieses Gerät und benachrichtigt automatisch alle Ihre Kontakte. Anfragen, die gerade noch bei jemand anderem ausstehen, können danach unerreichbar werden — lassen Sie diese am besten vorher abschliessen. Dies kann nicht rückgängig gemacht werden."
+    "Approve": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genehmigen"
           }
         }
       }
     },
-    "Get started" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loslegen"
+    "Approved": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genehmigt"
           }
         }
       }
     },
-    "Getting stale" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wird zunehmend veraltet"
+    "Are you sure?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sind Sie sicher?"
           }
         }
       }
     },
-    "Holders" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Inhaber"
+    "As many secrets as you like": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beliebig viele Geheimnisse"
           }
         }
       }
     },
-    "How sure are you this is really them? Count your independent assurances: a trusted channel, and/or live proof you saw them." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wie sicher sind Sie, dass es wirklich diese Person ist? Zählen Sie Ihre unabhängigen Bestätigungen: ein vertrauenswürdiger Kanal und/oder ein Live-Nachweis, dass Sie sie gesehen haben."
+    "At least %lld holder(s) must cooperate to reconstruct the secret.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mindestens %lld Inhaber müssen kooperieren, um das Geheimnis wiederherzustellen."
           }
         }
       }
     },
-    "https://…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "https://…"
+    "At least two contacts are needed first — a secret is split among at least two people": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zuerst braucht es mindestens zwei Kontakte — ein Geheimnis wird unter mindestens zwei Personen aufgeteilt"
           }
         }
       }
     },
-    "iCloud Backup is encrypted, but end-to-end only with Advanced Data Protection turned on. You can exclude Deposplit under iCloud Backup in Settings. If you do, a new iPhone starts empty — the people whose shares you guard lose that redundancy, and your new iPhone has no record to tell them with." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die iCloud-Sicherung ist verschlüsselt, aber nur mit aktiviertem erweitertem Datenschutz für iCloud-Daten Ende-zu-Ende. Sie können Deposplit in den Einstellungen unter „iCloud-Backup“ ausschliessen. Dann startet ein neues iPhone leer — die Menschen, deren Anteile Sie verwahren, verlieren diese Redundanz, und Ihr neues iPhone weiss nichts davon, um es ihnen zu sagen."
+    "Authenticate to reconstruct your secret": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentifizieren Sie sich, um Ihr Geheimnis zu rekonstruieren"
           }
         }
       }
     },
-    "Identity" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Identität"
+    "Authentication failed.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentifizierung fehlgeschlagen."
           }
         }
       }
     },
-    "Import Catalog…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Katalog importieren…"
+    "Biometric authentication is currently unavailable.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biometrische Authentifizierung ist derzeit nicht verfügbar."
           }
         }
       }
     },
-    "Imported %lld new contact(s)." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld neue(r) Kontakt(e) importiert."
+    "Bring your own relay": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihr eigenes Relais"
           }
         }
       }
     },
-    "Integrity confirmed — every collected share agreed." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Integrität bestätigt — alle gesammelten Anteile stimmten überein."
+    "Camera access is required to scan QR codes.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für das Scannen von QR-Codes wird Kamerazugriff benötigt."
           }
         }
       }
     },
-    "Invalid encryption key (expected 32 bytes, base64url)." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ungültiger Verschlüsselungsschlüssel (32 Bytes erwartet, base64url)."
+    "Camera unavailable": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kamera nicht verfügbar"
           }
         }
       }
     },
-    "Invalid keys in QR payload." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ungültige Schlüssel im QR-Code."
+    "Cancel": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbrechen"
           }
         }
       }
     },
-    "Invalid verify key (expected 32 bytes, base64url)." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ungültiger Verifizierungsschlüssel (32 Bytes erwartet, base64url)."
+    "Carried through unchanged — this secret is not text and cannot be edited here.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unverändert übernommen — dieses Geheimnis ist kein Text und kann hier nicht bearbeitet werden."
           }
         }
       }
     },
-    "Inventory" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bestand"
+    "Catalog Backup": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Katalog-Sicherung"
           }
         }
       }
     },
-    "Keeping safe" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verwahrt"
+    "Choose a pseudonym": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Pseudonym wählen"
           }
         }
       }
     },
-    "Key Conflicts" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schlüsselkonflikte"
+    "Clear collected copies": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gesammelte Kopien freigeben"
           }
         }
       }
     },
-    "Label" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bezeichnung"
+    "Clear collected copies?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gesammelte Kopien freigeben?"
           }
         }
       }
     },
-    "Let contacts scan this code to add you." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lassen Sie Kontakte diesen Code scannen, um Sie hinzuzufügen."
+    "Clear the collected copies once you are done with the secret — the holders keep their pieces either way.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die gesammelten Kopien nach Gebrauch freigeben — die Inhaber behalten ihre Teile in jedem Fall."
           }
         }
       }
     },
-    "Loading…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wird geladen…"
+    "Close": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schliessen"
           }
         }
       }
     },
-    "Margin of one — re-split soon" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sicherheitsabstand von eins — bald neu aufteilen"
+    "Confirm Relink": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neuverknüpfung bestätigen"
           }
         }
       }
     },
-    "Mark as Re-verified" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Als erneut verifiziert markieren"
+    "Contacts": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kontakte"
           }
         }
       }
     },
-    "Mark Compromised" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Als kompromittiert markieren"
+    "Contacts, verification levels, and secret metadata only — never shares or private keys.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur Kontakte, Verifizierungsstufen und Geheimnis-Metadaten — niemals Anteile oder private Schlüssel."
           }
         }
       }
     },
-    "Mark Key Compromised" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schlüssel als kompromittiert markieren"
+    "Copy": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopieren"
           }
         }
       }
     },
-    "Mark this contact's current key as compromised?" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aktuellen Schlüssel dieses Kontakts als kompromittiert markieren?"
+    "Create new keys": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neue Schlüssel erzeugen"
           }
         }
       }
     },
-    "My QR Code" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mein QR-Code"
+    "Create new keys, then meet your contacts and let them scan your new code — both the people holding shares for you and the people whose shares you hold. Until they do, they cannot reach you.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erzeugen Sie neue Schlüssel und treffen Sie dann Ihre Kontakte, damit sie Ihren neuen Code scannen — sowohl die Personen, die Anteile für Sie halten, als auch die, deren Anteile Sie halten. Bis dahin können sie Sie nicht erreichen."
           }
         }
       }
     },
-    "Name" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Name"
+    "Default relay": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard-Relais"
           }
         }
       }
     },
-    "Name is required." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Name ist erforderlich."
+    "Delete Contact": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kontakt löschen"
           }
         }
       }
     },
-    "Need %lld approved retrieval(s) to reconstruct — %lld so far." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld genehmigte Abrufanfrage(n) zur Rekonstruktion erforderlich — bisher %2$lld."
+    "Delete this contact?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diesen Kontakt löschen?"
+          }
+        }
+      }
+    },
+    "Denied": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abgelehnt"
+          }
+        }
+      }
+    },
+    "Deny": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ablehnen"
+          }
+        }
+      }
+    },
+    "Deposit": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hinterlegen"
+          }
+        }
+      }
+    },
+    "Deposit Anyway": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trotzdem hinterlegen"
+          }
+        }
+      }
+    },
+    "Deposited to %lld new holder(s). Discard the old distribution now? Each of its holders will be asked to delete their copy.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bei %lld neuen Inhabern hinterlegt. Alte Verteilung jetzt verwerfen? Jeder ihrer Inhaber wird gebeten, seine Kopie zu löschen."
+          }
+        }
+      }
+    },
+    "Depositing…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird hinterlegt…"
+          }
+        }
+      }
+    },
+    "Deposplit": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deposplit"
+          }
+        }
+      }
+    },
+    "Deposplit Premium": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deposplit Premium"
+          }
+        }
+      }
+    },
+    "Deposplit's data on this phone — your contacts, your secrets' details, and the shares you hold for other people — is included in your device backup, so it survives a phone switch. Your private keys are not: they cannot leave this phone.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Daten von Deposplit auf diesem Telefon — Ihre Kontakte, die Angaben zu Ihren Geheimnissen und die Anteile, die Sie für andere verwahren — sind in der Gerätesicherung enthalten und überstehen so einen Telefonwechsel. Ihre privaten Schlüssel nicht: Diese können das Telefon nicht verlassen."
+          }
+        }
+      }
+    },
+    "Detected %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ erkannt"
+          }
+        }
+      }
+    },
+    "Device Backup": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gerätesicherung"
+          }
+        }
+      }
+    },
+    "Discard": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwerfen"
+          }
+        }
+      }
+    },
+    "Discard %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ verwerfen"
+          }
+        }
+      }
+    },
+    "Discard Old Distribution": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alte Verteilung verwerfen"
+          }
+        }
+      }
+    },
+    "Discard this secret?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Geheimnis verwerfen?"
+          }
+        }
+      }
+    },
+    "Discarding": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird verworfen"
+          }
+        }
+      }
+    },
+    "Discarding…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird verworfen…"
+          }
+        }
+      }
+    },
+    "Dismiss": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignorieren"
+          }
+        }
+      }
+    },
+    "Distributing to %lld people is a lot to manage — you'll need to exchange keys, approve every pickup, and keep track of all of them.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Verteilung an %lld Personen ist viel Verwaltungsaufwand — Sie müssen Schlüssel austauschen, jede Abholung genehmigen und den Überblick über alle behalten."
+          }
+        }
+      }
+    },
+    "Distributing to %lld people is more holders than usual to keep track of.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Verteilung an %lld Personen bedeutet mehr Inhaber als üblich, um den Überblick zu behalten."
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fertig"
+          }
+        }
+      }
+    },
+    "Encryption key": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verschlüsselungsschlüssel"
+          }
+        }
+      }
+    },
+    "Encryption key (base64url)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verschlüsselungsschlüssel (base64url)"
+          }
+        }
+      }
+    },
+    "Enrol a biometric (Face ID or Touch ID) in device settings to reconstruct the secret.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Richten Sie in den Geräteeinstellungen eine biometrische Methode (Face ID oder Touch ID) ein, um das Geheimnis zu rekonstruieren."
+          }
+        }
+      }
+    },
+    "Enter Keys Manually": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schlüssel manuell eingeben"
+          }
+        }
+      }
+    },
+    "Enter secret text or …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geheimen Text eingeben oder …"
+          }
+        }
+      }
+    },
+    "Error": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fehler"
+          }
+        }
+      }
+    },
+    "Error: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fehler: %@"
+          }
+        }
+      }
+    },
+    "Every holder has been asked already.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Inhaber wurden bereits gefragt."
+          }
+        }
+      }
+    },
+    "Every single holder must be available — if even one loses their share, this secret becomes unrecoverable.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jeder einzelne Inhaber muss verfügbar sein — verliert auch nur einer seinen Anteil, wird dieses Geheimnis unwiederbringlich."
+          }
+        }
+      }
+    },
+    "Excluded %lld inconsistent share(s) (from: %@). Reconstructed from the remaining consistent shares.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld inkonsistente(r) Anteil(e) ausgeschlossen (von: %2$@). Aus den verbleibenden konsistenten Anteilen rekonstruiert."
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Need %1$lld approved retrieval(s) to reconstruct — %2$lld so far."
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Excluded %1$lld inconsistent share(s) (from: %2$@). Reconstructed from the remaining consistent shares."
           }
         }
       }
     },
-    "Need %lld more approved retrieval(s)." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld weitere genehmigte Abrufanfrage(n) erforderlich."
+    "Export Catalog…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Katalog exportieren…"
           }
         }
       }
     },
-    "New keys" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neue Schlüssel"
+    "Export…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportieren…"
           }
         }
       }
     },
-    "Nickname" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spitzname"
+    "Failed to load": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laden fehlgeschlagen"
           }
         }
       }
     },
-    "Nickname (optional)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spitzname (optional)"
+    "Force Forget": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vergessen erzwingen"
           }
         }
       }
     },
-    "No contacts yet" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Noch keine Kontakte"
+    "Free covers %lld secrets at a time. Discarding one frees its slot straight away.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kostenlos sind %lld Geheimnisse gleichzeitig. Ein verworfenes gibt seinen Platz sofort frei."
           }
         }
       }
     },
-    "No holders on record for this secret." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keine Inhaber für dieses Geheimnis erfasst."
+    "From: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Von: %@"
           }
         }
       }
     },
-    "No pending requests" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keine ausstehenden Anfragen"
+    "Generates a brand-new keypair for this device and automatically notifies all your contacts. Requests still pending with someone else at this moment may become unreachable afterward — best to let those settle first. This cannot be undone.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erzeugt ein brandneues Schlüsselpaar für dieses Gerät und benachrichtigt automatisch alle Ihre Kontakte. Anfragen, die gerade noch bei jemand anderem ausstehen, können danach unerreichbar werden — lassen Sie diese am besten vorher abschliessen. Dies kann nicht rückgängig gemacht werden."
           }
         }
       }
     },
-    "No secrets split & shared yet" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Noch keine Geheimnisse aufgeteilt & verteilt"
+    "Get started": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loslegen"
           }
         }
       }
     },
-    "No shares to keep safe yet" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Noch keine Anteile zu verwahren"
+    "Getting stale": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird zunehmend veraltet"
           }
         }
       }
     },
-    "Not a valid Deposplit QR code." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kein gültiger Deposplit-QR-Code."
+    "Holders": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inhaber"
           }
         }
       }
     },
-    "Not enough contacts" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zu wenige Kontakte"
+    "How sure are you this is really them? Count your independent assurances: a trusted channel, and/or live proof you saw them.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wie sicher sind Sie, dass es wirklich diese Person ist? Zählen Sie Ihre unabhängigen Bestätigungen: ein vertrauenswürdiger Kanal und/oder ein Live-Nachweis, dass Sie sie gesehen haben."
           }
         }
       }
     },
-    "Not Now" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nicht jetzt"
+    "Identity": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Identität"
           }
         }
       }
     },
-    "Not requested" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nicht angefragt"
+    "Import Catalog…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Katalog importieren…"
           }
         }
       }
     },
-    "Not unlocked: %lld secrets at a time, and deposplit.com as the relay." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nicht freigeschaltet: %lld Geheimnisse gleichzeitig und deposplit.com als Relais."
+    "Imported %lld new contact(s).": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld neue(r) Kontakt(e) importiert."
           }
         }
       }
     },
-    "Nothing else was lost. The secrets you split are still recoverable, and the shares you keep for other people are still here." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sonst ist nichts verloren. Ihre aufgeteilten Geheimnisse sind weiterhin wiederherstellbar, und die Anteile, die Sie für andere verwahren, sind noch da."
+    "Integrity confirmed — every collected share agreed.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Integrität bestätigt — alle gesammelten Anteile stimmten überein."
           }
         }
       }
     },
-    "Notified %lld of %lld contact(s)." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld von %2$lld Kontakt(en) benachrichtigt."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Notified %1$lld of %2$lld contact(s)."
+    "Invalid encryption key (expected 32 bytes, base64url).": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ungültiger Verschlüsselungsschlüssel (32 Bytes erwartet, base64url)."
           }
         }
       }
     },
-    "One purchase, once. No subscription, no ads." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Einmal kaufen, fertig. Kein Abo, keine Werbung."
+    "Invalid keys in QR payload.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ungültige Schlüssel im QR-Code."
           }
         }
       }
     },
-    "Only %lld of %lld holders need to cooperate to reconstruct this secret — a small group could do so without your knowledge." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nur %1$lld von %2$lld Inhabern müssen zusammenarbeiten, um dieses Geheimnis zu rekonstruieren — eine kleine Gruppe könnte dies ohne Ihr Wissen tun."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Only %1$lld of %2$lld holders need to cooperate to reconstruct this secret — a small group could do so without your knowledge."
+    "Invalid verify key (expected 32 bytes, base64url).": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ungültiger Verifizierungsschlüssel (32 Bytes erwartet, base64url)."
           }
         }
       }
     },
-    "Only do this if you have an out-of-band reason to believe %@'s key was stolen. Deposplit will refuse to auto-accept any future key rotation claiming continuity from it — you'll need to verify them fresh, in person or over a trusted channel, to reconnect." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tun Sie dies nur, wenn Sie ausserhalb der App einen Grund haben anzunehmen, dass der Schlüssel von %@ gestohlen wurde. Deposplit wird künftig jede Schlüsseländerung, die Kontinuität von diesem Schlüssel beansprucht, nicht mehr automatisch akzeptieren — Sie müssen die Person frisch verifizieren, persönlich oder über einen vertrauenswürdigen Kanal, um die Verbindung wiederherzustellen."
+    "Inventory": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestand"
           }
         }
       }
     },
-    "Only PNG and JPEG images can be split." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nur PNG- und JPEG-Bilder können aufgeteilt werden."
+    "Keeping safe": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwahrt"
           }
         }
       }
     },
-    "Open request" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anfrage öffnen"
+    "Key Conflicts": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schlüsselkonflikte"
           }
         }
       }
     },
-    "Pause Heartbeats" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Heartbeats pausieren"
+    "Label": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bezeichnung"
           }
         }
       }
     },
-    "Pending" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ausstehend"
+    "Let contacts scan this code to add you.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lassen Sie Kontakte diesen Code scannen, um Sie hinzuzufügen."
           }
         }
       }
     },
-    "Pending Requests" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ausstehende Anfragen"
+    "Loading…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird geladen…"
           }
         }
       }
     },
-    "Point this device at a relay you run yourself. Reaching someone else's relay is free either way — scanned from their code or typed in by hand." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Richten Sie dieses Gerät auf ein Relais aus, das Sie selbst betreiben. Das Relais anderer zu erreichen ist ohnehin kostenlos — gescannt oder von Hand eingetragen."
+    "Margin of one — re-split soon": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherheitsabstand von eins — bald neu aufteilen"
           }
         }
       }
     },
-    "Possible impersonation attempt" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Möglicher Identitätsbetrug"
+    "Mark Compromised": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Als kompromittiert markieren"
           }
         }
       }
     },
-    "Premium is unlocked on this device." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium ist auf diesem Gerät freigeschaltet."
+    "Mark Key Compromised": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schlüssel als kompromittiert markieren"
           }
         }
       }
     },
-    "Pseudonym" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pseudonym"
+    "Mark as Re-verified": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Als erneut verifiziert markieren"
           }
         }
       }
     },
-    "Re-open" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erneut öffnen"
+    "Mark this contact's current key as compromised?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktuellen Schlüssel dieses Kontakts als kompromittiert markieren?"
           }
         }
       }
     },
-    "Recipient" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Empfänger"
+    "My QR Code": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mein QR-Code"
           }
         }
       }
     },
-    "Recipients" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Empfänger"
+    "Name": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
           }
         }
       }
     },
-    "Reconstruct" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rekonstruieren"
+    "Name is required.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name ist erforderlich."
           }
         }
       }
     },
-    "Reconstruct + re-split now" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jetzt rekonstruieren + neu aufteilen"
-          }
-        }
-      }
-    },
-    "Reconstruct secret…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Geheimnis rekonstruieren…"
-          }
-        }
-      }
-    },
-    "Reconstructed from exactly the required shares — no integrity cross-check was possible." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aus genau den erforderlichen Anteilen rekonstruiert — eine Integritätsprüfung war nicht möglich."
-          }
-        }
-      }
-    },
-    "Reconstructed image" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rekonstruiertes Bild"
-          }
-        }
-      }
-    },
-    "Reconstruction integrity check failed: no trustworthy majority found among %lld collected shares (largest consistent group was only %lld)." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Integritätsprüfung der Rekonstruktion fehlgeschlagen: Unter %1$lld gesammelten Anteilen wurde keine vertrauenswürdige Mehrheit gefunden (die grösste konsistente Gruppe umfasste nur %2$lld)."
+    "Need %lld approved retrieval(s) to reconstruct — %lld so far.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld genehmigte Abrufanfrage(n) zur Rekonstruktion erforderlich — bisher %2$lld."
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Reconstruction integrity check failed: no trustworthy majority found among %1$lld collected shares (largest consistent group was only %2$lld)."
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Need %1$lld approved retrieval(s) to reconstruct — %2$lld so far."
           }
         }
       }
     },
-    "Regenerate" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neu erzeugen"
+    "New keys": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neue Schlüssel"
           }
         }
       }
     },
-    "Regenerate My Identity" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Meine Identität neu erzeugen"
+    "Nickname": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spitzname"
           }
         }
       }
     },
-    "Regenerate your identity?" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ihre Identität neu erzeugen?"
+    "Nickname (optional)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spitzname (optional)"
           }
         }
       }
     },
-    "Relay not reachable" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Relais nicht erreichbar"
+    "No contacts yet": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch keine Kontakte"
           }
         }
       }
     },
-    "Relay override (optional, BYOR)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Relais-Override (optional, BYOR)"
+    "No holders on record for this secret.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Inhaber für dieses Geheimnis erfasst."
           }
         }
       }
     },
-    "Relink (Key Changed)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neu verknüpfen (Schlüssel geändert)"
+    "No pending requests": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine ausstehenden Anfragen"
           }
         }
       }
     },
-    "Relink %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ neu verknüpfen"
+    "No secrets split & shared yet": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch keine Geheimnisse aufgeteilt & verteilt"
           }
         }
       }
     },
-    "Removal" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Entfernung"
+    "No shares to keep safe yet": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch keine Anteile zu verwahren"
           }
         }
       }
     },
-    "Remove" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Entfernen"
+    "Not Now": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht jetzt"
           }
         }
       }
     },
-    "Rename" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Umbenennen"
+    "Not a valid Deposplit QR code.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein gültiger Deposplit-QR-Code."
           }
         }
       }
     },
-    "Rename contact" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kontakt umbenennen"
+    "Not enough contacts": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zu wenige Kontakte"
           }
         }
       }
     },
-    "Repair" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reparieren"
+    "Not requested": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht angefragt"
           }
         }
       }
     },
-    "Repair — Re-deposit" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reparatur — Neu hinterlegen"
+    "Not unlocked: %lld secrets at a time, and deposplit.com as the relay.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht freigeschaltet: %lld Geheimnisse gleichzeitig und deposplit.com als Relais."
           }
         }
       }
     },
-    "Repair %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ reparieren"
+    "Nothing else was lost. The secrets you split are still recoverable, and the shares you keep for other people are still here.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonst ist nichts verloren. Ihre aufgeteilten Geheimnisse sind weiterhin wiederherstellbar, und die Anteile, die Sie für andere verwahren, sind noch da."
           }
         }
       }
     },
-    "Repair complete" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reparatur abgeschlossen"
+    "Nothing has been handed back yet.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bisher wurde nichts zurückgegeben."
           }
         }
       }
     },
-    "Request Missing Retrievals" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fehlende Abrufe anfragen"
-          }
-        }
-      }
-    },
-    "Request Retrieval (all)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abruf anfragen (alle)"
-          }
-        }
-      }
-    },
-    "Requests" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anfragen"
-          }
-        }
-      }
-    },
-    "Requests deletion from all %lld holder(s). Each must approve — this only removes it from your device's list once every holder confirms (or you force-forget it)." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fordert die Löschung bei allen %lld Inhabern an. Jeder muss zustimmen — es wird erst aus der Liste Ihres Geräts entfernt, sobald jeder Inhaber bestätigt hat (oder Sie es erzwungen vergessen)."
-          }
-        }
-      }
-    },
-    "Reset to Default" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auf Standard zurücksetzen"
-          }
-        }
-      }
-    },
-    "Restore purchase" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kauf wiederherstellen"
-          }
-        }
-      }
-    },
-    "Resume Heartbeats" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Heartbeats fortsetzen"
-          }
-        }
-      }
-    },
-    "Retrieval" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abruf"
-          }
-        }
-      }
-    },
-    "Retry" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erneut versuchen"
-          }
-        }
-      }
-    },
-    "Save" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sichern"
-          }
-        }
-      }
-    },
-    "Scan QR Code" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "QR-Code scannen"
-          }
-        }
-      }
-    },
-    "Scanned new keys for **%@**." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neue Schlüssel für **%@** gescannt."
-          }
-        }
-      }
-    },
-    "Secret" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Geheimnis"
-          }
-        }
-      }
-    },
-    "See Premium" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium ansehen"
-          }
-        }
-      }
-    },
-    "Selected image" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ausgewähltes Bild"
-          }
-        }
-      }
-    },
-    "Settings" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Einstellungen"
-          }
-        }
-      }
-    },
-    "Share" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anteil"
-          }
-        }
-      }
-    },
-    "Share Export" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Export teilen"
-          }
-        }
-      }
-    },
-    "Silent — possible loss" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Still — möglicher Verlust"
-          }
-        }
-      }
-    },
-    "Some relays could not be reached, so transfers still in progress were not collected first — they will arrive on a later sync." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Einige Relais waren nicht erreichbar, daher wurden noch offene Übertragungen nicht vorab eingesammelt — sie kommen bei einer späteren Synchronisierung an."
-          }
-        }
-      }
-    },
-    "Split & Share" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Teilen & Verteilen"
-          }
-        }
-      }
-    },
-    "Split & shared" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aufgeteilt & verteilt"
-          }
-        }
-      }
-    },
-    "That image is %@. The largest secret Deposplit can split is %@." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieses Bild ist %1$@ gross. Das grösste Geheimnis, das Deposplit aufteilen kann, ist %2$@."
+    "Notified %lld of %lld contact(s).": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld von %2$lld Kontakt(en) benachrichtigt."
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "That image is %1$@. The largest secret Deposplit can split is %2$@."
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Notified %1$lld of %2$lld contact(s)."
           }
         }
       }
     },
-    "The App Store did not answer, so there is nothing to buy right now." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der App Store hat nicht geantwortet, deshalb gibt es gerade nichts zu kaufen."
+    "One purchase, once. No subscription, no ads.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einmal kaufen, fertig. Kein Abo, keine Werbung."
           }
         }
       }
     },
-    "This creates a new key pair and notifies %lld contact(s). A share already on its way to you can still be collected afterwards; a contact who cannot be reached now will not learn of the new key." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dies erzeugt ein neues Schlüsselpaar und benachrichtigt %lld Kontakt(e). Ein bereits an Sie unterwegs befindlicher Anteil kann danach weiterhin abgeholt werden; ein jetzt nicht erreichbarer Kontakt erfährt nichts vom neuen Schlüssel."
+    "Only %lld of %lld holders need to cooperate to reconstruct this secret — a small group could do so without your knowledge.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur %1$lld von %2$lld Inhabern müssen zusammenarbeiten, um dieses Geheimnis zu rekonstruieren — eine kleine Gruppe könnte dies ohne Ihr Wissen tun."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Only %1$lld of %2$lld holders need to cooperate to reconstruct this secret — a small group could do so without your knowledge."
           }
         }
       }
     },
-    "This device has no biometric sensor — reconstruction is disabled." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieses Gerät hat keinen biometrischen Sensor — die Rekonstruktion ist deaktiviert."
+    "Only PNG and JPEG images can be split.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur PNG- und JPEG-Bilder können aufgeteilt werden."
           }
         }
       }
     },
-    "This phone restored everything except your keys. They were held by your old phone in a way that cannot be copied, so this device can no longer sign or decrypt as you." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieses Telefon hat alles wiederhergestellt ausser Ihren Schlüsseln. Ihr altes Telefon hat sie so verwahrt, dass sie sich nicht kopieren lassen — dieses Gerät kann daher weder als Sie signieren noch entschlüsseln."
+    "Only do this if you have an out-of-band reason to believe %@'s key was stolen. Deposplit will refuse to auto-accept any future key rotation claiming continuity from it — you'll need to verify them fresh, in person or over a trusted channel, to reconnect.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tun Sie dies nur, wenn Sie ausserhalb der App einen Grund haben anzunehmen, dass der Schlüssel von %@ gestohlen wurde. Deposplit wird künftig jede Schlüsseländerung, die Kontinuität von diesem Schlüssel beansprucht, nicht mehr automatisch akzeptieren — Sie müssen die Person frisch verifizieren, persönlich oder über einen vertrauenswürdigen Kanal, um die Verbindung wiederherzustellen."
           }
         }
       }
     },
-    "This pseudonym is stored on your device and shared with contacts when they scan your QR code." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieses Pseudonym wird auf Ihrem Gerät gespeichert und mit Kontakten geteilt, wenn sie Ihren QR-Code scannen."
+    "Open request": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anfrage öffnen"
           }
         }
       }
     },
-    "This QR code uses an encryption scheme this app version doesn't support." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieser QR-Code verwendet ein Verschlüsselungsschema, das diese App-Version nicht unterstützt."
+    "Pause Heartbeats": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heartbeats pausieren"
           }
         }
       }
     },
-    "This secret is not text that can be shown here. Export it to open it elsewhere." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieses Geheimnis ist kein Text und kann hier nicht angezeigt werden. Exportieren Sie es, um es woanders zu öffnen."
+    "Pending": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausstehend"
           }
         }
       }
     },
-    "This tolerates the loss of only one holder before the secret becomes unrecoverable." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dies verkraftet nur den Verlust eines einzigen Inhabers, bevor das Geheimnis unwiederbringlich wird."
+    "Pending Requests": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausstehende Anfragen"
           }
         }
       }
     },
-    "Threshold: %lld of %lld" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schwellenwert: %lld von %lld"
+    "Point this device at a relay you run yourself. Reaching someone else's relay is free either way — scanned from their code or typed in by hand.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Richten Sie dieses Gerät auf ein Relais aus, das Sie selbst betreiben. Das Relais anderer zu erreichen ist ohnehin kostenlos — gescannt oder von Hand eingetragen."
           }
         }
       }
     },
-    "Unknown contact" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unbekannter Kontakt"
+    "Possible impersonation attempt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Möglicher Identitätsbetrug"
           }
         }
       }
     },
-    "Unlock Premium" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium freischalten"
+    "Premium is unlocked on this device.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premium ist auf diesem Gerät freigeschaltet."
           }
         }
       }
     },
-    "Unmonitored by choice" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bewusst nicht überwacht"
+    "Pseudonym": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pseudonym"
           }
         }
       }
     },
-    "Unrecoverable" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unwiederbringlich"
+    "Re-open": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut öffnen"
           }
         }
       }
     },
-    "Used for contacts without a BYOR override, and advertised in your own QR code." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wird für Kontakte ohne BYOR-Override verwendet und in Ihrem eigenen QR-Code angegeben."
+    "Recipient": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empfänger"
           }
         }
       }
     },
-    "Used for contacts without a BYOR override, and advertised in your own QR code. Choosing your own default relay is part of Premium." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wird für Kontakte ohne eigenes BYOR-Relais verwendet und in Ihrem QR-Code mitgeteilt. Ein eigenes Standard-Relais zu wählen gehört zu Premium."
+    "Recipients": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empfänger"
           }
         }
       }
     },
-    "Verification key" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verifizierungsschlüssel"
+    "Reconstruct": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rekonstruieren"
           }
         }
       }
     },
-    "Verification key (base64url)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verifizierungsschlüssel (base64url)"
+    "Reconstruct + re-split now": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jetzt rekonstruieren + neu aufteilen"
           }
         }
       }
     },
-    "Verification level" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verifizierungsstufe"
+    "Reconstruct secret…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geheimnis rekonstruieren…"
           }
         }
       }
     },
-    "Verification Level" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verifizierungsstufe"
+    "Reconstructed from exactly the required shares — no integrity cross-check was possible.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus genau den erforderlichen Anteilen rekonstruiert — eine Integritätsprüfung war nicht möglich."
           }
         }
       }
     },
-    "Whether Premium is unlocked is decided on this device. The relay never learns anything about it." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ob Premium freigeschaltet ist, entscheidet dieses Gerät. Das Relais erfährt davon nichts."
+    "Reconstructed image": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rekonstruiertes Bild"
           }
         }
       }
     },
-    "Withdrawn" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zurückgezogen"
+    "Reconstruction integrity check failed: no trustworthy majority found among %lld collected shares (largest consistent group was only %lld).": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Integritätsprüfung der Rekonstruktion fehlgeschlagen: Unter %1$lld gesammelten Anteilen wurde keine vertrauenswürdige Mehrheit gefunden (die grösste konsistente Gruppe umfasste nur %2$lld)."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Reconstruction integrity check failed: no trustworthy majority found among %1$lld collected shares (largest consistent group was only %2$lld)."
           }
         }
       }
     },
-    "Your keys did not come across" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ihre Schlüssel sind nicht mitgekommen"
+    "Regenerate": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neu erzeugen"
           }
         }
       }
     },
-    "Your pseudonym" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ihr Pseudonym"
+    "Regenerate My Identity": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meine Identität neu erzeugen"
+          }
+        }
+      }
+    },
+    "Regenerate your identity?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre Identität neu erzeugen?"
+          }
+        }
+      }
+    },
+    "Relay not reachable": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relais nicht erreichbar"
+          }
+        }
+      }
+    },
+    "Relay override (optional, BYOR)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relais-Override (optional, BYOR)"
+          }
+        }
+      }
+    },
+    "Relink %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ neu verknüpfen"
+          }
+        }
+      }
+    },
+    "Relink (Key Changed)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neu verknüpfen (Schlüssel geändert)"
+          }
+        }
+      }
+    },
+    "Removal": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entfernung"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entfernen"
+          }
+        }
+      }
+    },
+    "Rename": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umbenennen"
+          }
+        }
+      }
+    },
+    "Rename contact": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kontakt umbenennen"
+          }
+        }
+      }
+    },
+    "Repair": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reparieren"
+          }
+        }
+      }
+    },
+    "Repair %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ reparieren"
+          }
+        }
+      }
+    },
+    "Repair complete": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reparatur abgeschlossen"
+          }
+        }
+      }
+    },
+    "Repair — Re-deposit": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reparatur — Neu hinterlegen"
+          }
+        }
+      }
+    },
+    "Request Missing Retrievals": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fehlende Abrufe anfragen"
+          }
+        }
+      }
+    },
+    "Request Retrieval (all)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abruf anfragen (alle)"
+          }
+        }
+      }
+    },
+    "Requests": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anfragen"
+          }
+        }
+      }
+    },
+    "Requests deletion from all %lld holder(s). Each must approve — this only removes it from your device's list once every holder confirms (or you force-forget it).": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fordert die Löschung bei allen %lld Inhabern an. Jeder muss zustimmen — es wird erst aus der Liste Ihres Geräts entfernt, sobald jeder Inhaber bestätigt hat (oder Sie es erzwungen vergessen)."
+          }
+        }
+      }
+    },
+    "Reset to Default": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf Standard zurücksetzen"
+          }
+        }
+      }
+    },
+    "Restore purchase": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kauf wiederherstellen"
+          }
+        }
+      }
+    },
+    "Resume Heartbeats": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heartbeats fortsetzen"
+          }
+        }
+      }
+    },
+    "Retrieval": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abruf"
+          }
+        }
+      }
+    },
+    "Retry": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut versuchen"
+          }
+        }
+      }
+    },
+    "Save": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sichern"
+          }
+        }
+      }
+    },
+    "Scan QR Code": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR-Code scannen"
+          }
+        }
+      }
+    },
+    "Scanned new keys for **%@**.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neue Schlüssel für **%@** gescannt."
+          }
+        }
+      }
+    },
+    "Secret": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geheimnis"
+          }
+        }
+      }
+    },
+    "See Premium": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premium ansehen"
+          }
+        }
+      }
+    },
+    "Selected image": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausgewähltes Bild"
+          }
+        }
+      }
+    },
+    "Settings": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einstellungen"
+          }
+        }
+      }
+    },
+    "Share": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anteil"
+          }
+        }
+      }
+    },
+    "Share Export": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export teilen"
+          }
+        }
+      }
+    },
+    "Silent — possible loss": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Still — möglicher Verlust"
+          }
+        }
+      }
+    },
+    "Some relays could not be reached, so transfers still in progress were not collected first — they will arrive on a later sync.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einige Relais waren nicht erreichbar, daher wurden noch offene Übertragungen nicht vorab eingesammelt — sie kommen bei einer späteren Synchronisierung an."
+          }
+        }
+      }
+    },
+    "Split & Share": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Teilen & Verteilen"
+          }
+        }
+      }
+    },
+    "Split & shared": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufgeteilt & verteilt"
+          }
+        }
+      }
+    },
+    "That image is %@. The largest secret Deposplit can split is %@.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Bild ist %1$@ gross. Das grösste Geheimnis, das Deposplit aufteilen kann, ist %2$@."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "That image is %1$@. The largest secret Deposplit can split is %2$@."
+          }
+        }
+      }
+    },
+    "The App Store did not answer, so there is nothing to buy right now.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der App Store hat nicht geantwortet, deshalb gibt es gerade nichts zu kaufen."
+          }
+        }
+      }
+    },
+    "The holders keep their pieces — copies can be asked for again at any time.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Inhaber behalten ihre Teile — Kopien lassen sich jederzeit erneut anfragen."
+          }
+        }
+      }
+    },
+    "The secret has not been shown here. Clearing the collected copies means asking the holders again before it can be put back together.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Geheimnis wurde hier noch nicht angezeigt. Werden die gesammelten Kopien freigegeben, müssen die Inhaber erneut gefragt werden, bevor es wieder zusammengesetzt werden kann."
+          }
+        }
+      }
+    },
+    "This QR code uses an encryption scheme this app version doesn't support.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser QR-Code verwendet ein Verschlüsselungsschema, das diese App-Version nicht unterstützt."
+          }
+        }
+      }
+    },
+    "This creates a new key pair and notifies %lld contact(s). A share already on its way to you can still be collected afterwards; a contact who cannot be reached now will not learn of the new key.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dies erzeugt ein neues Schlüsselpaar und benachrichtigt %lld Kontakt(e). Ein bereits an Sie unterwegs befindlicher Anteil kann danach weiterhin abgeholt werden; ein jetzt nicht erreichbarer Kontakt erfährt nichts vom neuen Schlüssel."
+          }
+        }
+      }
+    },
+    "This device has no biometric sensor — reconstruction is disabled.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Gerät hat keinen biometrischen Sensor — die Rekonstruktion ist deaktiviert."
+          }
+        }
+      }
+    },
+    "This phone restored everything except your keys. They were held by your old phone in a way that cannot be copied, so this device can no longer sign or decrypt as you.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Telefon hat alles wiederhergestellt ausser Ihren Schlüsseln. Ihr altes Telefon hat sie so verwahrt, dass sie sich nicht kopieren lassen — dieses Gerät kann daher weder als Sie signieren noch entschlüsseln."
+          }
+        }
+      }
+    },
+    "This pseudonym is stored on your device and shared with contacts when they scan your QR code.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Pseudonym wird auf Ihrem Gerät gespeichert und mit Kontakten geteilt, wenn sie Ihren QR-Code scannen."
+          }
+        }
+      }
+    },
+    "This secret is being discarded.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Geheimnis wird gerade verworfen."
+          }
+        }
+      }
+    },
+    "This secret is not text that can be shown here. Export it to open it elsewhere.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Geheimnis ist kein Text und kann hier nicht angezeigt werden. Exportieren Sie es, um es woanders zu öffnen."
+          }
+        }
+      }
+    },
+    "This tolerates the loss of only one holder before the secret becomes unrecoverable.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dies verkraftet nur den Verlust eines einzigen Inhabers, bevor das Geheimnis unwiederbringlich wird."
+          }
+        }
+      }
+    },
+    "Threshold: %lld of %lld": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schwellenwert: %lld von %lld"
+          }
+        }
+      }
+    },
+    "Unknown contact": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unbekannter Kontakt"
+          }
+        }
+      }
+    },
+    "Unlock Premium": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premium freischalten"
+          }
+        }
+      }
+    },
+    "Unmonitored by choice": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewusst nicht überwacht"
+          }
+        }
+      }
+    },
+    "Unrecoverable": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unwiederbringlich"
+          }
+        }
+      }
+    },
+    "Used for contacts without a BYOR override, and advertised in your own QR code.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird für Kontakte ohne BYOR-Override verwendet und in Ihrem eigenen QR-Code angegeben."
+          }
+        }
+      }
+    },
+    "Used for contacts without a BYOR override, and advertised in your own QR code. Choosing your own default relay is part of Premium.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird für Kontakte ohne eigenes BYOR-Relais verwendet und in Ihrem QR-Code mitgeteilt. Ein eigenes Standard-Relais zu wählen gehört zu Premium."
+          }
+        }
+      }
+    },
+    "Verification Level": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifizierungsstufe"
+          }
+        }
+      }
+    },
+    "Verification key": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifizierungsschlüssel"
+          }
+        }
+      }
+    },
+    "Verification key (base64url)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifizierungsschlüssel (base64url)"
+          }
+        }
+      }
+    },
+    "Verification level": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifizierungsstufe"
+          }
+        }
+      }
+    },
+    "Whether Premium is unlocked is decided on this device. The relay never learns anything about it.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ob Premium freigeschaltet ist, entscheidet dieses Gerät. Das Relais erfährt davon nichts."
+          }
+        }
+      }
+    },
+    "Withdrawn": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zurückgezogen"
+          }
+        }
+      }
+    },
+    "Your keys did not come across": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihre Schlüssel sind nicht mitgekommen"
+          }
+        }
+      }
+    },
+    "Your pseudonym": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ihr Pseudonym"
+          }
+        }
+      }
+    },
+    "e.g. BitLocker recovery key": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "z. B. BitLocker-Wiederherstellungsschlüssel"
+          }
+        }
+      }
+    },
+    "from downloads …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "aus den Downloads …"
+          }
+        }
+      }
+    },
+    "from photo library …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "aus der Fotomediathek …"
+          }
+        }
+      }
+    },
+    "https://…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "https://…"
+          }
+        }
+      }
+    },
+    "iCloud Backup is encrypted, but end-to-end only with Advanced Data Protection turned on. You can exclude Deposplit under iCloud Backup in Settings. If you do, a new iPhone starts empty — the people whose shares you guard lose that redundancy, and your new iPhone has no record to tell them with.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die iCloud-Sicherung ist verschlüsselt, aber nur mit aktiviertem erweitertem Datenschutz für iCloud-Daten Ende-zu-Ende. Sie können Deposplit in den Einstellungen unter „iCloud-Backup“ ausschliessen. Dann startet ein neues iPhone leer — die Menschen, deren Anteile Sie verwahren, verlieren diese Redundanz, und Ihr neues iPhone weiss nichts davon, um es ihnen zu sagen."
+          }
+        }
+      }
+    },
+    "… choose secret photo": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "… geheimes Foto auswählen"
           }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }
