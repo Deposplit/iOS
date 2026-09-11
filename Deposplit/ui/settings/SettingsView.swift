@@ -1,12 +1,20 @@
 import hexagon
 import SwiftUI
+// For `openNotificationSettingsURLString` alone — a string constant with no SwiftUI counterpart,
+// and the only alternative is hard-coding an undocumented URL.
+import UIKit
 import UniformTypeIdentifiers
+import UserNotifications
 
 struct SettingsView: View {
     @State private var viewModel: SettingsViewModel
     @State private var showImporter = false
     @State private var showRegenerateConfirmation = false
+    /// nil until the first read comes back, so the section shows no state rather than the wrong one.
+    @State private var notificationStatus: UNAuthorizationStatus?
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
 
     private let purchaseStore: StoreKitPurchaseStore
 
@@ -97,6 +105,44 @@ struct SettingsView: View {
                 } footer: {
                     Text("iCloud Backup is encrypted, but end-to-end only with Advanced Data Protection turned on. You can exclude Deposplit under iCloud Backup in Settings. If you do, a new iPhone starts empty — the people whose shares you guard lose that redundancy, and your new iPhone has no record to tell them with.")
                 }
+                // Nothing to toggle here either: iOS owns this switch. What the app owes is what
+                // the notice is for, whether it is on, and a way to the system page for somebody
+                // who has no other route to it — including somebody who has never been asked, who
+                // does not appear under Settings → Notifications at all yet.
+                Section {
+                    Text("Deposplit can tell you when a contact needs a share you are keeping safe, even while the app is closed. The notice names nobody and no secret, so a locked screen gives nothing away.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    switch notificationStatus {
+                    case .none:
+                        EmptyView()
+                    case .notDetermined:
+                        Text("Not turned on yet. Without it you learn of a request only when you next open Deposplit.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Button("Turn On Notifications") {
+                            Task {
+                                await RequestNotifier.requestAuthorization()
+                                notificationStatus = await RequestNotifier.authorizationStatus()
+                            }
+                        }
+                    case .denied:
+                        Text("Turned off. Without it you learn of a request only when you next open Deposplit.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Button("Notification settings") {
+                            if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
+                                openURL(url)
+                            }
+                        }
+                    default:
+                        Text("Turned on for this app.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("Notifications")
+                }
                 Section {
                     Button("Regenerate My Identity", role: .destructive) {
                         showRegenerateConfirmation = true
@@ -130,6 +176,14 @@ struct SettingsView: View {
                 if case .success(let url) = result {
                     viewModel.importCatalog(from: url)
                 }
+            }
+            .task { notificationStatus = await RequestNotifier.authorizationStatus() }
+            // Re-read on return, because the way to change it is to leave for the system page and
+            // come back — a line that still said "turned off" afterwards would be the screen
+            // calling the reader's own action a no-op.
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active else { return }
+                Task { notificationStatus = await RequestNotifier.authorizationStatus() }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)

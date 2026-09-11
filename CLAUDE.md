@@ -35,22 +35,29 @@ Open work is tracked in the hub's
   where there is genuinely no SwiftUI equivalent.
 - **Swift Testing** (`@Test`), not XCTest.
 
-> **There is no `Info.plist`, and adding one has a trap in it.** The app target sets
-> `GENERATE_INFOPLIST_FILE = YES` and carries every key as an `INFOPLIST_KEY_*` build setting in
-> both configurations. That works for strings and for the handful of array-valued keys Xcode
-> knows by name, and **not** for an arbitrary array key such as
-> `BGTaskSchedulerPermittedIdentifiers` — which needs a real file.
+> **`Info.plist` lives at the repository root, and that is not where Xcode would have put it.**
+> The app target sets `GENERATE_INFOPLIST_FILE = YES` and carries most keys as `INFOPLIST_KEY_*`
+> build settings in both configurations. That works for strings and for the handful of
+> array-valued keys Xcode knows by name, and **not** for an arbitrary array key — which is why the
+> file exists at all. It carries exactly two: `UIBackgroundModes` (`fetch`) and
+> `BGTaskSchedulerPermittedIdentifiers` (`com.deposplit.custody-refresh`). `INFOPLIST_FILE` names
+> it and `GENERATE_INFOPLIST_FILE` stays `YES`, so the `INFOPLIST_KEY_*` settings keep merging in
+> on top.
 >
-> When one is needed, put it at the **repository root**, never under `Deposplit/`. That directory
-> is a `PBXFileSystemSynchronizedRootGroup`, so anything dropped into it joins the target
-> automatically — which is the convenience that makes new `.swift` files free, and the trap that
-> would sweep a `.plist` into Copy Bundle Resources as a second Info.plist. Then set
-> `INFOPLIST_FILE = Info.plist` in both app-target configurations and leave
-> `GENERATE_INFOPLIST_FILE = YES`, so the existing `INFOPLIST_KEY_*` settings keep merging in and
-> nothing else has to move.
+> It is **not** under `Deposplit/`, and must never be moved there. That directory is a
+> `PBXFileSystemSynchronizedRootGroup`, so anything dropped into it joins the target
+> automatically — the convenience that makes new `.swift` files free, and the trap that would
+> sweep a `.plist` into Copy Bundle Resources as a second Info.plist.
 >
-> Get this wrong and nothing tells you: the build succeeds, CI succeeds, and the feature is
-> simply inert at runtime. It is a Simulator check, not a compile-time one.
+> Get this wrong and nothing tells you: the build succeeds, CI succeeds, and the background pass
+> is simply inert. `BGTaskScheduler.submit` throws and the throw is swallowed, because it also
+> throws on the Simulator and on a device with Background App Refresh off — neither of which is
+> worth a word on screen. What catches it is reading the **built** app's plist:
+>
+> ```bash
+> plutil -p <DerivedData>/Build/Products/Debug-iphonesimulator/Deposplit.app/Info.plist \
+>   | grep -E -A 3 'BGTaskSchedulerPermittedIdentifiers|UIBackgroundModes'
+> ```
 
 ## The boundary, enforced by the compiler
 
@@ -96,6 +103,25 @@ placed under `Deposplit/` is compiled automatically.** Adding an adapter or a vi
   synchronous and MainActor-safe.
 - Catalog backup uses SwiftUI's **`.fileExporter` / `ShareLink` / `.fileImporter`** — the
   counterpart to Android's Storage Access Framework.
+- **One background task, `com.deposplit.custody-refresh`**, defined in `background/`. It is
+  registered by `.backgroundTask(.appRefresh(…))` on the `WindowGroup`, and a fresh
+  `BGAppRefreshTaskRequest` is submitted at launch, on `scenePhase == .background`, and at the end
+  of every run — the modifier does not reschedule itself, so a pass that returns without
+  submitting ends the chain. One pass is `syncInbox()` and nothing else, so heartbeats and pickups
+  do not wait for somebody to open the app. It is the only scheduled work in the app, so a second
+  one arriving is worth questioning.
+- **A locked iPhone sits a pass out.** Keys are `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, so
+  `IdentityIntegrity.unreadable` means this pass cannot sign; it returns before touching the
+  network. Android has no such case and says so in its own worker's comment.
+- **`CustodyRefresh` is `@MainActor` for a reason that is not style.** `.backgroundTask` takes a
+  `@Sendable` closure, while `hexagon/Package.swift` declares no default isolation — so
+  `ShareService` is neither isolated nor `Sendable`. A class isolated to a global actor *is*
+  `Sendable`, which is what lets one cross into that closure and carry the services with it.
+- **One notification, and it names nobody.** `background/RequestNotifier` posts a single sentence
+  when a retrieval is waiting: no contact name, no label, no count — which is why `announce` takes
+  request **ids** and not rows. A pending removal posts nothing at all. Authorisation is asked the
+  first time this device holds a share, never at launch, and an explanation precedes the system
+  prompt because iOS raises that prompt exactly once in an app's lifetime.
 
 > **Swift structs have no `copy()`, and this has already caused two silent-data-loss bugs.**
 > `Contact` is reconstructed through its memberwise initialiser in `ContactService`
@@ -156,7 +182,7 @@ not a development dependency.
 ```bash
 # from hexagon/ — no simulator needed; CI runs this
 swift build
-swift test                                  # 159 tests
+swift test                                  # 164 tests
 swift test --filter ShareServiceTests
 
 # from the repo root — the app target; CI builds it too, for the simulator (see below)

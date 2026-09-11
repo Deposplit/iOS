@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Two array-valued keys that no INFOPLIST_KEY_* build setting can express, which is the
+	     only reason this file exists. Everything else still comes from GENERATE_INFOPLIST_FILE
+	     and the INFOPLIST_KEY_* settings, which keep merging in on top of what is here.
+
+	     It sits at the repository root rather than under Deposplit/, which is a
+	     PBXFileSystemSynchronizedRootGroup: anything dropped in there joins the target
+	     automatically, and a .plist would join it as a bundled resource - a second Info.plist
+	     beside the real one.
+
+	     UIBackgroundModes is what lets BGTaskScheduler accept an app-refresh request at all, and
+	     BGTaskSchedulerPermittedIdentifiers is what lets it accept this one. Miss either and
+	     nothing says so: the build succeeds, CI succeeds, submit() throws into a try?, and the
+	     pass simply never runs. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.deposplit.custody-refresh</string>
+	</array>
+</dict>
+</plist>

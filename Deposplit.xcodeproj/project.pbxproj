@@ -344,6 +344,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Deposplit uses the camera to scan contact QR codes.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Deposplit uses Face ID to confirm it's you before reconstructing a secret.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -377,6 +378,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Deposplit uses the camera to scan contact QR codes.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Deposplit uses Face ID to confirm it's you before reconstructing a secret.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

@@ -20,6 +20,7 @@ struct HomeView: View {
     @State private var selectedShareTarget: ShareDetailTarget?
     @State private var selectedSecret: Secret?
     @State private var repairSecret: Secret?
+    @State private var showNotificationExplanation = false
 
     init(auth: any Identity, shareManagement: any ShareManagement, contactManagement: any ContactManagement, catalogManagement: any CatalogManagement, relaySettings: any RelaySettings, purchaseStore: StoreKitPurchaseStore) {
         self.auth = auth
@@ -165,6 +166,34 @@ struct HomeView: View {
         .task {
             await reload()
         }
+        // Asked at the first moment it could ever mean anything: this phone is now keeping
+        // something for somebody, so a request for it can arrive. Asking at first launch would be
+        // a dialog about a notice that cannot exist yet, and this app has exactly one to offer.
+        .onChange(of: homeViewModel.heldShares.isEmpty) { _, isEmpty in
+            guard !isEmpty else { return }
+            Task { await offerNotifications() }
+        }
+        // Explained before the system prompt, because on iOS that prompt appears once in an app's
+        // lifetime: spending it on a bare dialog leaves somebody who declines with no route back
+        // except Settings. Declining here costs nothing — Settings offers it again while iOS has
+        // still never been asked.
+        .alert("Tell you when somebody is waiting?", isPresented: $showNotificationExplanation) {
+            Button("Turn On Notifications") {
+                RequestNotifier.markExplanationShown()
+                Task { await RequestNotifier.requestAuthorization() }
+            }
+            Button("Not Now", role: .cancel) {
+                RequestNotifier.markExplanationShown()
+            }
+        } message: {
+            Text("You are keeping a share for somebody now. When they need it back, Deposplit can say so — one sentence that names nobody and no secret. Without it, you learn of a request only when you next open the app.")
+        }
+    }
+
+    private func offerNotifications() async {
+        guard !RequestNotifier.explanationShown else { return }
+        guard await RequestNotifier.authorizationStatus() == .notDetermined else { return }
+        showNotificationExplanation = true
     }
 
     private func reload() async {
