@@ -960,6 +960,121 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
     #expect(relay.deletedRequestIds.isEmpty)
 }
 
+// MARK: - Destroy reconciliation
+//
+// The approved removal row is the only thing that ever says a holder destroyed their piece:
+// approving one makes the relay sweep the rest of that holder's rows for the secret, so nothing
+// else survives to read. answerRemoval models that sweep, because a double that kept every row is
+// what hid this — the client sat waiting for a row the relay had deleted and nothing went red.
+
+private let charlieKeys = TestKeyPair()
+
+private let charlieContact = Contact(
+    id: UUID(), pseudonym: "charlie", verifyKey: charlieKeys.publicKey,
+    encKey: Data(repeating: 0x01, count: 32),
+    verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date()
+)
+
+private func makeRemovalRow(secretId: UUID, recipientKey: Data) -> ShareRequest {
+    ShareRequest(
+        id: UUID(), secretId: secretId, senderKey: Data(), recipientKey: recipientKey,
+        label: "destroy test", secretCreatedAt: Date(), transactionType: .removal, state: .pending,
+        requestedAt: Date(), respondedAt: nil,
+        ciphertext: nil, k: nil, n: nil, senderSignature: Data(), recipientSignature: nil
+    )
+}
+
+private extension FakeShareRelay {
+    /// Answers a removal the way the relay does: the answer is stamped and kept, everything else for
+    /// that (secretId, holder) pair is swept — the deposit above all, which may still hold ciphertext.
+    func answerRemoval(_ row: ShareRequest, signer: TestKeyPair, approved: Bool = true) throws {
+        let signature = try signer.sign(PayloadCanonical.forRespond(requestId: row.id, approved: approved, ciphertext: nil))
+        let answered = ShareRequest(
+            id: row.id, secretId: row.secretId, senderKey: row.senderKey, recipientKey: row.recipientKey,
+            label: row.label, secretCreatedAt: row.secretCreatedAt, transactionType: row.transactionType,
+            state: approved ? .approved : .denied, requestedAt: row.requestedAt, respondedAt: Date(),
+            ciphertext: nil, k: nil, n: nil, senderSignature: row.senderSignature, recipientSignature: signature
+        )
+        pending = [answered] + pending.filter {
+            $0.id != row.id && !(approved && $0.secretId == row.secretId && $0.recipientKey == row.recipientKey)
+        }
+    }
+}
+
+/// A 2-of-2 secret already destroying, with one removal outstanding per holder — what destroySecret leaves.
+private func makeDestroyingSecret(
+    relay: FakeShareRelay
+) async throws -> (svc: ShareService, metaRepo: FakeShareMetadataRepository, removals: [ShareRequest]) {
+    let holders = [aliceContact, charlieContact]
+    let (svc, _, _, _, metaRepo, _, _) = try makeService(relay: relay, contacts: holders)
+    try await svc.deposit(secret: Data([1, 2, 3]), label: "destroy test", contacts: holders, threshold: 2, mimeType: .default, replacing: nil)
+    let secretId = try svc.listSecrets()[0].id
+    try await svc.destroySecret(secretId: secretId)
+    let removals = holders.map { makeRemovalRow(secretId: secretId, recipientKey: $0.verifyKey) }
+    relay.pending = removals
+    return (svc, metaRepo, removals)
+}
+
+@Test func aHolderWhoApprovesTheirRemovalIsDroppedAndTheSecretWaitsForTheOtherOne() async throws {
+    let relay = FakeShareRelay()
+    let (svc, metaRepo, removals) = try await makeDestroyingSecret(relay: relay)
+
+    try relay.answerRemoval(removals[0], signer: aliceKeys)
+    try await svc.syncDistributed()
+
+    #expect(try metaRepo.getAll().map(\.contactId) == [charlieContact.id])
+    #expect(try svc.listSecrets().map(\.state) == [.destroying])
+}
+
+@Test func theSecretIsGoneOnceTheLastHolderHasAnswered() async throws {
+    let relay = FakeShareRelay()
+    let (svc, metaRepo, removals) = try await makeDestroyingSecret(relay: relay)
+
+    try relay.answerRemoval(removals[0], signer: aliceKeys)
+    try await svc.syncDistributed()
+    try relay.answerRemoval(removals[1], signer: charlieKeys)
+    try await svc.syncDistributed()
+
+    #expect(try metaRepo.getAll().isEmpty)
+    #expect(try svc.listSecrets().isEmpty)
+}
+
+@Test func theAnswerIsDeletedFromTheRelayOnceItHasBeenActedOnAndNotBefore() async throws {
+    let relay = FakeShareRelay()
+    let (svc, _, removals) = try await makeDestroyingSecret(relay: relay)
+
+    try await svc.syncDistributed()
+    #expect(!relay.deletedRequestIds.contains(removals[0].id))
+
+    try relay.answerRemoval(removals[0], signer: aliceKeys)
+    try await svc.syncDistributed()
+    #expect(relay.deletedRequestIds.contains(removals[0].id))
+}
+
+@Test func aDeniedRemovalLeavesTheHolderAndTheSecretExactlyWhereTheyWere() async throws {
+    let relay = FakeShareRelay()
+    let (svc, metaRepo, removals) = try await makeDestroyingSecret(relay: relay)
+
+    try relay.answerRemoval(removals[0], signer: aliceKeys, approved: false)
+    try await svc.syncDistributed()
+
+    #expect(try metaRepo.getAll().count == 2)
+    #expect(try svc.listSecrets().map(\.state) == [.destroying])
+}
+
+// A relay that could forge an approval could make this device forget a share that is still out
+// there — the same reason a retrieval approval is verified before its bytes are trusted.
+@Test func anApprovalSignedByTheWrongKeyIsNotAnAnswer() async throws {
+    let relay = FakeShareRelay()
+    let (svc, metaRepo, removals) = try await makeDestroyingSecret(relay: relay)
+
+    try relay.answerRemoval(removals[0], signer: charlieKeys)
+    try await svc.syncDistributed()
+
+    #expect(try metaRepo.getAll().count == 2)
+    #expect(try svc.listSecrets().map(\.state) == [.destroying])
+}
+
 // MARK: - Stolen-key revocation (compromised-key flag + key conflicts)
 
 @Test func syncInboxRefusesAutoAcceptAndCapturesAKeyConflictWhenTheOldKeyIsRevoked() async throws {

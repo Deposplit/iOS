@@ -260,9 +260,15 @@ public final class ShareService: ShareManagement {
     }
 
     /// For every `.destroying` `Secret`, checks whether each remaining holder's fanned-out
-    /// `removal` request has been approved; approved ones are cleaned up (relay row deleted, local
-    /// `ShareMetadata` removed). Once a `.destroying` secret has no `ShareMetadata` rows left, its
-    /// `Secret` record itself is removed — the Active/Destroying two-state lifecycle.
+    /// `removal` request has been approved; approved ones are cleaned up (local `ShareMetadata`
+    /// removed, then the relay row). Once a `.destroying` secret has no `ShareMetadata` rows left,
+    /// its `Secret` record itself is removed — the Active/Destroying two-state lifecycle.
+    ///
+    /// The approved removal row is the only thing that ever says a holder destroyed their piece.
+    /// Approving it makes the relay sweep the rest of that holder's rows for this secret, the
+    /// deposit included, so there is nothing else left to read and an absence would say nothing.
+    /// The signature is checked for the same reason it is checked on a retrieval approval: a relay
+    /// that could forge one could make this device forget a share that is still out there.
     private func reconcileDestroying() async {
         let secrets = (try? secretRepository.getAll()) ?? []
         let destroying = secrets.filter { $0.state == .destroying }
@@ -278,11 +284,14 @@ public final class ShareService: ShareManagement {
                 guard let contact = contactRepository.getById(meta.contactId),
                       let approvedRemoval = removalRequests.first(where: {
                           $0.request.secretId == meta.secretId && $0.request.recipientKey == contact.verifyKey
-                              && $0.request.state == .approved
+                              && $0.request.state == .approved && verifyRespond($0.request)
                       })
                 else { continue }
-                try? await approvedRemoval.relay.deleteShareRequest(requestId: meta.id)
+                // Local record first, relay row second. The row is the evidence; dropping it before
+                // acting on it would leave a holder that can never be reconciled if this device dies
+                // in between, which is the one failure this whole flow exists to avoid.
                 try? shareMetadataRepository.delete(shareId: meta.id)
+                try? await approvedRemoval.relay.deleteShareRequest(requestId: approvedRemoval.request.id)
             }
             let remaining = ((try? shareMetadataRepository.getAll()) ?? []).filter { $0.secretId == secret.id }
             if remaining.isEmpty {
