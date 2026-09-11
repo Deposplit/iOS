@@ -1941,7 +1941,7 @@ private func holderPair() -> (Contact, Contact) {
     #expect(try svc.listSecrets().count == SecretLimits.freeTierMaxActiveSecrets + 1)
 }
 
-@Test func discardingASecretFreesASlotBeforeAnyHolderConfirms() async throws {
+@Test func destroyingASecretFreesASlotBeforeAnyHolderConfirms() async throws {
     let relay = FakeShareRelay()
     let (alice, holder) = holderPair()
     let (svc, _, _, _, _, _, _) = try makeService(relay: relay, contacts: [alice, holder])
@@ -1950,10 +1950,10 @@ private func holderPair() -> (Contact, Contact) {
     }
 
     // The record survives until every holder confirms removal; the slot does not wait for that.
-    try await svc.discardSecret(secretId: try #require(svc.listSecrets().first).id)
+    try await svc.destroySecret(secretId: try #require(svc.listSecrets().first).id)
     try await svc.deposit(secret: Data([4, 5, 6]), label: "the replacement", contacts: [alice, holder], threshold: 2)
 
-    #expect(try svc.listSecrets().filter { $0.state == .discarding }.count == 1)
+    #expect(try svc.listSecrets().filter { $0.state == .destroying }.count == 1)
     #expect(try svc.listSecrets().filter { $0.state == .active }.count == SecretLimits.freeTierMaxActiveSecrets)
 }
 
@@ -1966,7 +1966,7 @@ private func holderPair() -> (Contact, Contact) {
     }
     let degraded = try #require(svc.listSecrets().first)
 
-    // Repair deposits the replacement before discarding the original, so at the cap both exist at
+    // Repair deposits the replacement before destroying the original, so at the cap both exist at
     // once. Refusing that would leave a free user's only way out of a degrading secret the one
     // that destroys it first.
     try await svc.deposit(secret: Data([1, 2, 3]), label: degraded.label, contacts: [alice, holder], threshold: 2, replacing: degraded.id)

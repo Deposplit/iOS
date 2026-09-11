@@ -41,9 +41,9 @@ struct HolderStatus: Identifiable {
 
 enum SecretHealth {
     case healthy, caution, critical, lost
-    /// `state == .discarding` suppresses the health alarm entirely — a dropping holder count is
+    /// `state == .destroying` suppresses the health alarm entirely — a dropping holder count is
     /// the goal, not a problem.
-    case discarding
+    case destroying
 }
 
 struct SecretGroup: Identifiable {
@@ -55,7 +55,7 @@ struct SecretGroup: Identifiable {
     /// `ShareMetadata`-row count: an `.unmonitored` holder never alarms, and a `.silentOverdue`
     /// one drops out (reversibly) instead of being counted as still-live.
     var health: SecretHealth {
-        guard secret.state == .active else { return .discarding }
+        guard secret.state == .active else { return .destroying }
         let nLive = holders.filter { $0.freshnessBucket == .confirmed }.count
         let k = secret.k
         if nLive < k { return .lost }
@@ -84,7 +84,7 @@ struct SecretGroup: Identifiable {
     /// says so in words rather than disappearing.
     var retrievalUnavailableReason: String? {
         if secret.state != .active {
-            return String(localized: "This secret is being discarded.")
+            return String(localized: "This secret is being destroyed.")
         }
         if !canRequestRetrieval {
             return String(localized: "Every holder has been asked already.")

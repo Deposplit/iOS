@@ -14,7 +14,7 @@ struct PaywallView: View {
             }
 
             Section("As many secrets as you like") {
-                Text("Free covers \(SecretLimits.freeTierMaxActiveSecrets) secrets at a time. Discarding one frees its slot straight away.")
+                Text("Free covers \(SecretLimits.freeTierMaxActiveSecrets) secrets at a time. Destroying one frees its slot straight away.")
             }
 
             Section("Bring your own relay") {

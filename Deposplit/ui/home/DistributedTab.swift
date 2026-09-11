@@ -62,8 +62,8 @@ private struct SecretSummaryRow: View {
     @ViewBuilder
     private var healthBadge: some View {
         switch group.health {
-        case .discarding:
-            Label("Discarding", systemImage: "trash").font(.caption2).foregroundStyle(.orange)
+        case .destroying:
+            Label("Destroying", systemImage: "trash").font(.caption2).foregroundStyle(.orange)
         case .healthy:
             EmptyView()
         case .caution:

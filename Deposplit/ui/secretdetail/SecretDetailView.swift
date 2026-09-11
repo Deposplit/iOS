@@ -15,7 +15,7 @@ struct SecretDetailView: View {
 
     @State private var viewModel: SecretDetailViewModel
     @State private var confirmingClear = false
-    @State private var confirmingDiscard = false
+    @State private var confirmingDestroy = false
     @Environment(\.dismiss) private var dismiss
 
     init(
@@ -91,8 +91,8 @@ struct SecretDetailView: View {
                             Button("Repair") { onRepair(group.secret) }
                                 .tint(group.health == .critical ? .orange : nil)
                         }
-                        if group.secret.state == .discarding {
-                            Text("Discarding…").font(.caption).foregroundStyle(.orange)
+                        if group.secret.state == .destroying {
+                            Text("Destroying…").font(.caption).foregroundStyle(.orange)
                             Button("Force Forget", role: .destructive) {
                                 Task {
                                     await viewModel.forceForget()
@@ -100,7 +100,7 @@ struct SecretDetailView: View {
                                 }
                             }
                         } else {
-                            Button("Discard", role: .destructive) { confirmingDiscard = true }
+                            Button("Destroy", role: .destructive) { confirmingDestroy = true }
                         }
                     }
                 }
@@ -135,15 +135,15 @@ struct SecretDetailView: View {
             }
         }
         .confirmationDialog(
-            "Discard this secret?",
-            isPresented: $confirmingDiscard,
+            "Destroy this secret?",
+            isPresented: $confirmingDestroy,
             titleVisibility: .visible
         ) {
-            Button("Discard", role: .destructive) {
-                Task { await viewModel.discard() }
+            Button("Destroy", role: .destructive) {
+                Task { await viewModel.destroy() }
             }
         } message: {
-            Text("Requests deletion from all \(viewModel.group?.holders.count ?? 0) holder(s). Each must approve — this only removes it from your device's list once every holder confirms (or you force-forget it).")
+            Text("All \(viewModel.group?.holders.count ?? 0) holders are asked to destroy their piece. Once they all do, this secret can never be reconstructed. Until then it stays in this list.")
         }
     }
 
@@ -219,8 +219,8 @@ struct SecretDetailView: View {
     @ViewBuilder
     private func healthBadge(_ group: SecretGroup) -> some View {
         switch group.health {
-        case .discarding:
-            Label("Discarding", systemImage: "trash").font(.caption2).foregroundStyle(.orange)
+        case .destroying:
+            Label("Destroying", systemImage: "trash").font(.caption2).foregroundStyle(.orange)
         case .healthy:
             EmptyView()
         case .caution:

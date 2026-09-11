@@ -2,7 +2,7 @@ import hexagon
 import SwiftUI
 
 /// The one-tap-ish repair flow: gather k approved retrievals → reconstruct → re-deposit
-/// (prefilled) → optionally discard the old distribution. A single screen with internal wizard
+/// (prefilled) → optionally destroy the old distribution. A single screen with internal wizard
 /// state (`RepairViewModel.Phase`), not a chain of nav-graph destinations, so the reconstructed
 /// plaintext never leaves this one ViewModel's memory or gets serialized into a navigation route.
 struct RepairView: View {
@@ -44,8 +44,8 @@ struct RepairView: View {
                         if success { viewModel.newDepositSucceeded() }
                     }
                 }
-            case .confirmDiscard:
-                confirmDiscardContent
+            case .confirmDestroy:
+                confirmDestroyContent
                     .navigationTitle("Repair \(viewModel.secret.label)")
                     .navigationBarTitleDisplayMode(.inline)
             case .done:
@@ -110,22 +110,22 @@ struct RepairView: View {
         }
     }
 
-    private var confirmDiscardContent: some View {
+    private var confirmDestroyContent: some View {
         VStack(spacing: 16) {
             Spacer()
             Image(systemName: "checkmark.circle").font(.system(size: 44)).foregroundStyle(.green)
             Text("Repair complete").font(.headline)
-            Text("Deposited to \(viewModel.depositedHolderCount) new holder(s). Discard the old distribution now? Each of its holders will be asked to delete their copy.")
+            Text("Deposited to \(viewModel.depositedHolderCount) new holder(s). Destroy the old distribution now? Each of its holders is asked to destroy their copy.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
-            Button("Discard Old Distribution", role: .destructive) {
-                Task { await viewModel.discardOldAndFinish() }
+            Button("Destroy Old Distribution", role: .destructive) {
+                Task { await viewModel.destroyOldAndFinish() }
             }
             .buttonStyle(.borderedProminent)
             .disabled(viewModel.isActing)
-            Button("Not Now") { viewModel.skipDiscard() }
+            Button("Not Now") { viewModel.skipDestroy() }
             Spacer()
         }
         .padding()

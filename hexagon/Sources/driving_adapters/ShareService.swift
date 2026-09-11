@@ -251,7 +251,7 @@ public final class ShareService: ShareManagement {
                 try? shareMetadataRepository.save(ShareMetadata(id: meta.id, secretId: meta.secretId, contactId: meta.contactId, lastConfirmedAt: Date()))
             }
         }
-        await reconcileDiscarding()
+        await reconcileDestroying()
         await processHeartbeats()
     }
 
@@ -259,20 +259,20 @@ public final class ShareService: ShareManagement {
         ((try? retainedDepositRepository.getAll()) ?? []).contains(where: { $0.id == depositId })
     }
 
-    /// For every `.discarding` `Secret`, checks whether each remaining holder's fanned-out
+    /// For every `.destroying` `Secret`, checks whether each remaining holder's fanned-out
     /// `removal` request has been approved; approved ones are cleaned up (relay row deleted, local
-    /// `ShareMetadata` removed). Once a `.discarding` secret has no `ShareMetadata` rows left, its
-    /// `Secret` record itself is removed — the Active/Discarding two-state lifecycle.
-    private func reconcileDiscarding() async {
+    /// `ShareMetadata` removed). Once a `.destroying` secret has no `ShareMetadata` rows left, its
+    /// `Secret` record itself is removed — the Active/Destroying two-state lifecycle.
+    private func reconcileDestroying() async {
         let secrets = (try? secretRepository.getAll()) ?? []
-        let discarding = secrets.filter { $0.state == .discarding }
-        guard !discarding.isEmpty else { return }
-        let discardingIds = Set(discarding.map(\.id))
+        let destroying = secrets.filter { $0.state == .destroying }
+        guard !destroying.isEmpty else { return }
+        let destroyingIds = Set(destroying.map(\.id))
 
         let removalRequests = await rowsAcrossRelays(role: .sender, transactionType: .removal)
-            .filter { discardingIds.contains($0.request.secretId) }
+            .filter { destroyingIds.contains($0.request.secretId) }
 
-        for secret in discarding {
+        for secret in destroying {
             let metasForSecret = ((try? shareMetadataRepository.getAll()) ?? []).filter { $0.secretId == secret.id }
             for meta in metasForSecret {
                 guard let contact = contactRepository.getById(meta.contactId),
@@ -377,7 +377,7 @@ public final class ShareService: ShareManagement {
     }
 
     /// Pure read: collects and decrypts `k` approved retrieval shares, but never tears
-    /// down local `ShareMetadata` or relay rows. Use `discardSecret` for teardown — reconstruct is
+    /// down local `ShareMetadata` or relay rows. Use `destroySecret` for teardown — reconstruct is
     /// now a *step* toward a possible re-split, not an implicit "I'm done with this" signal.
     public func reconstruct(secretId: UUID) async throws -> ReconstructionResult {
         guard let secret = (try? secretRepository.getAll())?.first(where: { $0.id == secretId }) else {
@@ -436,19 +436,19 @@ public final class ShareService: ShareManagement {
     }
 
     /// Fans out a sender-initiated `removal` to every known holder of `secretId` and flips the
-    /// `Secret` to `.discarding` immediately, before any holder has responded.
-    public func discardSecret(secretId: UUID) async throws {
+    /// `Secret` to `.destroying` immediately, before any holder has responded.
+    public func destroySecret(secretId: UUID) async throws {
         guard let secret = (try? secretRepository.getAll())?.first(where: { $0.id == secretId }) else {
             throw ShareServiceError.secretNotFound
         }
-        try secretRepository.save(Secret(id: secret.id, label: secret.label, mimeType: secret.mimeType, k: secret.k, n: secret.n, secretCreatedAt: secret.secretCreatedAt, state: .discarding))
+        try secretRepository.save(Secret(id: secret.id, label: secret.label, mimeType: secret.mimeType, k: secret.k, n: secret.n, secretCreatedAt: secret.secretCreatedAt, state: .destroying))
         let shares = ((try? shareMetadataRepository.getAll()) ?? []).filter { $0.secretId == secretId }
         for share in shares {
             _ = try? await openRequest(shareId: share.id, type: .removal)
         }
     }
 
-    /// Local-only teardown for a `.discarding` secret whose holders won't all respond (e.g. a
+    /// Local-only teardown for a `.destroying` secret whose holders won't all respond (e.g. a
     /// permanently dark holder) — removes the `Secret` and its remaining `ShareMetadata` rows
     /// without waiting for relay confirmation.
     public func forceForgetSecret(secretId: UUID) throws {

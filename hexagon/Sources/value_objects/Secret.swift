@@ -1,10 +1,10 @@
 import Foundation
 
-/// Two-state lifecycle. No `discarded`
+/// Two-state lifecycle. No `destroyed`
 /// tombstone: once every holder confirms deletion (or the sender force-forgets), the `Secret`
 /// record is removed outright.
 public enum SecretState: String, Codable, Sendable, Equatable {
-    case active, discarding
+    case active, destroying
 }
 
 /// Sender-side per-secret aggregate — the single source of truth for `k`/`n`/`label`/

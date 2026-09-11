@@ -116,8 +116,8 @@ final class SecretDetailViewModel {
         await load()
     }
 
-    func discard() async {
-        try? await shareManagement.discardSecret(secretId: secretId)
+    func destroy() async {
+        try? await shareManagement.destroySecret(secretId: secretId)
         await load()
     }
 

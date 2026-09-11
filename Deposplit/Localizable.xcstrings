@@ -127,12 +127,12 @@
         }
       }
     },
-    "%lld of %lld free secrets are in use. Discard one, or unlock Premium.": {
+    "%lld of %lld free secrets are in use. Destroy one, or unlock Premium.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld von %lld kostenlosen Geheimnissen sind belegt. Verwerfen Sie eines oder schalten Sie Premium frei."
+            "value": "%lld von %lld kostenlosen Geheimnissen sind belegt. Eines vernichten oder Premium freischalten."
           }
         }
       }
@@ -209,6 +209,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fügen Sie Kontakte hinzu, um Geheimnisse zu teilen."
+          }
+        }
+      }
+    },
+    "All %lld holders are asked to destroy their piece. Once they all do, this secret can never be reconstructed. Until then it stays in this list.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle %lld Inhaber werden gebeten, ihren Teil zu vernichten. Sobald alle es getan haben, kann dieses Geheimnis nie wieder zusammengesetzt werden. Bis dahin bleibt es in dieser Liste."
           }
         }
       }
@@ -553,12 +563,12 @@
         }
       }
     },
-    "Deposited to %lld new holder(s). Discard the old distribution now? Each of its holders will be asked to delete their copy.": {
+    "Deposited to %lld new holder(s). Destroy the old distribution now? Each of its holders is asked to destroy their copy.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bei %lld neuen Inhabern hinterlegt. Alte Verteilung jetzt verwerfen? Jeder ihrer Inhaber wird gebeten, seine Kopie zu löschen."
+            "value": "Bei %lld neuen Inhabern hinterlegt. Alte Verteilung jetzt vernichten? Jeder ihrer Inhaber wird gebeten, seinen Teil zu vernichten."
           }
         }
       }
@@ -603,6 +613,56 @@
         }
       }
     },
+    "Destroy": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vernichten"
+          }
+        }
+      }
+    },
+    "Destroy Old Distribution": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alte Verteilung vernichten"
+          }
+        }
+      }
+    },
+    "Destroy this secret?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Geheimnis vernichten?"
+          }
+        }
+      }
+    },
+    "Destroying": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird vernichtet"
+          }
+        }
+      }
+    },
+    "Destroying…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird vernichtet …"
+          }
+        }
+      }
+    },
     "Detected %@": {
       "localizations": {
         "de": {
@@ -619,66 +679,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gerätesicherung"
-          }
-        }
-      }
-    },
-    "Discard": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Verwerfen"
-          }
-        }
-      }
-    },
-    "Discard %@": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ verwerfen"
-          }
-        }
-      }
-    },
-    "Discard Old Distribution": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alte Verteilung verwerfen"
-          }
-        }
-      }
-    },
-    "Discard this secret?": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dieses Geheimnis verwerfen?"
-          }
-        }
-      }
-    },
-    "Discarding": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wird verworfen"
-          }
-        }
-      }
-    },
-    "Discarding…": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wird verworfen…"
           }
         }
       }
@@ -869,12 +869,12 @@
         }
       }
     },
-    "Free covers %lld secrets at a time. Discarding one frees its slot straight away.": {
+    "Free covers %lld secrets at a time. Destroying one frees its slot straight away.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kostenlos sind %lld Geheimnisse gleichzeitig. Ein verworfenes gibt seinen Platz sofort frei."
+            "value": "Kostenlos sind %lld Geheimnisse gleichzeitig. Ein vernichtetes gibt seinen Platz sofort frei."
           }
         }
       }
@@ -1733,16 +1733,6 @@
         }
       }
     },
-    "Requests deletion from all %lld holder(s). Each must approve — this only removes it from your device's list once every holder confirms (or you force-forget it).": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fordert die Löschung bei allen %lld Inhabern an. Jeder muss zustimmen — es wird erst aus der Liste Ihres Geräts entfernt, sobald jeder Inhaber bestätigt hat (oder Sie es erzwungen vergessen)."
-          }
-        }
-      }
-    },
     "Reset to Default": {
       "localizations": {
         "de": {
@@ -2019,12 +2009,12 @@
         }
       }
     },
-    "This secret is being discarded.": {
+    "This secret is being destroyed.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dieses Geheimnis wird gerade verworfen."
+            "value": "Dieses Geheimnis wird gerade vernichtet."
           }
         }
       }

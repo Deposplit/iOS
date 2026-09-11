@@ -2,9 +2,9 @@ import hexagon
 import Foundation
 
 /// The "reconstruct-and-re-split" repair flow — composes three already-existing primitives
-/// (`reconstruct`, `deposit`, `discardSecret`) that were previously only reachable from three
+/// (`reconstruct`, `deposit`, `destroySecret`) that were previously only reachable from three
 /// disconnected screens. What gives the flow a reason to be surfaced is the freshness-gated
-/// health signal: a secret whose live holder count has fallen needs repairing, not discarding.
+/// health signal: a secret whose live holder count has fallen needs repairing, not destroying.
 @Observable
 final class RepairViewModel {
 
@@ -12,7 +12,7 @@ final class RepairViewModel {
         case gathering
         case reconstructing
         case redeposit
-        case confirmDiscard
+        case confirmDestroy
         case done
     }
 
@@ -143,21 +143,21 @@ final class RepairViewModel {
     func newDepositSucceeded() {
         depositedHolderCount = depositViewModel?.selectedContacts.count ?? 0
         depositViewModel = nil
-        phase = .confirmDiscard
+        phase = .confirmDestroy
     }
 
     /// Fans out removal requests to the *old* distribution's holders and flips it to
-    /// `.discarding`. Called at most once per flow — `discardSecret` is not idempotent against
+    /// `.destroying`. Called at most once per flow — `destroySecret` is not idempotent against
     /// repeat calls (each re-opens a fresh removal request per holder), so this phase transition
     /// must never be re-entered after firing.
-    func discardOldAndFinish() async {
+    func destroyOldAndFinish() async {
         isActing = true
         defer { isActing = false }
-        try? await shareManagement.discardSecret(secretId: secret.id)
+        try? await shareManagement.destroySecret(secretId: secret.id)
         phase = .done
     }
 
-    func skipDiscard() {
+    func skipDestroy() {
         phase = .done
     }
 }

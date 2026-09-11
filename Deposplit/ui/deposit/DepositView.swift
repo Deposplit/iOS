@@ -160,7 +160,7 @@ struct DepositFormContent<LeadingToolbar: ToolbarContent>: View {
                                 Text("See Premium")
                             }
                         } footer: {
-                            Text("\(viewModel.freeTierLimit) of \(viewModel.freeTierLimit) free secrets are in use. Discard one, or unlock Premium.")
+                            Text("\(viewModel.freeTierLimit) of \(viewModel.freeTierLimit) free secrets are in use. Destroy one, or unlock Premium.")
                                 .foregroundStyle(.red)
                         }
                     }

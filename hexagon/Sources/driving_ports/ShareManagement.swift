@@ -13,12 +13,11 @@ public protocol ShareManagement {
     func requestAll(secretId: UUID) async throws
     func openRequest(shareId: UUID, type: ShareTransactionType) async throws -> ShareRequest
     /// Pure read — collects approved retrieval shares (possibly more than `k`) and decrypts
-    /// them. Never tears down local `ShareMetadata` or relay rows; use `discardSecret` for that.
+    /// them. Never tears down local `ShareMetadata` or relay rows; use `destroySecret` for that.
     /// Cross-checks any surplus beyond `k` for consistency — throws rather than returning a
     /// guessed secret if the surplus can't be reconciled.
     func reconstruct(secretId: UUID) async throws -> ReconstructionResult
-    /// Fans out a sender-initiated `removal` request to every known holder of `secretId` and
-    /// flips the `Secret` to `.discarding` immediately (before any holder responds).
+
     /// The counterpart to `reconstruct`'s pure read: deletes every retrieval row this device
     /// opened for `secretId` — the copies collected from holders, and any ask still waiting for an
     /// answer — so they stop existing on the relay once the sender no longer needs them.
@@ -29,8 +28,12 @@ public protocol ShareManagement {
     /// refuses until enough of them answer.
     func clearCollectedShares(secretId: UUID) async throws
 
-    func discardSecret(secretId: UUID) async throws
-    /// Local-only teardown for a `.discarding` secret whose holders will never all respond
+    /// Fans out a sender-initiated `removal` request to every known holder of `secretId` and
+    /// flips the `Secret` to `.destroying` immediately (before any holder responds). Every holder
+    /// who approves destroys their piece, and once none are left the `Secret` record goes too —
+    /// after which nothing can put the secret back together.
+    func destroySecret(secretId: UUID) async throws
+    /// Local-only teardown for a `.destroying` secret whose holders will never all respond
     /// (e.g. a permanently dark holder). Does not wait for or require relay confirmation.
     func forceForgetSecret(secretId: UUID) throws
 
