@@ -137,6 +137,12 @@ private struct KeyConflictCard: View {
             Text("Detected \(conflict.detectedAt.formatted(date: .abbreviated, time: .shortened))")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
+            // The alert has already done its informing; the button behind it is a one-way door, so
+            // the card says so rather than letting the mildness of the word stand in for the
+            // consequence.
+            Text("Dismissing does not keep a record — this is the only one, and it cannot be undone.")
+                .font(.caption)
+                .foregroundStyle(.red)
             Button("Dismiss", action: onDismiss)
                 .buttonStyle(.bordered)
                 .frame(maxWidth: .infinity)

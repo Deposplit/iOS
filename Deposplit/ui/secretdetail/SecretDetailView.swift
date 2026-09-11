@@ -92,7 +92,14 @@ struct SecretDetailView: View {
                                 .tint(group.health == .critical ? .orange : nil)
                         }
                         if group.secret.state == .destroying {
-                            Text("Destroying…").font(.caption).foregroundStyle(.orange)
+                            // The health badge above already says Destroying, so this says the
+                            // thing the badge cannot: how many holders are still to answer, which
+                            // is exactly the judgement Force Forget beside it asks for. The count
+                            // shrinks as each one confirms, because reconcileDestroying drops
+                            // their ShareMetadata row.
+                            Text("Waiting for \(group.holders.count) holders to destroy their piece.")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
                             Button("Force Forget", role: .destructive) {
                                 Task {
                                     await viewModel.forceForget()

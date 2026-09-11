@@ -653,16 +653,6 @@
         }
       }
     },
-    "Destroying…": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wird vernichtet …"
-          }
-        }
-      }
-    },
     "Detected %@": {
       "localizations": {
         "de": {
@@ -688,7 +678,17 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ignorieren"
+            "value": "Verwerfen"
+          }
+        }
+      }
+    },
+    "Dismissing does not keep a record — this is the only one, and it cannot be undone.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Verwerfen hinterlässt keinen Eintrag — dieser hier ist der einzige, und es lässt sich nicht rückgängig machen."
           }
         }
       }
@@ -2145,6 +2145,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "Verifizierungsstufe"
+          }
+        }
+      }
+    },
+    "Waiting for %lld holders to destroy their piece.": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Waiting for one holder to destroy their piece."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Waiting for %lld holders to destroy their piece."
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Ein Verwahrer muss seinen Teil noch vernichten."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld Verwahrer müssen ihren Teil noch vernichten."
+                }
+              }
+            }
           }
         }
       }
