@@ -152,6 +152,9 @@ struct DepositFormContent<LeadingToolbar: ToolbarContent>: View {
                         Text("At least \(viewModel.threshold) holder(s) must cooperate to reconstruct the secret.")
                     }
 
+                    // The sentence that goes with this lives in the banner above; somewhere to go
+                    // does not belong in a strip, and saying it in both places would be one screen
+                    // telling the reader the same thing twice.
                     if viewModel.freeTierFull, let purchaseStore {
                         Section {
                             NavigationLink {
@@ -159,18 +162,10 @@ struct DepositFormContent<LeadingToolbar: ToolbarContent>: View {
                             } label: {
                                 Text("See Premium")
                             }
-                        } footer: {
-                            Text("\(viewModel.freeTierLimit) of \(viewModel.freeTierLimit) free secrets are in use. Destroy one, or unlock Premium.")
-                                .foregroundStyle(.red)
-                        }
-                    }
-
-                    if let error = viewModel.error {
-                        Section {
-                            Text(error).foregroundStyle(.red)
                         }
                     }
                 }
+                .safeAreaInset(edge: .top, spacing: 0) { refusalBanner }
             }
         }
         .navigationTitle(title)
@@ -225,6 +220,47 @@ struct DepositFormContent<LeadingToolbar: ToolbarContent>: View {
                 ProgressView("Depositing…")
                     .padding()
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+            }
+        }
+    }
+
+    /// Whatever the form has to say back about a deposit it would not make.
+    ///
+    /// A fresh failure wins over the standing cap notice, because it is the news; the cap keeps its
+    /// own link in the form either way, so nothing about it is lost by being out-ranked for a moment.
+    private var refusalMessage: Text? {
+        if let error = viewModel.error {
+            // Already localised by the view model — the plain-String overload, not a key lookup.
+            return Text(error)
+        }
+        if viewModel.freeTierFull {
+            return Text("\(viewModel.freeTierLimit) of \(viewModel.freeTierLimit) free secrets are in use. Destroy one, or unlock Premium.")
+        }
+        return nil
+    }
+
+    /// Pinned above the form rather than placed inside it, because the form scrolls and this must
+    /// not. Deposit sits in the toolbar, but the last control touched before reaching for it is the
+    /// threshold stepper at the very bottom — so a message anywhere in the form is a message the
+    /// reader is scrolled away from, and a refused deposit becomes a button that appears to do
+    /// nothing. Same strip `HomeView` uses for a relay it cannot reach, in red because this one is
+    /// an answer to something the reader just did.
+    @ViewBuilder
+    private var refusalBanner: some View {
+        if let message = refusalMessage {
+            VStack(spacing: 0) {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .imageScale(.small)
+                    message
+                        .font(.caption)
+                    Spacer()
+                }
+                .foregroundStyle(.red)
+                .padding(.horizontal)
+                .padding(.vertical, 6)
+                .background(.bar)
+                Divider()
             }
         }
     }
