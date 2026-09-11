@@ -35,6 +35,23 @@ Open work is tracked in the hub's
   where there is genuinely no SwiftUI equivalent.
 - **Swift Testing** (`@Test`), not XCTest.
 
+> **There is no `Info.plist`, and adding one has a trap in it.** The app target sets
+> `GENERATE_INFOPLIST_FILE = YES` and carries every key as an `INFOPLIST_KEY_*` build setting in
+> both configurations. That works for strings and for the handful of array-valued keys Xcode
+> knows by name, and **not** for an arbitrary array key such as
+> `BGTaskSchedulerPermittedIdentifiers` — which needs a real file.
+>
+> When one is needed, put it at the **repository root**, never under `Deposplit/`. That directory
+> is a `PBXFileSystemSynchronizedRootGroup`, so anything dropped into it joins the target
+> automatically — which is the convenience that makes new `.swift` files free, and the trap that
+> would sweep a `.plist` into Copy Bundle Resources as a second Info.plist. Then set
+> `INFOPLIST_FILE = Info.plist` in both app-target configurations and leave
+> `GENERATE_INFOPLIST_FILE = YES`, so the existing `INFOPLIST_KEY_*` settings keep merging in and
+> nothing else has to move.
+>
+> Get this wrong and nothing tells you: the build succeeds, CI succeeds, and the feature is
+> simply inert at runtime. It is a Simulator check, not a compile-time one.
+
 ## The boundary, enforced by the compiler
 
 | Path | May import |
