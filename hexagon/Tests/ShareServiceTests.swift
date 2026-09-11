@@ -1437,6 +1437,90 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     #expect(relay.openedRequests.map(\.recipientKey) == [untouched.contact.verifyKey])
 }
 
+// MARK: - Clearing the copies collected from holders
+
+/// An ask nobody has answered yet is part of the same flow as a copy already collected. Leaving it
+/// standing would let shares go on arriving after the owner said they were finished.
+@Test func clearingTakesBackBothTheCollectedCopiesAndTheAsksStillWaiting() async throws {
+    let relay = FakeShareRelay()
+    let collected = makeHolderFixture(pseudonym: "collected")
+    let stillAsking = makeHolderFixture(pseudonym: "stillAsking")
+    let (svc, _, _, secretRepo, metaRepo, _) = try makeServiceForRecoveryTest(
+        relay: relay, contacts: [collected.contact, stillAsking.contact]
+    )
+    let secretId = UUID()
+    try secretRepo.save(Secret(id: secretId, label: "s", mimeType: .default, k: 2, n: 2, secretCreatedAt: Date(), state: .active))
+    try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: collected.contact.id, lastConfirmedAt: nil))
+    try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: stillAsking.contact.id, lastConfirmedAt: nil))
+    let collectedRow = try makeApprovedRetrievalRow(secretId: secretId, holder: collected, ciphertext: Data([1, 2, 3]))
+    let pendingRow = makePendingRetrievalRow(secretId: secretId, recipientKey: stillAsking.contact.verifyKey)
+    relay.pending = [collectedRow, pendingRow]
+
+    try await svc.clearCollectedShares(secretId: secretId)
+
+    #expect(Set(relay.deletedRequestIds) == Set([collectedRow.id, pendingRow.id]))
+}
+
+/// Clearing is not teardown: the holders keep their shares, the deposit rows that record them stay,
+/// and so does every local record of the split. Only this owner's collected copies go.
+@Test func clearingLeavesTheDepositsTheOtherSecretsAndEveryLocalRecordAlone() async throws {
+    let relay = FakeShareRelay()
+    let holder = makeHolderFixture(pseudonym: "holder")
+    let (svc, _, _, secretRepo, metaRepo, _) = try makeServiceForRecoveryTest(relay: relay, contacts: [holder.contact])
+    let secretId = UUID()
+    let otherSecretId = UUID()
+    try secretRepo.save(Secret(id: secretId, label: "s", mimeType: .default, k: 2, n: 2, secretCreatedAt: Date(), state: .active))
+    try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: holder.contact.id, lastConfirmedAt: nil))
+    let collectedRow = try makeApprovedRetrievalRow(secretId: secretId, holder: holder, ciphertext: Data([1, 2, 3]))
+    let anotherSecretsCopy = try makeApprovedRetrievalRow(secretId: otherSecretId, holder: holder, ciphertext: Data([4, 5, 6]))
+    let holdersDeposit = ShareRequest(
+        id: UUID(), secretId: secretId, senderKey: Data(), recipientKey: holder.contact.verifyKey, label: "s",
+        secretCreatedAt: Date(), transactionType: .deposit, state: .approved,
+        requestedAt: Date(), respondedAt: Date(), ciphertext: Data([7, 7, 7]), k: 2, n: 2,
+        senderSignature: Data(), recipientSignature: nil
+    )
+    relay.pending = [collectedRow, anotherSecretsCopy, holdersDeposit]
+
+    try await svc.clearCollectedShares(secretId: secretId)
+
+    let survivingMetadata = try metaRepo.getAll().filter { $0.secretId == secretId }
+    let survivingSecrets = try secretRepo.getAll()
+    #expect(relay.deletedRequestIds == [collectedRow.id])
+    #expect(survivingMetadata.count == 1)
+    #expect(survivingSecrets.map(\.id) == [secretId])
+}
+
+/// The point of the whole feature. An `.approved` row counts as a live request, so until it is
+/// cleared `requestAll` skips every holder and the retrieval flow cannot be run a second time
+/// without editing the relay by hand.
+@Test func aSecretWhoseCopiesHaveBeenClearedCanHaveItsSharesRetrievedAgain() async throws {
+    let relay = FakeShareRelay()
+    let first = makeHolderFixture(pseudonym: "first")
+    let second = makeHolderFixture(pseudonym: "second")
+    let (svc, _, _, secretRepo, metaRepo, _) = try makeServiceForRecoveryTest(
+        relay: relay, contacts: [first.contact, second.contact]
+    )
+    let secretId = UUID()
+    try secretRepo.save(Secret(id: secretId, label: "s", mimeType: .default, k: 2, n: 2, secretCreatedAt: Date(), state: .active))
+    try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: first.contact.id, lastConfirmedAt: nil))
+    try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: second.contact.id, lastConfirmedAt: nil))
+    relay.pending = [
+        try makeApprovedRetrievalRow(secretId: secretId, holder: first, ciphertext: Data([1])),
+        try makeApprovedRetrievalRow(secretId: secretId, holder: second, ciphertext: Data([2])),
+    ]
+
+    try await svc.requestAll(secretId: secretId)
+    #expect(relay.openedRequests.isEmpty, "both holders still have a live row, so nobody should be asked again")
+
+    try await svc.clearCollectedShares(secretId: secretId)
+    relay.pending = relay.pending.filter { !relay.deletedRequestIds.contains($0.id) }
+
+    try await svc.requestAll(secretId: secretId)
+
+    #expect(relay.openedRequests.allSatisfy { $0.transactionType == .retrieval })
+    #expect(Set(relay.openedRequests.map(\.recipientKey)) == Set([first.contact.verifyKey, second.contact.verifyKey]))
+}
+
 // MARK: - Identity regeneration (the "regenerate my own identity" trigger)
 
 @Test func regenerateIdentityPushesASignedRotationToEveryContactAndActivatesTheNewKeys() async throws {

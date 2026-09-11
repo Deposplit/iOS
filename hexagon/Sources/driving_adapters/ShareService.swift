@@ -418,6 +418,23 @@ public final class ShareService: ShareManagement {
         return ReconstructionResult(secret: Data(result.secret), integrity: integrity, mimeType: secret.mimeType)
     }
 
+    /// Deletes every retrieval row for `secretId` through the relay it was found on — approved and
+    /// still pending alike, so that afterwards there is no retrieval flow for this secret at all:
+    /// `requestAll` asks every holder again (it skips only holders with a live row, and none are
+    /// left) and `reconstruct` refuses until they answer.
+    ///
+    /// Clearing the approved rows alone would leave asks that nobody has answered yet still
+    /// standing, and copies would go on arriving after the sender said they were finished.
+    ///
+    /// Each deletion is soft-failed on its own: one unreachable relay must not strand the rows
+    /// held on the others.
+    public func clearCollectedShares(secretId: UUID) async throws {
+        let rows = await rowsAcrossRelays(role: .sender, transactionType: .retrieval)
+        for (relay, request) in rows where request.secretId == secretId {
+            try? await relay.deleteShareRequest(requestId: request.id)
+        }
+    }
+
     /// Fans out a sender-initiated `removal` to every known holder of `secretId` and flips the
     /// `Secret` to `.discarding` immediately, before any holder has responded.
     public func discardSecret(secretId: UUID) async throws {
