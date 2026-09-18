@@ -9,7 +9,6 @@ public protocol ShareRelay: AnyObject {
     func getShareRequest(requestId: UUID) async throws -> ShareRequest
     func respondToShareRequest(requestId: UUID, approved: Bool, ciphertext: Data?, recipientSignature: Data) async throws -> ShareRequest
     func deleteShareRequest(requestId: UUID) async throws
-    func deleteShareRequests(senderKey: Data?, secretId: UUID?) async throws
 
     /// Recipient-initiated unilateral withdrawal — flips matching approved Deposit rows
     /// to `.withdrawn` on the relay instead of deleting them, so the sender's next poll can

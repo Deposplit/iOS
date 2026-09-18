@@ -66,15 +66,6 @@ final class DeposplitApiAdapter: ShareRelay {
         _ = try await execute("DELETE", path: "/share-requests/\(requestId)")
     }
 
-    func deleteShareRequests(senderKey: Data?, secretId: UUID?) async throws {
-        var query = ""
-        var parts: [String] = []
-        if let key = senderKey { parts.append("senderKey=\(key.base64URLEncoded)") }
-        if let id = secretId { parts.append("secretId=\(id)") }
-        if !parts.isEmpty { query = "?" + parts.joined(separator: "&") }
-        _ = try await execute("DELETE", path: "/share-requests\(query)")
-    }
-
     func withdrawShareRequests(senderKey: Data?, secretId: UUID?) async throws {
         var query = ""
         var parts: [String] = []

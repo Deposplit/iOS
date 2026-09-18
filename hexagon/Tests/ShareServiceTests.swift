@@ -234,7 +234,6 @@ private final class FakeShareRelay: ShareRelay {
     }
 
     func deleteShareRequest(requestId: UUID) async throws { deletedRequestIds.append(requestId) }
-    func deleteShareRequests(senderKey: Data?, secretId: UUID?) async throws {}
 
     func withdrawShareRequests(senderKey: Data?, secretId: UUID?) async throws {
         withdrawCalls.append(WithdrawCall(senderKey: senderKey, secretId: secretId))
