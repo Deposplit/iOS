@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// Wraps a reconstruct action behind Face ID/Touch ID — shared by `SecretDetailView` and
-/// `RepairView` so both reconstruct call sites gate identically. When biometrics are unavailable it
-/// says which of the three reasons applies, in place of the button: what cannot work is never left
-/// standing with nothing behind it. Mirrors Android's `BiometricGate.kt`-driven messaging.
+/// Wraps a reconstruct action behind the device owner's own authentication — Face ID or Touch ID
+/// where they are set up, the device passcode otherwise. Shared by `SecretDetailView` and
+/// `RepairView` so both reconstruct call sites gate identically. When authentication cannot run it
+/// says why, in place of the button: what cannot work is never left standing with nothing behind
+/// it. Mirrors Android's `BiometricGate.kt`-driven messaging.
 struct BiometricGatedButton: View {
     let label: LocalizedStringKey
     let reason: String
@@ -35,15 +36,11 @@ struct BiometricGatedButton: View {
                 }
                 .disabled(isDisabled || isAuthenticating)
             case .noneEnrolled:
-                Text("Enrol a biometric (Face ID or Touch ID) in device settings to reconstruct the secret.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            case .noHardware:
-                Text("This device has no biometric sensor — reconstruction is disabled.")
+                Text("Set up Face ID, Touch ID, or a passcode in device settings to reconstruct the secret.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             case .unavailable:
-                Text("Biometric authentication is currently unavailable.")
+                Text("Authentication is currently unavailable.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

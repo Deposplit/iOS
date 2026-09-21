@@ -326,12 +326,12 @@
         }
       }
     },
-    "Biometric authentication is currently unavailable." : {
+    "Authentication is currently unavailable." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Biometrische Authentifizierung ist derzeit nicht verfügbar."
+            "value" : "Authentifizierung ist derzeit nicht verfügbar."
           }
         }
       }
@@ -551,7 +551,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ablehnen"
+            "value" : "Verweigern"
           }
         }
       }
@@ -762,16 +762,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verschlüsselungsschlüssel"
-          }
-        }
-      }
-    },
-    "Enrol a biometric (Face ID or Touch ID) in device settings to reconstruct the secret." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Richten Sie in den Geräteeinstellungen eine biometrische Methode (Face ID oder Touch ID) ein, um das Geheimnis zu rekonstruieren."
           }
         }
       }
@@ -1022,12 +1012,12 @@
         }
       }
     },
-    "Integrity confirmed — every collected share agreed." : {
+    "Integrity confirmed — every collected share agrees." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Integrität bestätigt — alle gesammelten Anteile stimmten überein."
+            "value" : "Integrität bestätigt — alle gesammelten Anteile stimmen überein."
           }
         }
       }
@@ -1916,6 +1906,16 @@
         }
       }
     },
+    "Set up Face ID, Touch ID, or a passcode in device settings to reconstruct the secret." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Richten Sie in den Geräteeinstellungen Face ID, Touch ID oder einen Code ein, um das Geheimnis zu rekonstruieren."
+          }
+        }
+      }
+    },
     "Settings" : {
       "localizations" : {
         "de" : {
@@ -2048,16 +2048,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dies erzeugt ein neues Schlüsselpaar und benachrichtigt %lld Kontakt(e). Ein bereits an Sie unterwegs befindlicher Anteil kann danach weiterhin abgeholt werden; ein jetzt nicht erreichbarer Kontakt erfährt nichts vom neuen Schlüssel."
-          }
-        }
-      }
-    },
-    "This device has no biometric sensor — reconstruction is disabled." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dieses Gerät hat keinen biometrischen Sensor — die Rekonstruktion ist deaktiviert."
           }
         }
       }

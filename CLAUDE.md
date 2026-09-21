@@ -140,14 +140,32 @@ completion-handler bridging. `LAContext.canEvaluatePolicy` needs no host view or
 reference, unlike Android's `BiometricManager.from(context)`, so nothing here depends on the
 calling view.
 
+The policy is **`.deviceOwnerAuthentication`, not `.deviceOwnerAuthenticationWithBiometrics`** —
+the counterpart of Android's `BIOMETRIC_STRONG | DEVICE_CREDENTIAL`. Biometrics still come
+first; the passcode is what a face that will not be recognised, or was never enrolled, falls
+back to, and without it the owner is locked out of their own secret. That leaves
+`.passcodeNotSet` as the only state worth explaining, so `AuthAvailability` carries no *no
+sensor* case: a phone without a sensor authenticates by passcode like any other.
+
 `INFOPLIST_KEY_NSFaceIDUsageDescription` is set in **both** build configurations. Face ID
 requires an Info.plist usage description; Touch ID does not.
 
-**There is deliberately no `SKIP_BIOMETRIC`-equivalent build flag**, unlike Android. The
-Simulator has first-class enrolment simulation — Features → Face ID → Enrolled, then
-Matching/Non-matching Face — which covers the same "test without biometric hardware" need
-with no bypass in app code. A Simulator without enrolment shows the same unavailable state a
-real device would.
+**`skipBiometric`** is Android's `SKIP_BIOMETRIC` in the form iOS has for it: the Simulator
+enrols a face (Features → Face ID → Enrolled, then Matching/Non-matching Face), but one with no
+enrolment usually has no passcode to fall back on either, which leaves the reconstruct path
+unreachable there. It reads through `UserDefaults`, which folds launch arguments in on its own, so either
+route sets it and neither touches `project.pbxproj`:
+
+```bash
+# Edit Scheme → Run → Arguments. The scheme is tracked, so that edit is for running, not committing.
+-skipBiometric YES
+
+# Or, leaving the scheme alone:
+xcrun simctl spawn booted defaults write com.deposplit.Deposplit skipBiometric -bool YES
+```
+
+`#if DEBUG` keeps the bypass out of a release build, exactly as Android hard-codes `false` in
+its release build type.
 
 ## Purchases
 

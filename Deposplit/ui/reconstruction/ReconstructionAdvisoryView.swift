@@ -14,7 +14,7 @@ struct ReconstructionAdvisoryView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         case .confirmed:
-            Label("Integrity confirmed — every collected share agreed.", systemImage: "checkmark.seal")
+            Label("Integrity confirmed — every collected share agrees.", systemImage: "checkmark.seal")
                 .font(.caption)
                 .foregroundStyle(.green)
         case .excludedSuspects(let excludedContactIds):
