@@ -24,7 +24,7 @@ final class AddContactViewModel {
 
     func save() -> Bool {
         guard !pseudonym.trimmingCharacters(in: .whitespaces).isEmpty
-            else { error = String(localized: "Name is required."); return false }
+            else { error = String(localized: "Pseudonym is required."); return false }
         guard let verifyKey = Data(base64URLEncoded: verifyKeyInput.trimmingCharacters(in: .whitespaces)),
               verifyKey.count == 32
             else { error = String(localized: "Invalid verify key (expected 32 bytes, base64url)."); return false }

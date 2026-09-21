@@ -112,7 +112,7 @@ struct HomeView: View {
                         Button {
                             showDeposit = true
                         } label: {
-                            Image(systemName: "plus")
+                            Image(systemName: "envelope.and.arrow.3.down")
                         }
                         Button {
                             Task {

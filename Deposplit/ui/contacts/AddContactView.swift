@@ -12,17 +12,17 @@ struct AddContactView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Name") {
+                Section("Pseudonym") {
                     TextField("Pseudonym", text: $viewModel.pseudonym)
                         .autocorrectionDisabled()
                 }
-                Section("Verification key (base64url)") {
+                Section("Verification key") {
                     TextField("Verification key", text: $viewModel.verifyKeyInput)
                         .autocorrectionDisabled()
                         .autocapitalization(.none)
                         .font(.system(.body, design: .monospaced))
                 }
-                Section("Encryption key (base64url)") {
+                Section("Encryption key") {
                     TextField("Encryption key", text: $viewModel.encKeyInput)
                         .autocorrectionDisabled()
                         .autocapitalization(.none)

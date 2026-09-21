@@ -766,16 +766,6 @@
         }
       }
     },
-    "Encryption key (base64url)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verschlüsselungsschlüssel (base64url)"
-          }
-        }
-      }
-    },
     "Enrol a biometric (Face ID or Touch ID) in device settings to reconstruct the secret." : {
       "localizations" : {
         "de" : {
@@ -786,12 +776,12 @@
         }
       }
     },
-    "Enter Keys Manually" : {
+    "Enter contact manually" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schlüssel manuell eingeben"
+            "value" : "Kontakt manuell erfassen"
           }
         }
       }
@@ -812,17 +802,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fehler"
-          }
-        }
-      }
-    },
-    "Error: %@" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fehler: %@"
           }
         }
       }
@@ -1133,17 +1112,6 @@
         }
       }
     },
-    "Loading…" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wird geladen…"
-          }
-        }
-      }
-    },
     "Margin of one — re-split soon" : {
       "localizations" : {
         "de" : {
@@ -1200,26 +1168,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mein QR-Code"
-          }
-        }
-      }
-    },
-    "Name" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Name"
-          }
-        }
-      }
-    },
-    "Name is required." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Name ist erforderlich."
           }
         }
       }
@@ -1568,6 +1516,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pseudonym"
+          }
+        }
+      }
+    },
+    "Pseudonym is required." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pseudonym ist erforderlich."
           }
         }
       }
@@ -2013,7 +1971,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Teilen & Verteilen"
+            "value" : "Aufteilen & Verteilen"
           }
         }
       }
@@ -2270,16 +2228,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verifizierungsschlüssel"
-          }
-        }
-      }
-    },
-    "Verification key (base64url)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verifizierungsschlüssel (base64url)"
           }
         }
       }

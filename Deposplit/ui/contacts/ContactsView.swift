@@ -106,10 +106,10 @@ struct ContactsView: View {
                         Button {
                             showAddContact = true
                         } label: {
-                            Label("Enter Keys Manually", systemImage: "keyboard")
+                            Label("Enter contact manually", systemImage: "keyboard")
                         }
                     } label: {
-                        Image(systemName: "plus")
+                        Image(systemName: "person.badge.plus")
                     }
                 }
             }
