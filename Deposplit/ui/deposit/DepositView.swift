@@ -98,9 +98,10 @@ struct DepositFormContent<LeadingToolbar: ToolbarContent>: View {
                             }
                             .font(.caption)
                         } else {
-                            TextEditor(text: $viewModel.secretText)
-                                .frame(minHeight: 80)
-                                .font(.system(.body, design: .monospaced))
+                            // What is typed is what gets split. A secret is not prose: a lower-case
+                            // start, a deliberate "typo" or a straight quote is part of it, and a
+                            // keyboard that fixes any of them changes the secret without saying so.
+                            VerbatimTextEditor(text: $viewModel.secretText, minHeight: 80)
                             // Two sources, one kind of thing. Both are filtered to PNG and JPEG, so
                             // neither offers an arbitrary file: Photos and Files are separate on iOS —
                             // Files cannot see the photo library — so covering both takes both pickers.

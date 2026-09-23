@@ -31,8 +31,10 @@ Open work is tracked in the hub's
 - Xcode 26+, Swift 6, `swift-tools-version: 6.0`
 - Deployment target **iOS 26.4** (`IPHONEOS_DEPLOYMENT_TARGET`); the package also declares
   macOS 15.0 so the domain can be tested off-device. Do not lower either.
-- **SwiftUI only.** No storyboards, and no UIKit beyond a `UIViewControllerRepresentable`
-  where there is genuinely no SwiftUI equivalent.
+- **SwiftUI only.** No storyboards, and no UIKit beyond a `UIViewRepresentable` or
+  `UIViewControllerRepresentable` where there is genuinely no SwiftUI equivalent. There are two:
+  the QR scanner, and `VerbatimTextEditor` for the secret, because `TextEditor` cannot turn off
+  smart quotes, smart dashes or smart spacing.
 - **Swift Testing** (`@Test`), not XCTest.
 
 > **`Info.plist` lives at the repository root, and that is not where Xcode would have put it.**
