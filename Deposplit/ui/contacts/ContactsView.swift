@@ -154,6 +154,7 @@ struct ContactsView: View {
                 isPresented: Binding(get: { renameTarget != nil }, set: { if !$0 { renameTarget = nil } })
             ) {
                 TextField("Nickname", text: $renameInput)
+                    .autocorrectionDisabled()
                 Button("Save") {
                     if let contact = renameTarget { viewModel.rename(contact, nickname: renameInput) }
                     renameTarget = nil
