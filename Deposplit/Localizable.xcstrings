@@ -2162,6 +2162,16 @@
         }
       }
     },
+    "This share is not on this device, so there is nothing to hand back." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Anteil ist nicht auf diesem Gerät, es gibt also nichts zurückzugeben."
+          }
+        }
+      }
+    },
     "This tolerates the loss of only one holder before the secret becomes unrecoverable." : {
       "localizations" : {
         "de" : {

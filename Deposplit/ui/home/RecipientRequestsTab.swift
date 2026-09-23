@@ -49,6 +49,7 @@ struct RecipientRequestsTab: View {
                                     senderName: viewModel.senderName(for: request),
                                     senderSubtitle: viewModel.senderSubtitle(for: request),
                                     keyChangedDaysAgo: viewModel.keyChangedDaysAgo(for: request),
+                                    canApprove: viewModel.canApprove(request),
                                     isResponding: viewModel.respondingTo == request.id,
                                     onApprove: { Task { await viewModel.respond(to: request, approve: true) } },
                                     onDeny: { Task { await viewModel.respond(to: request, approve: false) } }
@@ -68,6 +69,7 @@ private struct RequestCard: View {
     // The sender's pseudonym, shown only when senderName above is actually a nickname.
     let senderSubtitle: String?
     let keyChangedDaysAgo: Int?
+    let canApprove: Bool
     let isResponding: Bool
     let onApprove: () -> Void
     let onDeny: () -> Void
@@ -107,7 +109,15 @@ private struct RequestCard: View {
                     Button("Approve", action: onApprove)
                         .buttonStyle(.borderedProminent)
                         .frame(maxWidth: .infinity)
+                        .disabled(!canApprove)
                 }
+            }
+            // Deny stays available: it is the one answer the relay can carry, and it gives the
+            // owner an outcome rather than an ask that waits for ever.
+            if !canApprove {
+                Text("This share is not on this device, so there is nothing to hand back.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(.vertical, 4)

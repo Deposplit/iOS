@@ -13,6 +13,7 @@ final class RequestsViewModel {
     private let shareManagement: any ShareManagement
     private let contactManagement: any ContactManagement
     private var allContacts: [Contact] = []
+    private var heldSecretIds: Set<UUID> = []
 
     init(shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
         self.shareManagement = shareManagement
@@ -24,7 +25,9 @@ final class RequestsViewModel {
         error = nil
         defer { isLoading = false }
         do {
-            pendingRequests = try await shareManagement.listPendingRequests()
+            let pending = try await shareManagement.listPendingRequests()
+            heldSecretIds = Set(((try? shareManagement.listHeld()) ?? []).map(\.secretId))
+            pendingRequests = pending
             allContacts = (try? contactManagement.listContacts()) ?? []
             keyConflicts = (try? shareManagement.listKeyConflicts()) ?? []
         } catch {
@@ -41,6 +44,13 @@ final class RequestsViewModel {
         } catch {
             self.error = error.localizedDescription
         }
+    }
+
+    /// Approving a retrieval re-encrypts the share to the requester, so it needs the share in hand.
+    /// The ask can still arrive after this device deleted it: the owner learns of a withdrawal only
+    /// on their next poll, and until then the row has to say why Approve cannot work.
+    func canApprove(_ request: ShareRequest) -> Bool {
+        request.transactionType != .retrieval || heldSecretIds.contains(request.secretId)
     }
 
     func senderName(for request: ShareRequest) -> String {
