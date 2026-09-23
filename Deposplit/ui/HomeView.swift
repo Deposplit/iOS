@@ -183,6 +183,15 @@ struct HomeView: View {
                 break
             }
         }
+        // Each tab reads from the relay as it comes into view, as a phon tab does by being a page of
+        // its own, so what it shows is as fresh as the moment it was looked at. Only a switch counts:
+        // the launch has its own reload above. Requests has a view model of its own; the other two
+        // share one, exactly as the refresh button divides them on Android.
+        .onChange(of: selectedTab) { _, tab in
+            Task {
+                if tab == 2 { await requestsViewModel.load() } else { await homeViewModel.load() }
+            }
+        }
         // Asked at the first moment it could ever mean anything: this phone is now keeping
         // something for somebody, so a request for it can arrive. Asking at first launch would be
         // a dialog about a notice that cannot exist yet, and this app has exactly one to offer.
