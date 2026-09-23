@@ -106,11 +106,16 @@ struct SecretGroup: Identifiable {
     var canClearCollected: Bool { approvedRetrievals > 0 }
 }
 
+enum HeldSortOrder: CaseIterable { case date, label, sender }
+
 @Observable
 final class HomeViewModel {
 
     var groupedSecrets: [SecretGroup] = []
     var heldShares: [HeldShare] = []
+    /// Kept here rather than in the Keeping safe tab, which leaves the hierarchy whenever a reload
+    /// shows its spinner and would forget the choice every time.
+    var heldSortOrder: HeldSortOrder = .date
     var isLoading = false
     var syncWarning = false
     /// How many contacts still hold a key this device no longer signs with. A standing advisory
@@ -162,6 +167,18 @@ final class HomeViewModel {
         } catch {
             syncWarning = true
         }
+    }
+
+    /// Unilateral: custody is voluntary, so nobody is asked. The service tells the sender on a
+    /// best-effort basis and deletes locally whether or not that gets through.
+    func deleteHeldShare(_ shareId: UUID) async {
+        try? await shareManagement.deleteHeldShare(shareId: shareId)
+        await load()
+    }
+
+    func deleteAllHeld(from contactId: UUID) async {
+        try? await shareManagement.deleteAllHeldFromSender(contactId: contactId)
+        await load()
     }
 
     /// One group per secret, holders folded in — shared with a single secret's own screen, so both

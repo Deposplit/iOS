@@ -238,7 +238,13 @@ struct HomeView: View {
                 ContentUnavailableView("Error", systemImage: "exclamationmark.triangle",
                                        description: Text(error))
             } else {
-                HeldTab(shares: homeViewModel.heldShares, contacts: allContacts)
+                HeldTab(
+                    shares: homeViewModel.heldShares,
+                    contacts: allContacts,
+                    sortOrder: $homeViewModel.heldSortOrder,
+                    onDelete: { share in Task { await homeViewModel.deleteHeldShare(share.id) } },
+                    onDeleteAllFromSender: { contactId in Task { await homeViewModel.deleteAllHeld(from: contactId) } }
+                )
             }
         }
     }

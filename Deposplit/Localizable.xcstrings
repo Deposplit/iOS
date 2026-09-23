@@ -506,6 +506,16 @@
         }
       }
     },
+    "Date" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datum"
+          }
+        }
+      }
+    },
     "Default relay" : {
       "localizations" : {
         "de" : {
@@ -516,12 +526,32 @@
         }
       }
     },
+    "Delete All Shares from %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Anteile von %@ löschen"
+          }
+        }
+      }
+    },
     "Delete Contact" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kontakt löschen"
+          }
+        }
+      }
+    },
+    "Delete Share" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anteil löschen"
           }
         }
       }
@@ -602,6 +632,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deposplit"
+          }
+        }
+      }
+    },
+    "Delete this share?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diesen Anteil löschen?"
           }
         }
       }
@@ -878,6 +918,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kostenlos sind %lld Geheimnisse gleichzeitig. Ein vernichtetes gibt seinen Platz sofort frei."
+          }
+        }
+      }
+    },
+    "From" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Von"
           }
         }
       }
@@ -1966,6 +2016,16 @@
         }
       }
     },
+    "Sort by" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sortieren nach"
+          }
+        }
+      }
+    },
     "Split & Share" : {
       "localizations" : {
         "de" : {
@@ -2108,6 +2168,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dies verkraftet nur den Verlust eines einzigen Verwahrers, bevor das Geheimnis unwiederbringlich wird."
+          }
+        }
+      }
+    },
+    "This will permanently remove this share from your device." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Damit wird dieser Anteil dauerhaft von Ihrem Gerät entfernt."
           }
         }
       }
