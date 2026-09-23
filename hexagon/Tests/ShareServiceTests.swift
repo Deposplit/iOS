@@ -1074,6 +1074,26 @@ private func makeDestroyingSecret(
     #expect(try svc.listSecrets().map(\.state) == [.destroying])
 }
 
+// A removal is not only a destruction's fan-out: one holder can be asked to destroy their piece of
+// a secret that stays active, and their approval is just as much the only evidence left. Missing
+// it leaves the owner believing in that holder for good, and asking them again on every retrieval.
+@Test func aHolderRemovedFromAnActiveSecretIsDroppedAndTheSecretStaysActive() async throws {
+    let relay = FakeShareRelay()
+    let holders = [aliceContact, charlieContact]
+    let (svc, _, _, _, metaRepo, _, _) = try makeService(relay: relay, contacts: holders)
+    try await svc.deposit(secret: Data([1, 2, 3]), label: "destroy test", contacts: holders, threshold: 2, mimeType: .default, replacing: nil)
+    let secretId = try svc.listSecrets()[0].id
+    let removal = makeRemovalRow(secretId: secretId, recipientKey: aliceContact.verifyKey)
+    relay.pending = [removal]
+
+    try relay.answerRemoval(removal, signer: aliceKeys)
+    try await svc.syncDistributed()
+
+    #expect(try metaRepo.getAll().map(\.contactId) == [charlieContact.id])
+    #expect(try svc.listSecrets().map(\.state) == [.active])
+    #expect(relay.deletedRequestIds.contains(removal.id))
+}
+
 // MARK: - Stolen-key revocation (compromised-key flag + key conflicts)
 
 @Test func syncInboxRefusesAutoAcceptAndCapturesAKeyConflictWhenTheOldKeyIsRevoked() async throws {

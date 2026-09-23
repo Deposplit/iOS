@@ -95,7 +95,7 @@ struct SecretDetailView: View {
                             // The health badge above already says Destroying, so this says the
                             // thing the badge cannot: how many holders are still to answer, which
                             // is exactly the judgement Force Forget beside it asks for. The count
-                            // shrinks as each one confirms, because reconcileDestroying drops
+                            // shrinks as each one confirms, because reconcileRemovals drops
                             // their ShareMetadata row.
                             Text("Waiting for \(group.holders.count) holders to destroy their piece.")
                                 .font(.caption)

@@ -251,7 +251,7 @@ public final class ShareService: ShareManagement {
                 try? shareMetadataRepository.save(ShareMetadata(id: meta.id, secretId: meta.secretId, contactId: meta.contactId, lastConfirmedAt: Date()))
             }
         }
-        await reconcileDestroying()
+        await reconcileRemovals()
         await processHeartbeats()
     }
 
@@ -259,28 +259,27 @@ public final class ShareService: ShareManagement {
         ((try? retainedDepositRepository.getAll()) ?? []).contains(where: { $0.id == depositId })
     }
 
-    /// For every `.destroying` `Secret`, checks whether each remaining holder's fanned-out
-    /// `removal` request has been approved; approved ones are cleaned up (local `ShareMetadata`
-    /// removed, then the relay row). Once a `.destroying` secret has no `ShareMetadata` rows left,
-    /// its `Secret` record itself is removed — the Active/Destroying two-state lifecycle.
+    /// Drops every holder whose `removal` request has come back approved, whatever state the secret
+    /// is in: one holder removed from an active secret just as much as each holder of a
+    /// `.destroying` one. Approved ones are cleaned up (local `ShareMetadata` removed, then the relay
+    /// row). Once a `.destroying` secret has no `ShareMetadata` rows left, its `Secret` record itself
+    /// is removed — the Active/Destroying two-state lifecycle.
     ///
     /// The approved removal row is the only thing that ever says a holder destroyed their piece.
     /// Approving it makes the relay sweep the rest of that holder's rows for this secret, the
     /// deposit included, so there is nothing else left to read and an absence would say nothing.
+    /// It is read for active secrets too, because otherwise a holder removed from one would be
+    /// believed in for good, and asked for their piece again on every retrieval.
     /// The signature is checked for the same reason it is checked on a retrieval approval: a relay
     /// that could forge one could make this device forget a share that is still out there.
-    private func reconcileDestroying() async {
-        let secrets = (try? secretRepository.getAll()) ?? []
-        let destroying = secrets.filter { $0.state == .destroying }
-        guard !destroying.isEmpty else { return }
-        let destroyingIds = Set(destroying.map(\.id))
+    private func reconcileRemovals() async {
+        let metas = (try? shareMetadataRepository.getAll()) ?? []
+        if !metas.isEmpty {
+            let secretIds = Set(metas.map(\.secretId))
+            let removalRequests = await rowsAcrossRelays(role: .sender, transactionType: .removal)
+                .filter { secretIds.contains($0.request.secretId) }
 
-        let removalRequests = await rowsAcrossRelays(role: .sender, transactionType: .removal)
-            .filter { destroyingIds.contains($0.request.secretId) }
-
-        for secret in destroying {
-            let metasForSecret = ((try? shareMetadataRepository.getAll()) ?? []).filter { $0.secretId == secret.id }
-            for meta in metasForSecret {
+            for meta in metas {
                 guard let contact = contactRepository.getById(meta.contactId),
                       let approvedRemoval = removalRequests.first(where: {
                           $0.request.secretId == meta.secretId && $0.request.recipientKey == contact.verifyKey
@@ -293,10 +292,13 @@ public final class ShareService: ShareManagement {
                 try? shareMetadataRepository.delete(shareId: meta.id)
                 try? await approvedRemoval.relay.deleteShareRequest(requestId: approvedRemoval.request.id)
             }
-            let remaining = ((try? shareMetadataRepository.getAll()) ?? []).filter { $0.secretId == secret.id }
-            if remaining.isEmpty {
-                try? secretRepository.delete(secretId: secret.id)
-            }
+        }
+
+        // Only a destruction ends the secret itself. A holder removed from an active secret leaves
+        // it one holder short, which is what its health already shows.
+        let remaining = Set(((try? shareMetadataRepository.getAll()) ?? []).map(\.secretId))
+        for secret in (try? secretRepository.getAll()) ?? [] where secret.state == .destroying && !remaining.contains(secret.id) {
+            try? secretRepository.delete(secretId: secret.id)
         }
     }
 
