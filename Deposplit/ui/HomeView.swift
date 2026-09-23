@@ -21,6 +21,8 @@ struct HomeView: View {
     @State private var selectedSecret: Secret?
     @State private var repairSecret: Secret?
     @State private var showNotificationExplanation = false
+    @State private var wasInBackground = false
+    @Environment(\.scenePhase) private var scenePhase
 
     init(auth: any Identity, shareManagement: any ShareManagement, contactManagement: any ContactManagement, catalogManagement: any CatalogManagement, relaySettings: any RelaySettings, purchaseStore: StoreKitPurchaseStore) {
         self.auth = auth
@@ -165,6 +167,21 @@ struct HomeView: View {
         }
         .task {
             await reload()
+        }
+        // The counterpart of Android reloading on ON_RESUME: whatever arrived while the app was away
+        // is on screen when it comes back. Only a return from the background counts, because a Face
+        // ID prompt or a pulled-down Notification Center also passes through .inactive, and
+        // reloading for either would redraw the lists under the reader for nothing.
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background:
+                wasInBackground = true
+            case .active where wasInBackground:
+                wasInBackground = false
+                Task { await reload() }
+            default:
+                break
+            }
         }
         // Asked at the first moment it could ever mean anything: this phone is now keeping
         // something for somebody, so a request for it can arrive. Asking at first launch would be
