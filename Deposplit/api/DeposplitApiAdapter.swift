@@ -11,11 +11,11 @@ struct ApiError: Error, LocalizedError {
 final class DeposplitApiAdapter: ShareRelay {
 
     private let identity: any Identity
-    private let baseURL: String
+    let baseUrl: String
 
     init(identity: any Identity, baseURL: String = RelayDefaults.fallbackBaseURL) {
         self.identity = identity
-        self.baseURL = baseURL
+        self.baseUrl = baseURL
     }
 
     // MARK: - ShareRelay
@@ -127,7 +127,7 @@ final class DeposplitApiAdapter: ShareRelay {
         let canonical = buildCanonical(nonce: nonce, method: method, path: path, body: bodyData ?? Data())
         let sig = try identity.sign(Data(canonical.utf8))
 
-        var request = URLRequest(url: URL(string: "\(baseURL)\(path)")!)
+        var request = URLRequest(url: URL(string: "\(baseUrl)\(path)")!)
         request.httpMethod = method
         request.timeoutInterval = 30
         request.setValue("application/json", forHTTPHeaderField: "Accept")

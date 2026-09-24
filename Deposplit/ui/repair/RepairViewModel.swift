@@ -68,7 +68,7 @@ final class RepairViewModel {
             let distributed = try shareManagement.listDistributed().filter { $0.secretId == secret.id }
             let contacts = (try? contactManagement.listContacts()) ?? []
             allContacts = contacts
-            let requests = try await shareManagement.listSentRequests().filter { $0.secretId == secret.id }
+            let requests = try await shareManagement.listSentRequests().items.filter { $0.secretId == secret.id }
             holderStatuses = distributed.map { share in
                 let contact = contacts.first(where: { $0.id == share.contactId })
                 let latestRetrieval = contact.flatMap { holder in

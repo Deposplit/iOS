@@ -117,7 +117,11 @@ final class HomeViewModel {
     /// shows its spinner and would forget the choice every time.
     var heldSortOrder: HeldSortOrder = .date
     var isLoading = false
-    var syncWarning = false
+    /// Every relay the last refresh could not reach, by base URL. Each one gets a warning of its
+    /// own, because with several relays a single one could not say whose data is stale.
+    var unreachableRelays: [String] = []
+    /// The refresh failed for a reason of this device's own rather than a relay's.
+    var syncFailed = false
     /// How many contacts still hold a key this device no longer signs with. A standing advisory
     /// rather than an alarm: it is expected work after a phone switch, and it clears itself as each
     /// contact gets back in touch.
@@ -135,7 +139,6 @@ final class HomeViewModel {
     func load() async {
         isLoading = true
         error = nil
-        syncWarning = false
 
         // Phase 1: local data only — renders immediately even when offline
         do {
@@ -152,11 +155,12 @@ final class HomeViewModel {
         }
         isLoading = false
 
-        // Phase 2: relay sync — soft failure, never wipes Phase 1 results
+        // Phase 2: relay sync — soft failure, a warning per relay, never wipes Phase 1 results
         do {
-            try await shareManagement.syncInbox()
-            try await shareManagement.syncDistributed()
-            let allRequests = try await shareManagement.listSentRequests()
+            let inbox = try await shareManagement.syncInbox()
+            let distributed = try await shareManagement.syncDistributed()
+            let sent = try await shareManagement.listSentRequests()
+            let allRequests = sent.items
             let secrets = try shareManagement.listSecrets()
             let distributed = try shareManagement.listDistributed()
             let contacts = (try? contactManagement.listContacts()) ?? []
@@ -164,8 +168,10 @@ final class HomeViewModel {
             heldShares = try shareManagement.listHeld()
             // The sync may itself be the evidence that clears someone.
             awaitingRelinkCount = contactManagement.contactsAwaitingRelink().count
+            unreachableRelays = inbox.unreachableRelays.union(distributed.unreachableRelays).union(sent.unreachableRelays).sorted()
+            syncFailed = false
         } catch {
-            syncWarning = true
+            syncFailed = true
         }
     }
 

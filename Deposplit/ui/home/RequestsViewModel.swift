@@ -7,6 +7,13 @@ final class RequestsViewModel {
     var pendingRequests: [ShareRequest] = []
     var keyConflicts: [KeyConflict] = []
     var isLoading = false
+    /// Every relay that did not answer, by base URL. `pendingRequests` still holds what the others
+    /// returned, and each of these is named rather than turned into an error: `error` is kept for a
+    /// failure of this device's own, which no relay line could explain.
+    var unreachableRelays: [String] = []
+    /// False when no relay answered, so an empty list says nothing about whether any request is
+    /// waiting, and the tab must not claim there is none.
+    var anyRelayAnswered = true
     var error: String?
     var respondingTo: UUID?
 
@@ -27,7 +34,9 @@ final class RequestsViewModel {
         do {
             let pending = try await shareManagement.listPendingRequests()
             heldSecretIds = Set(((try? shareManagement.listHeld()) ?? []).map(\.secretId))
-            pendingRequests = pending
+            pendingRequests = pending.items
+            unreachableRelays = pending.unreachableRelays.sorted()
+            anyRelayAnswered = pending.anyAnswered
             allContacts = (try? contactManagement.listContacts()) ?? []
             keyConflicts = (try? shareManagement.listKeyConflicts()) ?? []
         } catch {

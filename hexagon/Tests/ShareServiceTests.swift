@@ -185,6 +185,11 @@ private final class FakeShareRelay: ShareRelay {
     var deletedRequestIds: [UUID] = []
     var openedRequests: [OpenedRequest] = []
     var unreachable = false
+    let baseUrl: String
+
+    init(baseUrl: String = "http://relay.example:9000") {
+        self.baseUrl = baseUrl
+    }
 
     // Rotation push and withdraw tombstone
     struct WithdrawCall: Equatable { let senderKey: Data?; let secretId: UUID? }
@@ -420,7 +425,7 @@ private func makeSignedRow(
     )
     relay.pending = [row]
 
-    let result = try await svc.listPendingRequests()
+    let result = try await svc.listPendingRequests().items
 
     #expect(result.isEmpty)
 }
@@ -505,8 +510,8 @@ private final class TwoRelayResolver: ShareRelayResolver {
     )
     defaultRelay.pending = [askedOfBob]
 
-    let pending = try await svc.listPendingRequests()
-    let sent = try await svc.listSentRequests()
+    let pending = try await svc.listPendingRequests().items
+    let sent = try await svc.listSentRequests().items
     #expect(pending.map(\.id) == [id])
     #expect(sent.map(\.id) == [id])
 }
@@ -528,7 +533,7 @@ private final class AliasingRelayResolver: ShareRelayResolver {
     func resolve(_ relayBaseUrl: String?) -> any ShareRelay {
         let url = relayBaseUrl ?? defaultUrl
         if let existing = instances[url] { return existing }
-        let relay = FakeShareRelay()
+        let relay = FakeShareRelay(baseUrl: url)
         relay.pending = rows
         instances[url] = relay
         return relay
@@ -565,7 +570,7 @@ private final class AliasingRelayResolver: ShareRelayResolver {
     let result = try await svc.reconstruct(secretId: secretId)
 
     #expect(Array(result.secret) == secretBytes)
-    #expect(try await svc.listSentRequests().map(\.id).sorted(by: { $0.uuidString < $1.uuidString })
+    #expect(try await svc.listSentRequests().items.map(\.id).sorted(by: { $0.uuidString < $1.uuidString })
         == rows.map(\.id).sorted(by: { $0.uuidString < $1.uuidString }))
 }
 
@@ -655,6 +660,97 @@ private final class AliasingRelayResolver: ShareRelayResolver {
 
     #expect(defaultRelay.respondCalls == [fromAliceId])
     #expect(shareRepo.getAll().map(\.id) == [fromAliceId])
+}
+
+// MARK: - Reporting a relay that did not answer
+
+private let reportingDefaultUrl = "http://default.example:9000"
+private let reportingByorUrl = "http://byor.example:9000"
+
+/// Bob, with alice on this device's default relay and charlie pinned to a second one.
+private func makeTwoRelayService(defaultRelay: FakeShareRelay, byorRelay: FakeShareRelay) throws -> (svc: ShareService, bob: IdentityService) {
+    let charlieKeys = TestKeyPair()
+    let charlieContact = Contact(
+        id: UUID(), pseudonym: "charlie", verifyKey: charlieKeys.publicKey,
+        encKey: Data(repeating: 0x02, count: 32),
+        verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date(),
+        relayBaseUrl: reportingByorUrl
+    )
+    let bobIdentity = IdentityService(identityStore: InMemoryIdentityStoreForShareServiceTest())
+    try bobIdentity.register(pseudonym: "bob")
+    let contactRepo = FakeContactRepository([aliceContact, charlieContact])
+    let purchases = FakePurchaseRepository()
+    let svc = ShareService(
+        relayResolver: TwoRelayResolver(default: defaultRelay, byorUrl: reportingByorUrl, byor: byorRelay),
+        encryption: NoOpShareEncryption(),
+        shareRepository: FakeShareRepository(),
+        shareMetadataRepository: FakeShareMetadataRepository(),
+        secretRepository: FakeSecretRepository(),
+        contactRepository: contactRepo,
+        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
+        keyConflictRepository: FakeKeyConflictRepository(),
+        retainedDepositRepository: FakeRetainedDepositRepository(),
+        identity: bobIdentity,
+        purchases: purchases
+    )
+    return (svc, bobIdentity)
+}
+
+/// Each relay is soft-failed on its own, so a sync pass never throws for one that is down — which
+/// is exactly why it has to say so. Otherwise a dead relay reads as an empty one, and nothing on
+/// screen tells the person that what they see is only the last known state.
+@Test func bothSyncPassesNameTheRelayThatDidNotAnswerAndOnlyThatOne() async throws {
+    let byorRelay = FakeShareRelay(baseUrl: reportingByorUrl)
+    byorRelay.unreachable = true
+    let (svc, _) = try makeTwoRelayService(defaultRelay: FakeShareRelay(baseUrl: reportingDefaultUrl), byorRelay: byorRelay)
+
+    #expect(try await svc.syncInbox().unreachableRelays == [reportingByorUrl])
+    #expect(try await svc.syncDistributed().unreachableRelays == [reportingByorUrl])
+}
+
+@Test func bothSyncPassesReportNothingWhenEveryRelayAnswers() async throws {
+    let (svc, _) = try makeTwoRelayService(
+        defaultRelay: FakeShareRelay(baseUrl: reportingDefaultUrl), byorRelay: FakeShareRelay(baseUrl: reportingByorUrl)
+    )
+
+    #expect(try await svc.syncInbox().unreachableRelays.isEmpty)
+    #expect(try await svc.syncDistributed().unreachableRelays.isEmpty)
+}
+
+@Test func listPendingRequestsKeepsTheRowsFromTheRelayThatAnsweredAndNamesTheOneThatDidNot() async throws {
+    let defaultRelay = FakeShareRelay(baseUrl: reportingDefaultUrl)
+    let byorRelay = FakeShareRelay(baseUrl: reportingByorUrl)
+    byorRelay.unreachable = true
+    let (svc, bob) = try makeTwoRelayService(defaultRelay: defaultRelay, byorRelay: byorRelay)
+    let id = UUID()
+    let askedOfBob = try makeSignedRow(
+        id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: aliceKeys,
+        transactionType: .removal, ciphertext: nil
+    )
+    defaultRelay.pending = [askedOfBob]
+
+    let fanOut = try await svc.listPendingRequests()
+
+    #expect(fanOut.items.map(\.id) == [id])
+    #expect(fanOut.unreachableRelays == [reportingByorUrl])
+    #expect(fanOut.anyAnswered)
+}
+
+/// An empty list from relays that answered means there is nothing to do; an empty list because none
+/// answered means nobody knows. The Requests tab has nothing local to fall back on, so it must be
+/// able to tell the two apart.
+@Test func listPendingRequestsSaysNoRelayAnsweredWhenEveryOneOfThemFailed() async throws {
+    let defaultRelay = FakeShareRelay(baseUrl: reportingDefaultUrl)
+    let byorRelay = FakeShareRelay(baseUrl: reportingByorUrl)
+    defaultRelay.unreachable = true
+    byorRelay.unreachable = true
+    let (svc, _) = try makeTwoRelayService(defaultRelay: defaultRelay, byorRelay: byorRelay)
+
+    let fanOut = try await svc.listPendingRequests()
+
+    #expect(fanOut.items.isEmpty)
+    #expect(fanOut.unreachableRelays == [reportingDefaultUrl, reportingByorUrl])
+    #expect(!fanOut.anyAnswered)
 }
 
 // MARK: - Identity recovery

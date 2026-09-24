@@ -476,6 +476,16 @@
         }
       }
     },
+    "Could not refresh. Showing the last known state." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktualisieren fehlgeschlagen. Angezeigt wird der zuletzt bekannte Stand."
+          }
+        }
+      }
+    },
     "Copy" : {
       "localizations" : {
         "de" : {
@@ -1696,12 +1706,22 @@
         }
       }
     },
-    "Relay not reachable" : {
+    "Relay %@ not reachable. Its requests cannot be shown right now." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Relais nicht erreichbar"
+            "value" : "Relais %@ nicht erreichbar. Anfragen über dieses Relais können gerade nicht angezeigt werden."
+          }
+        }
+      }
+    },
+    "Relay %@ not reachable. Showing the last known state." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relais %@ nicht erreichbar. Angezeigt wird der zuletzt bekannte Stand."
           }
         }
       }

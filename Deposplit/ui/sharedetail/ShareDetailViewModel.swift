@@ -34,7 +34,7 @@ final class ShareDetailViewModel {
         error = nil
         defer { isLoading = false }
         do {
-            let all = try await shareManagement.listSentRequests()
+            let all = try await shareManagement.listSentRequests().items
             shareRequests = all.filter { $0.secretId == share.secretId }
             allContacts = (try? contactManagement.listContacts()) ?? []
         } catch {

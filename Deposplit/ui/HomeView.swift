@@ -59,19 +59,15 @@ struct HomeView: View {
                     .background(.bar)
                     Divider()
                 }
-                if homeViewModel.syncWarning {
-                    HStack(spacing: 6) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .imageScale(.small)
-                        Text("Relay not reachable")
-                            .font(.caption)
-                        Spacer()
+                // The Requests tab names its own unreachable relays, in words about requests, so these
+                // two views of local data are the ones that say what they are showing instead.
+                if selectedTab != 2 {
+                    ForEach(homeViewModel.unreachableRelays, id: \.self) { relay in
+                        SoftWarningRow(text: "Relay \(relayName(relay)) not reachable. Showing the last known state.")
                     }
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal)
-                    .padding(.vertical, 6)
-                    .background(.bar)
-                    Divider()
+                    if homeViewModel.syncFailed {
+                        SoftWarningRow(text: "Could not refresh. Showing the last known state.")
+                    }
                 }
                 TabView(selection: $selectedTab) {
                     Tab("Split & shared", systemImage: "photo.stack.fill", value: 0) {
@@ -123,7 +119,7 @@ struct HomeView: View {
                         } label: {
                             Image(systemName: "arrow.clockwise")
                         }
-                        .tint(homeViewModel.syncWarning ? .red : .accentColor)
+                        .tint(showsWarning ? .red : .accentColor)
                     }
                 }
             }
@@ -220,6 +216,12 @@ struct HomeView: View {
         guard !RequestNotifier.explanationShown else { return }
         guard await RequestNotifier.authorizationStatus() == .notDetermined else { return }
         showNotificationExplanation = true
+    }
+
+    private var showsWarning: Bool {
+        selectedTab == 2
+            ? !requestsViewModel.unreachableRelays.isEmpty
+            : !homeViewModel.unreachableRelays.isEmpty || homeViewModel.syncFailed
     }
 
     private func reload() async {

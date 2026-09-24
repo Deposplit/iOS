@@ -8,8 +8,9 @@ public protocol ShareManagement {
     func deposit(secret: Data, label: String, contacts: [Contact], threshold: Int, mimeType: MimeType, replacing: UUID?) async throws
     func listSecrets() throws -> [Secret]
     func listDistributed() throws -> [ShareMetadata]
-    func syncDistributed() async throws
-    func listSentRequests() async throws -> [ShareRequest]
+    @discardableResult
+    func syncDistributed() async throws -> SyncReport
+    func listSentRequests() async throws -> RelayFanOut<ShareRequest>
     func requestAll(secretId: UUID) async throws
     func openRequest(shareId: UUID, type: ShareTransactionType) async throws -> ShareRequest
     /// Pure read — collects approved retrieval shares (possibly more than `k`) and decrypts
@@ -38,9 +39,10 @@ public protocol ShareManagement {
     func forceForgetSecret(secretId: UUID) throws
 
     // Recipient
-    func syncInbox() async throws
+    @discardableResult
+    func syncInbox() async throws -> SyncReport
     func listHeld() throws -> [HeldShare]
-    func listPendingRequests() async throws -> [ShareRequest]
+    func listPendingRequests() async throws -> RelayFanOut<ShareRequest>
     func respond(requestId: UUID, approved: Bool) async throws
     func deleteHeldShare(shareId: UUID) async throws
     func deleteAllHeldFromSender(contactId: UUID) async throws

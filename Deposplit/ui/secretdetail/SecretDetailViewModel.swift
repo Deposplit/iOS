@@ -64,7 +64,7 @@ final class SecretDetailViewModel {
             return
         }
         let distributed = (try? shareManagement.listDistributed()) ?? []
-        let requests = (try? await shareManagement.listSentRequests()) ?? []
+        let requests = (try? await shareManagement.listSentRequests().items) ?? []
         allContacts = (try? contactManagement.listContacts()) ?? []
         group = HomeViewModel.buildGroups(
             secrets: [secret],

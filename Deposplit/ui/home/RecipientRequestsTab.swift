@@ -21,10 +21,13 @@ struct RecipientRequestsTab: View {
                 .padding(.vertical, 6)
                 Divider()
             }
+            ForEach(viewModel.unreachableRelays, id: \.self) { relay in
+                SoftWarningRow(text: "Relay \(relayName(relay)) not reachable. Its requests cannot be shown right now.")
+            }
             if viewModel.isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if viewModel.error != nil && viewModel.pendingRequests.isEmpty && viewModel.keyConflicts.isEmpty {
+            } else if (viewModel.error != nil || !viewModel.anyRelayAnswered) && viewModel.pendingRequests.isEmpty && viewModel.keyConflicts.isEmpty {
                 Spacer()
             } else if viewModel.pendingRequests.isEmpty && viewModel.keyConflicts.isEmpty {
                 ContentUnavailableView("No pending requests", systemImage: "checklist.checked")

@@ -88,7 +88,7 @@ final class CustodyRefresh {
 
         // Best-effort, and last. Failing to announce must never undo a pass that already emitted
         // its heartbeats — the custody signal this exists for has gone out by now.
-        let waiting = ((try? await shareManagement.listPendingRequests()) ?? [])
+        let waiting = ((try? await shareManagement.listPendingRequests().items) ?? [])
             .filter { $0.transactionType == .retrieval }
             .map(\.id)
         // Ids alone, on purpose: the notice may name nobody and no secret, and a signature that
