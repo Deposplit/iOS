@@ -157,8 +157,8 @@ final class HomeViewModel {
 
         // Phase 2: relay sync — soft failure, a warning per relay, never wipes Phase 1 results
         do {
-            let inbox = try await shareManagement.syncInbox()
-            let distributed = try await shareManagement.syncDistributed()
+            let inboxReport = try await shareManagement.syncInbox()
+            let distributedReport = try await shareManagement.syncDistributed()
             let sent = try await shareManagement.listSentRequests()
             let allRequests = sent.items
             let secrets = try shareManagement.listSecrets()
@@ -168,7 +168,7 @@ final class HomeViewModel {
             heldShares = try shareManagement.listHeld()
             // The sync may itself be the evidence that clears someone.
             awaitingRelinkCount = contactManagement.contactsAwaitingRelink().count
-            unreachableRelays = inbox.unreachableRelays.union(distributed.unreachableRelays).union(sent.unreachableRelays).sorted()
+            unreachableRelays = inboxReport.unreachableRelays.union(distributedReport.unreachableRelays).union(sent.unreachableRelays).sorted()
             syncFailed = false
         } catch {
             syncFailed = true
