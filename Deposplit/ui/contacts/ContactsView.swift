@@ -36,8 +36,21 @@ struct ContactsView: View {
         NavigationStack {
             Group {
                 if viewModel.contacts.isEmpty {
-                    ContentUnavailableView("No contacts yet", systemImage: "person.2.slash",
-                                          description: Text("Add contacts to start sharing secrets."))
+                    // The toolbar menu's two ways in, offered directly while there is nothing else on
+                    // screen - scanning first, because it is the only one that can earn Very High.
+                    ContentUnavailableView {
+                        Label("No contacts yet", systemImage: "person.2.slash")
+                    } description: {
+                        Text("Add contacts to start sharing secrets.")
+                    } actions: {
+                        Button {
+                            showQrScanner = true
+                        } label: {
+                            Label("Scan QR Code", systemImage: "qrcode.viewfinder")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        Button("Enter contact manually") { showAddContact = true }
+                    }
                 } else {
                     List {
                         ForEach(viewModel.contacts) { contact in
