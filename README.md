@@ -110,7 +110,9 @@ enrolment shows the same unavailable state a real device would.
 
 ## Localisation
 
-English and German, in `Deposplit/Localizable.xcstrings`. Both must be kept in sync.
+English and German, in `Deposplit/Localizable.xcstrings`. Both must be kept in sync. The
+permission prompts take their English from the `INFOPLIST_KEY_*UsageDescription` build settings
+and their German from `Deposplit/InfoPlist.xcstrings`.
 
 ## Continuous integration
 

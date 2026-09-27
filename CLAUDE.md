@@ -124,6 +124,12 @@ placed under `Deposplit/` is compiled automatically.** Adding an adapter or a vi
   request **ids** and not rows. A pending removal posts nothing at all. Authorisation is asked the
   first time this device holds a share, never at launch, and an explanation precedes the system
   prompt because iOS raises that prompt exactly once in an app's lifetime.
+- **A relay on the local network needs the Local Network permission.** iOS asks the first time
+  the app connects to a LAN address — a relay somebody runs at home, or the Mac during
+  development — and `INFOPLIST_KEY_NSLocalNetworkUsageDescription`, set in both configurations,
+  says why. Plain HTTP to an IP address needs no App Transport Security exception, because ATS
+  does not apply to IP addresses; a `.local` name would need `NSAllowsLocalNetworking`, which
+  the app does not carry.
 
 > **Swift structs have no `copy()`, and this has already caused two silent-data-loss bugs.**
 > `Contact` is reconstructed through its memberwise initialiser in `ContactService`
@@ -253,6 +259,12 @@ says the one thing a holder is not.
 The reader is addressed formally, with *Sie*, and never with *du* — the hub's `CLAUDE.md`
 carries that rule and the `Ihr`/*their* trap that comes with it. Plurals use
 `variations.plural` with `one` and `other`.
+
+The system's permission prompts are the exception. Their English lives in the
+`INFOPLIST_KEY_*UsageDescription` build settings, and their German in
+`Deposplit/InfoPlist.xcstrings`, keyed by the Info.plist key. Only the `de` half of that catalog
+is compiled — the English comes straight from the build setting — so a new usage description
+needs its German added there by hand, and a reworded one needs its German reworded too.
 
 > **Watch for the `String` vs `LocalizedStringKey` trap.** A view that takes `title: String`
 > and passes it to `Text` silently defeats localisation — the string is interpolated rather
