@@ -6,7 +6,7 @@ private extension VerificationLevel {
         switch self {
         case .veryLow: .gray
         case .low: .yellow
-        case .high: .blue
+        case .high: .accentColor
         case .veryHigh: .green
         }
     }

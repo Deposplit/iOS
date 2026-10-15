@@ -127,7 +127,7 @@ private struct RequestCard: View {
     }
 
     private var badgeColor: Color {
-        request.transactionType == .retrieval ? .blue : .orange
+        request.transactionType == .retrieval ? .accentColor : .orange
     }
 }
 

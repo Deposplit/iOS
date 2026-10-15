@@ -58,7 +58,7 @@ struct AddContactView: View {
                                 Spacer()
                                 if viewModel.verificationLevel == level {
                                     Image(systemName: "checkmark")
-                                        .foregroundStyle(.blue)
+                                        .foregroundStyle(Color.accentColor)
                                 }
                             }
                         }
