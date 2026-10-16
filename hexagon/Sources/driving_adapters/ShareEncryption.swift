@@ -12,4 +12,11 @@ public protocol ShareEncryption {
     /// dispatching on the leading `TransportSuite` tag. Throws `TransportSuiteError.unsupported`
     /// for an unrecognized tag — never a silent misparse.
     func decrypt(_ data: Data, recipientEncKey: Data) throws -> Data
+    /// Seals a secret's label to `recipientEncKey` with the same box as `encrypt`, under a key
+    /// derivation of its own, so a label box and a share box never share a derived key. The relay
+    /// stores the result without being able to read it.
+    func sealLabel(_ label: String, recipientEncKey: Data) throws -> Data
+    /// Opens a label sealed by `sealLabel` under the row sender's `senderEncKey`, with the same
+    /// fallback to the previous `decKey` as `decrypt`.
+    func openLabel(_ sealedLabel: Data, senderEncKey: Data) throws -> String
 }

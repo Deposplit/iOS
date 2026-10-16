@@ -1152,6 +1152,16 @@
         }
       }
     },
+    "Label unavailable" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bezeichnung nicht verfügbar"
+          }
+        }
+      }
+    },
     "Let contacts scan this code to add you." : {
       "localizations" : {
         "de" : {

@@ -49,6 +49,7 @@ struct RecipientRequestsTab: View {
                             ForEach(viewModel.pendingRequests) { request in
                                 RequestCard(
                                     request: request,
+                                    label: viewModel.label(for: request),
                                     senderName: viewModel.senderName(for: request),
                                     senderSubtitle: viewModel.senderSubtitle(for: request),
                                     keyChangedDaysAgo: viewModel.keyChangedDaysAgo(for: request),
@@ -68,6 +69,7 @@ struct RecipientRequestsTab: View {
 
 private struct RequestCard: View {
     let request: ShareRequest
+    let label: String?
     let senderName: String
     // The sender's pseudonym, shown only when senderName above is actually a nickname.
     let senderSubtitle: String?
@@ -80,7 +82,14 @@ private struct RequestCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(request.label).font(.headline)
+                Group {
+                    if let label {
+                        Text(verbatim: label)
+                    } else {
+                        Text("Label unavailable")
+                    }
+                }
+                .font(.headline)
                 Spacer()
                 Text(request.transactionType.label)
                     .font(.caption)

@@ -51,7 +51,9 @@ public struct ShareRequest: Identifiable, Equatable {
     public let secretId: UUID
     public let senderKey: Data
     public let recipientKey: Data
-    public let label: String
+    /// The label, sealed by the sender to the recipient. Only the recipient opens it, through
+    /// `ShareManagement.label(of:)`.
+    public let sealedLabel: Data
     public let secretCreatedAt: Date
     public let transactionType: ShareTransactionType
     public let state: ShareRequestState
@@ -70,7 +72,7 @@ public struct ShareRequest: Identifiable, Equatable {
 
     public init(
         id: UUID, secretId: UUID, senderKey: Data, recipientKey: Data,
-        label: String, secretCreatedAt: Date,
+        sealedLabel: Data, secretCreatedAt: Date,
         transactionType: ShareTransactionType, state: ShareRequestState,
         requestedAt: Date, respondedAt: Date?, ciphertext: Data?,
         k: Int? = nil, n: Int? = nil, mimeType: MimeType? = nil,
@@ -80,7 +82,7 @@ public struct ShareRequest: Identifiable, Equatable {
         self.secretId = secretId
         self.senderKey = senderKey
         self.recipientKey = recipientKey
-        self.label = label
+        self.sealedLabel = sealedLabel
         self.secretCreatedAt = secretCreatedAt
         self.transactionType = transactionType
         self.state = state

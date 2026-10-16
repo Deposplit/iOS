@@ -90,6 +90,8 @@ placed under `Deposplit/` is compiled automatically.** Adding an adapter or a vi
 - **Share encryption uses CryptoKit**: X25519 key agreement →
   `sharedSecret.hkdfDerivedSymmetricKey(using: SHA256.self, salt: nonce, sharedInfo: "deposplit-share", outputByteCount: 32)`
   → `ChaChaPoly.seal(plaintext, using: key, nonce: nonce)`.
+  A secret's label is sealed with the same box under `sharedInfo: "deposplit-label"`, so a label
+  box and a share box never share a derived key. The relay only ever sees the sealed label.
 - **Ciphertext wire format is `suiteTag(1) || nonce(12) || ciphertext+tag`** — that is
   `sealedBox.combined` with the one-byte suite tag prefixed. The leading tag is easy to
   forget when hand-checking bytes.
@@ -215,7 +217,7 @@ not a development dependency.
 ```bash
 # from hexagon/ — no simulator needed; CI runs this
 swift build
-swift test                                  # 169 tests
+swift test                                  # 178 tests
 swift test --filter ShareServiceTests
 
 # from the repo root — the app target; CI builds it too, for the simulator (see below)

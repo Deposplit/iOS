@@ -7,7 +7,7 @@ public protocol ShareRelay: AnyObject {
     /// The URL this relay answers at — what a warning names when it does not.
     var baseUrl: String { get }
 
-    func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, transactionType: ShareTransactionType, ciphertext: Data?, k: Int?, n: Int?, mimeType: MimeType?, senderSignature: Data) async throws -> ShareRequest
+    func openShareRequest(secretId: UUID, recipientKey: Data, sealedLabel: Data, secretCreatedAt: Date, transactionType: ShareTransactionType, ciphertext: Data?, k: Int?, n: Int?, mimeType: MimeType?, senderSignature: Data) async throws -> ShareRequest
     func listShareRequests(role: Role, transactionType: ShareTransactionType?, state: ShareRequestState?) async throws -> [ShareRequest]
     func getShareRequest(requestId: UUID) async throws -> ShareRequest
     func respondToShareRequest(requestId: UUID, approved: Bool, ciphertext: Data?, recipientSignature: Data) async throws -> ShareRequest

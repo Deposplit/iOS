@@ -43,6 +43,9 @@ public protocol ShareManagement {
     func syncInbox() async throws -> SyncReport
     func listHeld() throws -> [HeldShare]
     func listPendingRequests() async throws -> RelayFanOut<ShareRequest>
+    /// The label a pending request may show: opened from its `sealedLabel`, or else the label of
+    /// the share this device holds for that secret. `nil` when neither is available.
+    func label(of request: ShareRequest) -> String?
     func respond(requestId: UUID, approved: Bool) async throws
     func deleteHeldShare(shareId: UUID) async throws
     func deleteAllHeldFromSender(contactId: UUID) async throws

@@ -89,6 +89,20 @@ public final class IdentityService: Identity, ShareEncryption {
     }
 
     public func encrypt(_ plaintext: Data, recipientEncKey: Data) throws -> Data {
+        try seal(plaintext, recipientEncKey: recipientEncKey, info: Self.shareInfo)
+    }
+
+    public func sealLabel(_ label: String, recipientEncKey: Data) throws -> Data {
+        try seal(Data(label.utf8), recipientEncKey: recipientEncKey, info: Self.labelInfo)
+    }
+
+    /// Malformed UTF-8 decodes to replacement characters rather than failing, as on the other
+    /// platforms. A label is only ever shown, and the box has already proved who sealed it.
+    public func openLabel(_ sealedLabel: Data, senderEncKey: Data) throws -> String {
+        String(decoding: try unseal(sealedLabel, recipientEncKey: senderEncKey, info: Self.labelInfo), as: UTF8.self)
+    }
+
+    private func seal(_ plaintext: Data, recipientEncKey: Data, info: Data) throws -> Data {
         let rawKey = try identityStore.decKey()
         let myKey = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: rawKey)
         let theirKey = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: recipientEncKey)
@@ -98,7 +112,7 @@ public final class IdentityService: Identity, ShareEncryption {
         let symmetricKey = sharedSecret.hkdfDerivedSymmetricKey(
             using: SHA256.self,
             salt: Data(nonce),
-            sharedInfo: Data("deposplit-share".utf8),
+            sharedInfo: info,
             outputByteCount: 32
         )
         let sealedBox = try ChaChaPoly.seal(plaintext, using: symmetricKey, nonce: nonce)
@@ -113,6 +127,10 @@ public final class IdentityService: Identity, ShareEncryption {
     ///
     /// Never used for `encrypt` — this device always seals under its current key.
     public func decrypt(_ noncePlusCiphertext: Data, recipientEncKey: Data) throws -> Data {
+        try unseal(noncePlusCiphertext, recipientEncKey: recipientEncKey, info: Self.shareInfo)
+    }
+
+    private func unseal(_ noncePlusCiphertext: Data, recipientEncKey: Data, info: Data) throws -> Data {
         guard let tagByte = noncePlusCiphertext.first,
               let suite = TransportSuite(rawValue: tagByte) else {
             throw TransportSuiteError.unsupported(tag: noncePlusCiphertext.first ?? 0)
@@ -122,18 +140,18 @@ public final class IdentityService: Identity, ShareEncryption {
             break
         }
         do {
-            return try Self.open(noncePlusCiphertext, recipientEncKey: recipientEncKey, decKey: try identityStore.decKey())
+            return try Self.open(noncePlusCiphertext, recipientEncKey: recipientEncKey, decKey: try identityStore.decKey(), info: info)
         } catch {
             // The current key's failure is the one worth reporting — the fallback missing or
             // failing too just means there was no earlier generation this box belongs to.
             guard let previous = identityStore.previousDecKey(),
-                  let plaintext = try? Self.open(noncePlusCiphertext, recipientEncKey: recipientEncKey, decKey: previous)
+                  let plaintext = try? Self.open(noncePlusCiphertext, recipientEncKey: recipientEncKey, decKey: previous, info: info)
             else { throw error }
             return plaintext
         }
     }
 
-    private static func open(_ noncePlusCiphertext: Data, recipientEncKey: Data, decKey: Data) throws -> Data {
+    private static func open(_ noncePlusCiphertext: Data, recipientEncKey: Data, decKey: Data, info: Data) throws -> Data {
         let myKey = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: decKey)
         let theirKey = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: recipientEncKey)
         let sharedSecret = try myKey.sharedSecretFromKeyAgreement(with: theirKey)
@@ -142,9 +160,13 @@ public final class IdentityService: Identity, ShareEncryption {
         let symmetricKey = sharedSecret.hkdfDerivedSymmetricKey(
             using: SHA256.self,
             salt: Data(sealedBox.nonce),
-            sharedInfo: Data("deposplit-share".utf8),
+            sharedInfo: info,
             outputByteCount: 32
         )
         return try ChaChaPoly.open(sealedBox, using: symmetricKey)
     }
+
+    private static let shareInfo = Data("deposplit-share".utf8)
+    /// A key derivation of its own, so a sealed label can never be mistaken for a sealed share.
+    private static let labelInfo = Data("deposplit-label".utf8)
 }

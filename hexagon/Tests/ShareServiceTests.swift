@@ -156,13 +156,27 @@ private final class FakeRetainedDepositRepository: RetainedDepositRepository {
 private struct NoOpShareEncryption: ShareEncryption {
     func encrypt(_ plaintext: Data, recipientEncKey: Data) throws -> Data { plaintext }
     func decrypt(_ noncePlusCiphertext: Data, recipientEncKey: Data) throws -> Data { noncePlusCiphertext }
+    func sealLabel(_ label: String, recipientEncKey: Data) throws -> Data { Data(label.utf8) }
+    func openLabel(_ sealedLabel: Data, senderEncKey: Data) throws -> String { String(decoding: sealedLabel, as: UTF8.self) }
 }
 
-/// Stands in for the real failure at pickup: a share sealed to a key this device no longer holds.
+/// Stands in for the real failure at pickup: a share, and its label, sealed to a key this device no
+/// longer holds.
 private struct FailingShareEncryption: ShareEncryption {
     struct SimulatedFailure: Error {}
     func encrypt(_ plaintext: Data, recipientEncKey: Data) throws -> Data { plaintext }
     func decrypt(_ noncePlusCiphertext: Data, recipientEncKey: Data) throws -> Data { throw SimulatedFailure() }
+    func sealLabel(_ label: String, recipientEncKey: Data) throws -> Data { Data(label.utf8) }
+    func openLabel(_ sealedLabel: Data, senderEncKey: Data) throws -> String { throw SimulatedFailure() }
+}
+
+/// A share that opens beside a label that does not, so a test can tell the two failures apart.
+private struct UnopenableLabelEncryption: ShareEncryption {
+    struct SimulatedFailure: Error {}
+    func encrypt(_ plaintext: Data, recipientEncKey: Data) throws -> Data { plaintext }
+    func decrypt(_ noncePlusCiphertext: Data, recipientEncKey: Data) throws -> Data { noncePlusCiphertext }
+    func sealLabel(_ label: String, recipientEncKey: Data) throws -> Data { Data(label.utf8) }
+    func openLabel(_ sealedLabel: Data, senderEncKey: Data) throws -> String { throw SimulatedFailure() }
 }
 
 /// In-memory ShareRelay test double. `listShareRequests` filters by `transactionType`/`state`
@@ -173,6 +187,7 @@ private final class FakeShareRelay: ShareRelay {
     struct OpenedRequest {
         let secretId: UUID
         let recipientKey: Data
+        let sealedLabel: Data
         let transactionType: ShareTransactionType
         let k: Int?
         let n: Int?
@@ -201,12 +216,12 @@ private final class FakeShareRelay: ShareRelay {
     var throwOnWithdraw = false
     var throwOnPushRotation = false
 
-    func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, transactionType: ShareTransactionType, ciphertext: Data?, k: Int?, n: Int?, mimeType: MimeType?, senderSignature: Data) async throws -> ShareRequest {
-        openedRequests.append(OpenedRequest(secretId: secretId, recipientKey: recipientKey, transactionType: transactionType, k: k, n: n, mimeType: mimeType))
+    func openShareRequest(secretId: UUID, recipientKey: Data, sealedLabel: Data, secretCreatedAt: Date, transactionType: ShareTransactionType, ciphertext: Data?, k: Int?, n: Int?, mimeType: MimeType?, senderSignature: Data) async throws -> ShareRequest {
+        openedRequests.append(OpenedRequest(secretId: secretId, recipientKey: recipientKey, sealedLabel: sealedLabel, transactionType: transactionType, k: k, n: n, mimeType: mimeType))
         let now = Date()
         let selfApproved = transactionType == .inventory
         return ShareRequest(
-            id: UUID(), secretId: secretId, senderKey: Data(), recipientKey: recipientKey, label: label,
+            id: UUID(), secretId: secretId, senderKey: Data(), recipientKey: recipientKey, sealedLabel: sealedLabel,
             secretCreatedAt: secretCreatedAt, transactionType: transactionType, state: selfApproved ? .approved : .pending,
             requestedAt: now, respondedAt: selfApproved ? now : nil,
             ciphertext: nil, k: k, n: n, mimeType: mimeType, senderSignature: senderSignature, recipientSignature: nil
@@ -229,7 +244,7 @@ private final class FakeShareRelay: ShareRelay {
         let existing = byId[requestId]!
         let updated = ShareRequest(
             id: existing.id, secretId: existing.secretId, senderKey: existing.senderKey, recipientKey: existing.recipientKey,
-            label: existing.label, secretCreatedAt: existing.secretCreatedAt, transactionType: existing.transactionType,
+            sealedLabel: existing.sealedLabel, secretCreatedAt: existing.secretCreatedAt, transactionType: existing.transactionType,
             state: approved ? .approved : .denied, requestedAt: existing.requestedAt,
             respondedAt: existing.respondedAt, ciphertext: existing.ciphertext, k: existing.k, n: existing.n,
             senderSignature: existing.senderSignature, recipientSignature: recipientSignature
@@ -330,20 +345,23 @@ private func makeService(
 private func makeSignedRow(
     id: UUID, senderKey: Data, recipientKey: Data, signer: TestKeyPair,
     transactionType: ShareTransactionType = .deposit, ciphertext: Data? = Data([1, 2, 3]),
-    label: String = "test secret", createdAt: Date = Date(),
+    label: String = "test secret", sealedLabel: Data? = nil, createdAt: Date = Date(),
     k: Int? = nil, n: Int? = nil, mimeType: MimeType? = nil
 ) throws -> ShareRequest {
     let secretId = UUID()
+    // NoOpShareEncryption seals a label to its own UTF-8 bytes. A test using real encryption passes a
+    // genuinely sealed one instead.
+    let sealedLabel = sealedLabel ?? Data(label.utf8)
     // k/n/mimeType are required on deposit/inventory rows and forbidden otherwise — default them
     // here (like production's relay-side validation would) so deposit fixtures don't need every
     // call site updated just to keep passing syncInbox's guard.
     let isRoot = transactionType == .deposit || transactionType == .inventory
     let (kk, nn): (Int?, Int?) = isRoot ? (k ?? 2, n ?? 3) : (nil, nil)
     let mt: MimeType? = isRoot ? (mimeType ?? .default) : nil
-    let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: transactionType, recipientKey: recipientKey, label: label, secretCreatedAt: createdAt, ciphertext: ciphertext, k: kk, n: nn, mimeType: mt)
+    let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: transactionType, recipientKey: recipientKey, sealedLabel: sealedLabel, secretCreatedAt: createdAt, ciphertext: ciphertext, k: kk, n: nn, mimeType: mt)
     let sig = try signer.sign(canon)
     return ShareRequest(
-        id: id, secretId: secretId, senderKey: senderKey, recipientKey: recipientKey, label: label,
+        id: id, secretId: secretId, senderKey: senderKey, recipientKey: recipientKey, sealedLabel: sealedLabel,
         secretCreatedAt: createdAt, transactionType: transactionType, state: .pending,
         requestedAt: Date(), respondedAt: nil, ciphertext: ciphertext, k: kk, n: nn, mimeType: mt, senderSignature: sig, recipientSignature: nil
     )
@@ -385,6 +403,79 @@ private func makeSignedRow(
     #expect(relay.respondCalls.isEmpty)
     #expect(shareRepo.getAll().isEmpty)
     #expect(relay.byId[id]?.state == .pending)
+}
+
+@Test func syncInboxLeavesADepositPendingWhenItsLabelCannotBeOpened() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, shareRepo, _, _, _, _) = try makeService(relay: relay, encryption: UnopenableLabelEncryption())
+    let id = UUID()
+    let row = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: aliceKeys)
+    relay.pending = [row]
+    relay.byId[id] = row
+
+    try await svc.syncInbox()
+
+    // A share stored without the label it came with is a share nobody could recognise, so the
+    // pickup waits for the next poll exactly as an undecryptable share does.
+    #expect(relay.respondCalls.isEmpty)
+    #expect(shareRepo.getAll().isEmpty)
+    #expect(relay.byId[id]?.state == .pending)
+}
+
+@Test func depositSealsTheLabelToEachHolderSoTheRelayNeverSeesItInTheClear() async throws {
+    let sender = IdentityService(identityStore: InMemoryIdentityStoreForShareServiceTest())
+    try sender.register(pseudonym: "sender")
+    let holderA = IdentityService(identityStore: InMemoryIdentityStoreForShareServiceTest())
+    try holderA.register(pseudonym: "a")
+    let holderB = IdentityService(identityStore: InMemoryIdentityStoreForShareServiceTest())
+    try holderB.register(pseudonym: "b")
+    let contactA = Contact(
+        id: UUID(), pseudonym: "a", verifyKey: TestKeyPair().publicKey, encKey: holderA.encKey!,
+        verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date()
+    )
+    let contactB = Contact(
+        id: UUID(), pseudonym: "b", verifyKey: TestKeyPair().publicKey, encKey: holderB.encKey!,
+        verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date()
+    )
+    let relay = FakeShareRelay()
+    let (svc, _, _, _, _, _, _) = try makeService(relay: relay, contacts: [contactA, contactB], encryption: sender)
+
+    try await svc.deposit(secret: Data([1, 2, 3]), label: "Bitcoin seed", contacts: [contactA, contactB], threshold: 2)
+
+    let sealed = relay.openedRequests.map(\.sealedLabel)
+    #expect(sealed.count == 2)
+    #expect(sealed.allSatisfy { $0.range(of: Data("Bitcoin seed".utf8)) == nil })
+    #expect(try holderA.openLabel(sealed[0], senderEncKey: sender.encKey!) == "Bitcoin seed")
+    #expect(try holderB.openLabel(sealed[1], senderEncKey: sender.encKey!) == "Bitcoin seed")
+}
+
+@Test func labelOfOpensTheSealedLabelOfARequestFromAKnownContact() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, _, _, _, _, _) = try makeService(relay: relay)
+    let row = try makeSignedRow(id: UUID(), senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: aliceKeys, transactionType: .retrieval, ciphertext: nil, label: "passport")
+
+    #expect(svc.label(of: row) == "passport")
+}
+
+@Test func labelOfFallsBackToTheHeldShareWhenTheSealedLabelWillNotOpen() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, shareRepo, _, _, _, _) = try makeService(relay: relay, encryption: FailingShareEncryption())
+    let row = try makeSignedRow(id: UUID(), senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: aliceKeys, transactionType: .retrieval, ciphertext: nil)
+    shareRepo.save(HeldShare(
+        id: UUID(), secretId: row.secretId, label: "passport", contactId: aliceContact.id,
+        senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([9]),
+        k: 2, n: 3, mimeType: .default
+    ))
+
+    #expect(svc.label(of: row) == "passport")
+}
+
+@Test func labelOfIsNilWhenTheSealedLabelWillNotOpenAndNoShareIsHeld() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, _, _, _, _, _) = try makeService(relay: relay, encryption: FailingShareEncryption())
+    let row = try makeSignedRow(id: UUID(), senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: aliceKeys, transactionType: .retrieval, ciphertext: nil)
+
+    #expect(svc.label(of: row) == nil)
 }
 
 @Test func syncInboxSkipsADepositWhoseSenderSignatureDoesNotVerifyAgainstTheClaimedSender() async throws {
@@ -791,11 +882,11 @@ private func makeApprovedRecoveryMetadataRow(
     k: Int = 2, n: Int = 3, mimeType: MimeType = .default,
     label: String = "recovered secret", createdAt: Date = Date()
 ) throws -> ShareRequest {
-    let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: .inventory, recipientKey: recipientKey, label: label, secretCreatedAt: createdAt, ciphertext: nil, k: k, n: n, mimeType: mimeType)
+    let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: .inventory, recipientKey: recipientKey, sealedLabel: Data(label.utf8), secretCreatedAt: createdAt, ciphertext: nil, k: k, n: n, mimeType: mimeType)
     let sig = try signer.sign(canon)
     let now = Date()
     return ShareRequest(
-        id: UUID(), secretId: secretId, senderKey: senderKey, recipientKey: recipientKey, label: label,
+        id: UUID(), secretId: secretId, senderKey: senderKey, recipientKey: recipientKey, sealedLabel: Data(label.utf8),
         secretCreatedAt: createdAt, transactionType: .inventory, state: .approved,
         requestedAt: now, respondedAt: now, ciphertext: nil, k: k, n: n, mimeType: mimeType, senderSignature: sig, recipientSignature: nil
     )
@@ -1022,7 +1113,7 @@ private func makeSignedRotation(
 private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state: ShareRequestState) -> ShareRequest {
     ShareRequest(
         id: id, secretId: secretId, senderKey: Data(repeating: 0x05, count: 32), recipientKey: recipientKey,
-        label: "test secret", secretCreatedAt: Date(), transactionType: .deposit, state: state,
+        sealedLabel: Data("test secret".utf8), secretCreatedAt: Date(), transactionType: .deposit, state: state,
         requestedAt: Date(), respondedAt: state == .pending ? nil : Date(),
         ciphertext: nil, k: 2, n: 3, senderSignature: Data(), recipientSignature: nil
     )
@@ -1073,7 +1164,7 @@ private let charlieContact = Contact(
 private func makeRemovalRow(secretId: UUID, recipientKey: Data) -> ShareRequest {
     ShareRequest(
         id: UUID(), secretId: secretId, senderKey: Data(), recipientKey: recipientKey,
-        label: "destroy test", secretCreatedAt: Date(), transactionType: .removal, state: .pending,
+        sealedLabel: Data("destroy test".utf8), secretCreatedAt: Date(), transactionType: .removal, state: .pending,
         requestedAt: Date(), respondedAt: nil,
         ciphertext: nil, k: nil, n: nil, senderSignature: Data(), recipientSignature: nil
     )
@@ -1086,7 +1177,7 @@ private extension FakeShareRelay {
         let signature = try signer.sign(PayloadCanonical.forRespond(requestId: row.id, approved: approved, ciphertext: nil))
         let answered = ShareRequest(
             id: row.id, secretId: row.secretId, senderKey: row.senderKey, recipientKey: row.recipientKey,
-            label: row.label, secretCreatedAt: row.secretCreatedAt, transactionType: row.transactionType,
+            sealedLabel: row.sealedLabel, secretCreatedAt: row.secretCreatedAt, transactionType: row.transactionType,
             state: approved ? .approved : .denied, requestedAt: row.requestedAt, respondedAt: Date(),
             ciphertext: nil, k: nil, n: nil, senderSignature: row.senderSignature, recipientSignature: signature
         )
@@ -1340,7 +1431,7 @@ private func makeDestroyingSecret(
     try metaRepo.save(ShareMetadata(id: depositId, secretId: secretId, contactId: aliceContact.id))
     let retrievalRow = ShareRequest(
         id: UUID(), secretId: secretId, senderKey: Data(repeating: 0x05, count: 32), recipientKey: aliceContact.verifyKey,
-        label: "s", secretCreatedAt: Date(), transactionType: .retrieval, state: .approved,
+        sealedLabel: Data("s".utf8), secretCreatedAt: Date(), transactionType: .retrieval, state: .approved,
         requestedAt: Date(), respondedAt: Date(), ciphertext: Data([1]), k: nil, n: nil,
         senderSignature: Data(), recipientSignature: nil
     )
@@ -1519,7 +1610,7 @@ private func makeApprovedRetrievalRow(secretId: UUID, holder: HolderFixture, cip
     let canon = PayloadCanonical.forRespond(requestId: id, approved: true, ciphertext: ciphertext)
     let sig = try holder.keys.sign(canon)
     return ShareRequest(
-        id: id, secretId: secretId, senderKey: Data(), recipientKey: holder.contact.verifyKey, label: "s",
+        id: id, secretId: secretId, senderKey: Data(), recipientKey: holder.contact.verifyKey, sealedLabel: Data("s".utf8),
         secretCreatedAt: Date(), transactionType: .retrieval, state: .approved,
         requestedAt: Date(), respondedAt: Date(), ciphertext: ciphertext, k: nil, n: nil,
         senderSignature: Data(), recipientSignature: sig
@@ -1530,7 +1621,7 @@ private func makeApprovedRetrievalRow(secretId: UUID, holder: HolderFixture, cip
 /// `recipientSignature`, because a pending row has had no response phase yet.
 private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> ShareRequest {
     ShareRequest(
-        id: UUID(), secretId: secretId, senderKey: Data(), recipientKey: recipientKey, label: "s",
+        id: UUID(), secretId: secretId, senderKey: Data(), recipientKey: recipientKey, sealedLabel: Data("s".utf8),
         secretCreatedAt: Date(), transactionType: .retrieval, state: .pending,
         requestedAt: Date(), respondedAt: nil, ciphertext: nil, k: nil, n: nil,
         senderSignature: Data(), recipientSignature: nil
@@ -1704,7 +1795,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     let collectedRow = try makeApprovedRetrievalRow(secretId: secretId, holder: holder, ciphertext: Data([1, 2, 3]))
     let anotherSecretsCopy = try makeApprovedRetrievalRow(secretId: otherSecretId, holder: holder, ciphertext: Data([4, 5, 6]))
     let holdersDeposit = ShareRequest(
-        id: UUID(), secretId: secretId, senderKey: Data(), recipientKey: holder.contact.verifyKey, label: "s",
+        id: UUID(), secretId: secretId, senderKey: Data(), recipientKey: holder.contact.verifyKey, sealedLabel: Data("s".utf8),
         secretCreatedAt: Date(), transactionType: .deposit, state: .approved,
         requestedAt: Date(), respondedAt: Date(), ciphertext: Data([7, 7, 7]), k: 2, n: 2,
         senderSignature: Data(), recipientSignature: nil
@@ -1840,7 +1931,8 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     let id = UUID()
     let share = Data("bob's share".utf8)
     let sealedToBobsOldKey = try aliceIdentity.encrypt(share, recipientEncKey: bobIdentity.encKey!)
-    let row = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bobIdentity.verifyKey!, signer: aliceKeys, ciphertext: sealedToBobsOldKey)
+    let labelSealedToBobsOldKey = try aliceIdentity.sealLabel("passport", recipientEncKey: bobIdentity.encKey!)
+    let row = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bobIdentity.verifyKey!, signer: aliceKeys, ciphertext: sealedToBobsOldKey, sealedLabel: labelSealedToBobsOldKey)
 
     try bobIdentity.activateKeyPair(bobIdentity.generateNewKeyPair())
     relay.pending = [row]
@@ -1849,6 +1941,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     try await svc.syncInbox()
 
     #expect(shareRepo.getAll().map(\.plaintextShare) == [share])
+    #expect(shareRepo.getAll().map(\.label) == ["passport"])
     #expect(relay.respondCalls == [id])
 }
 
@@ -2030,10 +2123,10 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     let id = UUID()
     let signed = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: aliceKeys)
     // Re-sign without the mimeType so the row is internally consistent and only the guard rejects it.
-    let canon = PayloadCanonical.forOpen(secretId: signed.secretId, transactionType: .deposit, recipientKey: signed.recipientKey, label: signed.label, secretCreatedAt: signed.secretCreatedAt, ciphertext: signed.ciphertext, k: signed.k, n: signed.n, mimeType: nil)
+    let canon = PayloadCanonical.forOpen(secretId: signed.secretId, transactionType: .deposit, recipientKey: signed.recipientKey, sealedLabel: signed.sealedLabel, secretCreatedAt: signed.secretCreatedAt, ciphertext: signed.ciphertext, k: signed.k, n: signed.n, mimeType: nil)
     let row = ShareRequest(
         id: id, secretId: signed.secretId, senderKey: signed.senderKey, recipientKey: signed.recipientKey,
-        label: signed.label, secretCreatedAt: signed.secretCreatedAt, transactionType: .deposit, state: .pending,
+        sealedLabel: signed.sealedLabel, secretCreatedAt: signed.secretCreatedAt, transactionType: .deposit, state: .pending,
         requestedAt: Date(), respondedAt: nil, ciphertext: signed.ciphertext,
         k: signed.k, n: signed.n, mimeType: nil, senderSignature: try aliceKeys.sign(canon), recipientSignature: nil
     )
@@ -2097,7 +2190,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     let signed = try makeSignedRow(id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: aliceKeys)
     let tampered = ShareRequest(
         id: signed.id, secretId: signed.secretId, senderKey: signed.senderKey, recipientKey: signed.recipientKey,
-        label: signed.label, secretCreatedAt: signed.secretCreatedAt, transactionType: .deposit, state: .pending,
+        sealedLabel: signed.sealedLabel, secretCreatedAt: signed.secretCreatedAt, transactionType: .deposit, state: .pending,
         requestedAt: signed.requestedAt, respondedAt: nil, ciphertext: signed.ciphertext,
         k: signed.k, n: signed.n, mimeType: MimeType("image/png"),
         senderSignature: signed.senderSignature, recipientSignature: nil

@@ -203,3 +203,41 @@ private func newIdentity() throws -> IdentityService {
         #expect(tag == 0xFF)
     }
 }
+
+// -------------------------------------------------------------------------
+// Sealed labels — the same box as a share, under a key derivation of its own
+// -------------------------------------------------------------------------
+
+@Test func sealLabelThenOpenLabelRoundTrips() throws {
+    let alice = try newIdentity()
+    let bob = try newIdentity()
+    let sealed = try alice.sealLabel("Bitcoin seed 🔑", recipientEncKey: bob.encKey!)
+    #expect(sealed.first == TransportSuite.current.rawValue)
+    #expect(try bob.openLabel(sealed, senderEncKey: alice.encKey!) == "Bitcoin seed 🔑")
+}
+
+@Test func aSealedLabelDoesNotCarryItsTextInTheClear() throws {
+    let alice = try newIdentity()
+    let bob = try newIdentity()
+    let sealed = try alice.sealLabel("Bitcoin seed", recipientEncKey: bob.encKey!)
+    #expect(sealed.range(of: Data("Bitcoin seed".utf8)) == nil)
+}
+
+@Test func aShareBoxDoesNotOpenAsALabelNorALabelBoxAsAShare() throws {
+    let alice = try newIdentity()
+    let bob = try newIdentity()
+    let shareBox = try alice.encrypt(Data("one share".utf8), recipientEncKey: bob.encKey!)
+    let labelBox = try alice.sealLabel("one label", recipientEncKey: bob.encKey!)
+    #expect(throws: (any Error).self) { try bob.openLabel(shareBox, senderEncKey: alice.encKey!) }
+    #expect(throws: (any Error).self) { try bob.decrypt(labelBox, recipientEncKey: alice.encKey!) }
+}
+
+@Test func openLabelFallsBackToTheDecKeyDisplacedByTheLastRotation() throws {
+    let alice = try newIdentity()
+    let bob = try newIdentity()
+    let sealedToAlicesOldKey = try bob.sealLabel("passport", recipientEncKey: alice.encKey!)
+
+    try alice.activateKeyPair(alice.generateNewKeyPair())
+
+    #expect(try alice.openLabel(sealedToAlicesOldKey, senderEncKey: bob.encKey!) == "passport")
+}

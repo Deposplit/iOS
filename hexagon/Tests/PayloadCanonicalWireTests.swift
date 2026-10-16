@@ -34,12 +34,12 @@ private func relayView(of wire: String) throws -> Date {
         let createdAt = Date()
         let asSigned = PayloadCanonical.forOpen(
             secretId: UUID(), transactionType: .deposit, recipientKey: Data(repeating: 0x02, count: 32),
-            label: "round trip", secretCreatedAt: createdAt, ciphertext: Data([1, 2, 3]),
+            sealedLabel: Data("round trip".utf8), secretCreatedAt: createdAt, ciphertext: Data([1, 2, 3]),
             k: 2, n: 2, mimeType: MimeType("text/plain")
         )
         let asTheRelayRebuildsIt = PayloadCanonical.forOpen(
             secretId: UUID(), transactionType: .deposit, recipientKey: Data(repeating: 0x02, count: 32),
-            label: "round trip", secretCreatedAt: try relayView(of: PayloadCanonical.wireInstant(createdAt)),
+            sealedLabel: Data("round trip".utf8), secretCreatedAt: try relayView(of: PayloadCanonical.wireInstant(createdAt)),
             ciphertext: Data([1, 2, 3]), k: 2, n: 2, mimeType: MimeType("text/plain")
         )
         // Only the secretId differs, and only on its own line — everything after the timestamp,

@@ -20,11 +20,11 @@ final class DeposplitApiAdapter: ShareRelay {
 
     // MARK: - ShareRelay
 
-    func openShareRequest(secretId: UUID, recipientKey: Data, label: String, secretCreatedAt: Date, transactionType: ShareTransactionType, ciphertext: Data?, k: Int?, n: Int?, mimeType: MimeType?, senderSignature: Data) async throws -> ShareRequest {
+    func openShareRequest(secretId: UUID, recipientKey: Data, sealedLabel: Data, secretCreatedAt: Date, transactionType: ShareTransactionType, ciphertext: Data?, k: Int?, n: Int?, mimeType: MimeType?, senderSignature: Data) async throws -> ShareRequest {
         let body = OpenShareRequestJSON(
             secretId: secretId.uuidString,
             recipientKey: recipientKey.base64URLEncoded,
-            label: label,
+            sealedLabel: sealedLabel.base64EncodedString(),
             // Not a plain ISO-8601 string: the relay rebuilds the signed bytes from what it
             // parses here, and those bytes carry the milliseconds. See PayloadCanonical.
             secretCreatedAt: PayloadCanonical.wireInstant(secretCreatedAt),
@@ -164,7 +164,7 @@ final class DeposplitApiAdapter: ShareRelay {
     private struct OpenShareRequestJSON: Encodable {
         let secretId: String
         let recipientKey: String
-        let label: String
+        let sealedLabel: String
         let secretCreatedAt: String
         let transactionType: String
         let ciphertext: String?
@@ -185,7 +185,7 @@ final class DeposplitApiAdapter: ShareRelay {
         let secretId: String
         let senderKey: String
         let recipientKey: String
-        let label: String
+        let sealedLabel: String
         let secretCreatedAt: String
         let transactionType: String
         let state: String
@@ -204,7 +204,7 @@ final class DeposplitApiAdapter: ShareRelay {
                 secretId: UUID(uuidString: secretId) ?? UUID(),
                 senderKey: Data(base64URLEncoded: senderKey) ?? Data(),
                 recipientKey: Data(base64URLEncoded: recipientKey) ?? Data(),
-                label: label,
+                sealedLabel: Data(base64Encoded: sealedLabel) ?? Data(),
                 secretCreatedAt: parseISO8601(secretCreatedAt),
                 transactionType: ShareTransactionType(rawValue: transactionType) ?? .retrieval,
                 state: ShareRequestState(rawValue: state) ?? .pending,

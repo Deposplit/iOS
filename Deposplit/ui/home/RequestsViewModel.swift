@@ -21,6 +21,8 @@ final class RequestsViewModel {
     private let contactManagement: any ContactManagement
     private var allContacts: [Contact] = []
     private var heldSecretIds: Set<UUID> = []
+    /// Opened once per load rather than on every render: opening is a key agreement, not a lookup.
+    private var labels: [UUID: String] = [:]
 
     init(shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
         self.shareManagement = shareManagement
@@ -35,6 +37,9 @@ final class RequestsViewModel {
             let pending = try await shareManagement.listPendingRequests()
             heldSecretIds = Set(((try? shareManagement.listHeld()) ?? []).map(\.secretId))
             pendingRequests = pending.items
+            labels = Dictionary(uniqueKeysWithValues: pending.items.compactMap { request in
+                shareManagement.label(of: request).map { (request.id, $0) }
+            })
             unreachableRelays = pending.unreachableRelays.sorted()
             anyRelayAnswered = pending.anyAnswered
             allContacts = (try? contactManagement.listContacts()) ?? []
@@ -60,6 +65,11 @@ final class RequestsViewModel {
     /// on their next poll, and until then the row has to say why Approve cannot work.
     func canApprove(_ request: ShareRequest) -> Bool {
         request.transactionType != .retrieval || heldSecretIds.contains(request.secretId)
+    }
+
+    /// `nil` when the sealed label will not open and no share for that secret is held here.
+    func label(for request: ShareRequest) -> String? {
+        labels[request.id]
     }
 
     func senderName(for request: ShareRequest) -> String {

@@ -28,11 +28,15 @@ public enum PayloadCanonical {
     ///
     /// A nil and an empty-string `mimeType` produce identical bytes here, which is why the relay
     /// refuses to store an empty one.
+    ///
+    /// The label is signed in its sealed form, as standard base64 like the ciphertext, in the
+    /// position the plaintext label held. Base64 has no newline in it, so a label with a line
+    /// break cannot be read as a field separator.
     public static func forOpen(
         secretId: UUID,
         transactionType: ShareTransactionType,
         recipientKey: Data,
-        label: String,
+        sealedLabel: Data,
         secretCreatedAt: Date,
         ciphertext: Data?,
         k: Int? = nil,
@@ -44,7 +48,7 @@ public enum PayloadCanonical {
             secretId.uuidString.lowercased(),
             wire(transactionType),
             recipientKey.base64URLEncodedForSigning,
-            label,
+            sealedLabel.base64EncodedString(),
             String(epochMs),
             ciphertext?.base64EncodedString() ?? "",
             k.map(String.init) ?? "",
