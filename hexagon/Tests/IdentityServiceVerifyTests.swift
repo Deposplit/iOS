@@ -1,3 +1,4 @@
+import CryptoKit
 import Testing
 @testable import hexagon
 import Foundation
@@ -112,7 +113,7 @@ private func newIdentity() throws -> IdentityService {
 
     try alice.activateKeyPair(alice.generateNewKeyPair())
 
-    #expect(try alice.decrypt(sealedToAlicesOldKey, recipientEncKey: bob.encKey!) == Data("one share".utf8))
+    #expect(try alice.decrypt(sealedToAlicesOldKey) == Data("one share".utf8))
 }
 
 @Test func decryptDoesNotReachBackPastOneGeneration() throws {
@@ -126,22 +127,39 @@ private func newIdentity() throws -> IdentityService {
     // Deliberate: one generation covers the deposit-to-pickup window, and no more key material
     // than that lingers at rest.
     #expect(throws: (any Error).self) {
-        try alice.decrypt(sealedToAlicesOldestKey, recipientEncKey: bob.encKey!)
+        try alice.decrypt(sealedToAlicesOldestKey)
     }
 }
 
-@Test func encryptNeverSealsUnderTheDisplacedKey() throws {
+@Test func sealingInvolvesNoKeyOfTheSendersOwn() throws {
     let alice = try newIdentity()
     let bob = try newIdentity()
-    let alicesOldEncKey = alice.encKey!
+    let sealedBeforeAlicesRotations = try alice.encrypt(Data("outgoing".utf8), recipientEncKey: bob.encKey!)
+    try alice.activateKeyPair(alice.generateNewKeyPair())
     try alice.activateKeyPair(alice.generateNewKeyPair())
 
-    let sealed = try alice.encrypt(Data("outgoing".utf8), recipientEncKey: bob.encKey!)
+    // Bob never needs Alice's key to open it, so however often she rotates, what she sealed opens.
+    #expect(try bob.decrypt(sealedBeforeAlicesRotations) == Data("outgoing".utf8))
+}
 
-    #expect(try bob.decrypt(sealed, recipientEncKey: alice.encKey!) == Data("outgoing".utf8))
-    #expect(throws: (any Error).self) {
-        try bob.decrypt(sealed, recipientEncKey: alicesOldEncKey)
-    }
+// The property the retained deposits rest on: a box sealed for a holder stays closed to the owner.
+@Test func aSenderCannotOpenABoxSheSealedForSomebodyElse() throws {
+    let alice = try newIdentity()
+    let bob = try newIdentity()
+    let sealed = try alice.encrypt(Data("Bob's share".utf8), recipientEncKey: bob.encKey!)
+
+    #expect(throws: (any Error).self) { try alice.decrypt(sealed) }
+}
+
+@Test func aBoxIsTheTagTheEncapsulatedKeyAndTheCiphertextWithAFreshEphemeralKeyEachTime() throws {
+    let alice = try newIdentity()
+    let bob = try newIdentity()
+    let plaintext = Data("shhh".utf8)
+    let first = try alice.encrypt(plaintext, recipientEncKey: bob.encKey!)
+    let second = try alice.encrypt(plaintext, recipientEncKey: bob.encKey!)
+
+    #expect(first.count == 1 + 32 + plaintext.count + 16)
+    #expect(first.dropFirst().prefix(32) != second.dropFirst().prefix(32))
 }
 
 @Test func registeringAFreshIdentityDropsTheRetainedKey() throws {
@@ -156,7 +174,7 @@ private func newIdentity() throws -> IdentityService {
     try alice.register(pseudonym: "test")
 
     #expect(throws: (any Error).self) {
-        try alice.decrypt(sealedToAlicesOldKey, recipientEncKey: bob.encKey!)
+        try alice.decrypt(sealedToAlicesOldKey)
     }
 }
 
@@ -180,7 +198,7 @@ private func newIdentity() throws -> IdentityService {
     let bob = try newIdentity()
     let plaintext = Data("shhh".utf8)
     let ciphertext = try alice.encrypt(plaintext, recipientEncKey: bob.encKey!)
-    let decrypted = try bob.decrypt(ciphertext, recipientEncKey: alice.encKey!)
+    let decrypted = try bob.decrypt(ciphertext)
     #expect(decrypted == plaintext)
 }
 
@@ -197,7 +215,7 @@ private func newIdentity() throws -> IdentityService {
     var ciphertext = try alice.encrypt(Data("shhh".utf8), recipientEncKey: bob.encKey!)
     ciphertext[ciphertext.startIndex] = 0xFF
     do {
-        _ = try bob.decrypt(ciphertext, recipientEncKey: alice.encKey!)
+        _ = try bob.decrypt(ciphertext)
         Issue.record("expected TransportSuiteError.unsupported")
     } catch TransportSuiteError.unsupported(let tag) {
         #expect(tag == 0xFF)
@@ -213,7 +231,7 @@ private func newIdentity() throws -> IdentityService {
     let bob = try newIdentity()
     let sealed = try alice.sealLabel("Bitcoin seed 🔑", recipientEncKey: bob.encKey!)
     #expect(sealed.first == TransportSuite.current.rawValue)
-    #expect(try bob.openLabel(sealed, senderEncKey: alice.encKey!) == "Bitcoin seed 🔑")
+    #expect(try bob.openLabel(sealed) == "Bitcoin seed 🔑")
 }
 
 @Test func aSealedLabelDoesNotCarryItsTextInTheClear() throws {
@@ -228,8 +246,8 @@ private func newIdentity() throws -> IdentityService {
     let bob = try newIdentity()
     let shareBox = try alice.encrypt(Data("one share".utf8), recipientEncKey: bob.encKey!)
     let labelBox = try alice.sealLabel("one label", recipientEncKey: bob.encKey!)
-    #expect(throws: (any Error).self) { try bob.openLabel(shareBox, senderEncKey: alice.encKey!) }
-    #expect(throws: (any Error).self) { try bob.decrypt(labelBox, recipientEncKey: alice.encKey!) }
+    #expect(throws: (any Error).self) { try bob.openLabel(shareBox) }
+    #expect(throws: (any Error).self) { try bob.decrypt(labelBox) }
 }
 
 @Test func openLabelFallsBackToTheDecKeyDisplacedByTheLastRotation() throws {
@@ -239,5 +257,60 @@ private func newIdentity() throws -> IdentityService {
 
     try alice.activateKeyPair(alice.generateNewKeyPair())
 
-    #expect(try alice.openLabel(sealedToAlicesOldKey, senderEncKey: bob.encKey!) == "passport")
+    #expect(try alice.openLabel(sealedToAlicesOldKey) == "passport")
+}
+
+// -------------------------------------------------------------------------
+// Cross-platform box vectors — the same four boxes, sealed once by CryptoKit and once by
+// BouncyCastle to one fixed recipient key, are opened by iOS, Android and phon alike. HPKE draws a
+// fresh ephemeral key per box, so a box cannot be reproduced byte for byte; what each platform
+// proves is that it opens what the other library sealed. Identical fixtures are checked into
+// Android's IdentityServiceVerifyTest.kt and phon's IdentityServiceVerifyTests.scala.
+// -------------------------------------------------------------------------
+
+private let vectorRecipientDecKey = Data((0x20...0x3f).map { UInt8($0) })
+private let vectorRecipientEncKey = Data(hex: "358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd166254")
+private let cryptoKitShareBox = Data(hex: "028645dabe9fc9135324fc4b60c60d562a5b91cbba3a4e7767363138c411154465cfaff103793c5427240d1c797a5c7f3019b453158117d32c409c073aa86d828ce754b2")
+private let cryptoKitLabelBox = Data(hex: "02182112460138f7f6314a553918a4f46d85148ccd8a7ab322c0cb2eb34ac97f528f0673b03dac84898ee14fbc6cff3c2318acb1fe4ef3d036a797f294ce8cef4274")
+private let bouncyCastleShareBox = Data(hex: "02b09f312abb31cbf78fc7c41f3912006d25d966d2be78a376bd388cdd30e685446a75dadf1450dade7e955dd6879fa1e9fd1aa7e62e721912fa5bcec7854e7397b80767")
+private let bouncyCastleLabelBox = Data(hex: "02e859635cccd28e42b3f26bfacdf98db69242fd81c5faa67dec62de46714b270f48bdce7f66c707226e73396b84cb1d9fa4e5b9cf7b008df9fed2163a14f8be83fc")
+
+private func vectorRecipient() throws -> IdentityService {
+    let recipient = try newIdentity()
+    let current = recipient.generateNewKeyPair()
+    try recipient.activateKeyPair(KeyPairMaterial(
+        verifyKey: current.verifyKey, signKey: current.signKey,
+        encKey: vectorRecipientEncKey, decKey: vectorRecipientDecKey
+    ))
+    return recipient
+}
+
+@Test func theFixedRecipientKeyDerivesTheFixedPublicKey() throws {
+    let key = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: vectorRecipientDecKey)
+    #expect(key.publicKey.rawRepresentation == vectorRecipientEncKey)
+}
+
+@Test func theCryptoKitVectorBoxesOpen() throws {
+    let recipient = try vectorRecipient()
+    #expect(try recipient.decrypt(cryptoKitShareBox) == Data("a share of a secret".utf8))
+    #expect(try recipient.openLabel(cryptoKitLabelBox) == "Bitcoin seed 🔑")
+}
+
+@Test func theBouncyCastleVectorBoxesOpen() throws {
+    let recipient = try vectorRecipient()
+    #expect(try recipient.decrypt(bouncyCastleShareBox) == Data("a share of a secret".utf8))
+    #expect(try recipient.openLabel(bouncyCastleLabelBox) == "Bitcoin seed 🔑")
+}
+
+private extension Data {
+    init(hex: String) {
+        var bytes: [UInt8] = []
+        var index = hex.startIndex
+        while index < hex.endIndex {
+            let next = hex.index(index, offsetBy: 2)
+            bytes.append(UInt8(hex[index..<next], radix: 16)!)
+            index = next
+        }
+        self.init(bytes)
+    }
 }

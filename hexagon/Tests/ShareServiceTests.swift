@@ -155,9 +155,9 @@ private final class FakeRetainedDepositRepository: RetainedDepositRepository {
 
 private struct NoOpShareEncryption: ShareEncryption {
     func encrypt(_ plaintext: Data, recipientEncKey: Data) throws -> Data { plaintext }
-    func decrypt(_ noncePlusCiphertext: Data, recipientEncKey: Data) throws -> Data { noncePlusCiphertext }
+    func decrypt(_ box: Data) throws -> Data { box }
     func sealLabel(_ label: String, recipientEncKey: Data) throws -> Data { Data(label.utf8) }
-    func openLabel(_ sealedLabel: Data, senderEncKey: Data) throws -> String { String(decoding: sealedLabel, as: UTF8.self) }
+    func openLabel(_ sealedLabel: Data) throws -> String { String(decoding: sealedLabel, as: UTF8.self) }
 }
 
 /// Stands in for the real failure at pickup: a share, and its label, sealed to a key this device no
@@ -165,18 +165,18 @@ private struct NoOpShareEncryption: ShareEncryption {
 private struct FailingShareEncryption: ShareEncryption {
     struct SimulatedFailure: Error {}
     func encrypt(_ plaintext: Data, recipientEncKey: Data) throws -> Data { plaintext }
-    func decrypt(_ noncePlusCiphertext: Data, recipientEncKey: Data) throws -> Data { throw SimulatedFailure() }
+    func decrypt(_ box: Data) throws -> Data { throw SimulatedFailure() }
     func sealLabel(_ label: String, recipientEncKey: Data) throws -> Data { Data(label.utf8) }
-    func openLabel(_ sealedLabel: Data, senderEncKey: Data) throws -> String { throw SimulatedFailure() }
+    func openLabel(_ sealedLabel: Data) throws -> String { throw SimulatedFailure() }
 }
 
 /// A share that opens beside a label that does not, so a test can tell the two failures apart.
 private struct UnopenableLabelEncryption: ShareEncryption {
     struct SimulatedFailure: Error {}
     func encrypt(_ plaintext: Data, recipientEncKey: Data) throws -> Data { plaintext }
-    func decrypt(_ noncePlusCiphertext: Data, recipientEncKey: Data) throws -> Data { noncePlusCiphertext }
+    func decrypt(_ box: Data) throws -> Data { box }
     func sealLabel(_ label: String, recipientEncKey: Data) throws -> Data { Data(label.utf8) }
-    func openLabel(_ sealedLabel: Data, senderEncKey: Data) throws -> String { throw SimulatedFailure() }
+    func openLabel(_ sealedLabel: Data) throws -> String { throw SimulatedFailure() }
 }
 
 /// In-memory ShareRelay test double. `listShareRequests` filters by `transactionType`/`state`
@@ -445,8 +445,57 @@ private func makeSignedRow(
     let sealed = relay.openedRequests.map(\.sealedLabel)
     #expect(sealed.count == 2)
     #expect(sealed.allSatisfy { $0.range(of: Data("Bitcoin seed".utf8)) == nil })
-    #expect(try holderA.openLabel(sealed[0], senderEncKey: sender.encKey!) == "Bitcoin seed")
-    #expect(try holderB.openLabel(sealed[1], senderEncKey: sender.encKey!) == "Bitcoin seed")
+    #expect(try holderA.openLabel(sealed[0]) == "Bitcoin seed")
+    #expect(try holderB.openLabel(sealed[1]) == "Bitcoin seed")
+}
+
+// The retention rule is safe only because a retained blob is closed to the device retaining it:
+// all n of them together would otherwise be the secret, waiting on the owner's phone.
+@Test func depositRetainsBlobsOnlyTheirHoldersCanOpenAndTheSenderCannot() async throws {
+    let sender = IdentityService(identityStore: InMemoryIdentityStoreForShareServiceTest())
+    try sender.register(pseudonym: "sender")
+    let holderA = IdentityService(identityStore: InMemoryIdentityStoreForShareServiceTest())
+    try holderA.register(pseudonym: "a")
+    let holderB = IdentityService(identityStore: InMemoryIdentityStoreForShareServiceTest())
+    try holderB.register(pseudonym: "b")
+    let contactA = Contact(
+        id: UUID(), pseudonym: "a", verifyKey: TestKeyPair().publicKey, encKey: holderA.encKey!,
+        verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date()
+    )
+    let contactB = Contact(
+        id: UUID(), pseudonym: "b", verifyKey: TestKeyPair().publicKey, encKey: holderB.encKey!,
+        verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date()
+    )
+    let relay = FakeShareRelay()
+    let (svc, _, _, _, _, _, retainedRepo) = try makeService(relay: relay, contacts: [contactA, contactB], encryption: sender)
+
+    try await svc.deposit(secret: Data([1, 2, 3]), label: "s", contacts: [contactA, contactB], threshold: 2)
+
+    let retained = try retainedRepo.getAll()
+    #expect(retained.count == 2)
+    for blob in retained {
+        #expect(throws: (any Error).self) { try sender.decrypt(blob.ciphertext) }
+    }
+    let holders = [contactA.id: holderA, contactB.id: holderB]
+    for blob in retained {
+        #expect(!(try holders[blob.contactId]!.decrypt(blob.ciphertext)).isEmpty)
+    }
+}
+
+@Test func labelOfOpensNothingForARequestWhoseSignatureDoesNotVerify() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, shareRepo, _, _, _, _) = try makeService(relay: relay)
+    // Claims to come from Alice but is signed by somebody else.
+    let forged = try makeSignedRow(id: UUID(), senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: strangerKeys, transactionType: .retrieval, ciphertext: nil, label: "forged")
+
+    #expect(svc.label(of: forged) == nil)
+
+    shareRepo.save(HeldShare(
+        id: UUID(), secretId: forged.secretId, label: "passport", contactId: aliceContact.id,
+        senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([9]),
+        k: 2, n: 3, mimeType: .default
+    ))
+    #expect(svc.label(of: forged) == "passport")
 }
 
 @Test func labelOfOpensTheSealedLabelOfARequestFromAKnownContact() async throws {

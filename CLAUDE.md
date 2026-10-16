@@ -87,14 +87,14 @@ placed under `Deposplit/` is compiled automatically.** Adding an adapter or a vi
   `dec.private.previous` — the key-agreement key displaced by the last rotation, kept one
   generation so a share sealed before the rotation can still be opened at pickup. The
   pseudonym and the `registered` flag live in `UserDefaults`, not the Keychain.
-- **Share encryption uses CryptoKit**: X25519 key agreement →
-  `sharedSecret.hkdfDerivedSymmetricKey(using: SHA256.self, salt: nonce, sharedInfo: "deposplit-share", outputByteCount: 32)`
-  → `ChaChaPoly.seal(plaintext, using: key, nonce: nonce)`.
-  A secret's label is sealed with the same box under `sharedInfo: "deposplit-label"`, so a label
-  box and a share box never share a derived key. The relay only ever sees the sealed label.
-- **Ciphertext wire format is `suiteTag(1) || nonce(12) || ciphertext+tag`** — that is
-  `sealedBox.combined` with the one-byte suite tag prefixed. The leading tag is easy to
-  forget when hand-checking bytes.
+- **Every box is CryptoKit's HPKE**, base mode with `.Curve25519_SHA256_ChachaPoly`:
+  `HPKE.Sender(recipientKey:ciphersuite:info:)` seals under a fresh ephemeral key that is discarded
+  afterwards, so only the recipient's `HPKE.Recipient` opens it — never the device that sealed it.
+  The `info` is `"deposplit-share"` for shares and `"deposplit-label"` for labels, so a label box
+  and a share box never share a key. Opening needs only this device's own `decKey`.
+- **Box wire format is `suiteTag(1) || enc(32) || ciphertext+tag`** — the suite tag (`0x02`), then
+  `sender.encapsulatedKey`, then what `sender.seal` returns. The leading tag is easy to forget
+  when hand-checking bytes.
 - **Request signing**: `CryptoKit.SHA256.hash(data:)` for the body hash, `key.signature(for:)`
   for Ed25519.
 - **`SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`** is set in build settings, so all types are
@@ -217,7 +217,7 @@ not a development dependency.
 ```bash
 # from hexagon/ — no simulator needed; CI runs this
 swift build
-swift test                                  # 178 tests
+swift test                                  # 185 tests
 swift test --filter ShareServiceTests
 
 # from the repo root — the app target; CI builds it too, for the simulator (see below)

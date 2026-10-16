@@ -89,34 +89,27 @@ public final class IdentityService: Identity, ShareEncryption {
     }
 
     public func encrypt(_ plaintext: Data, recipientEncKey: Data) throws -> Data {
-        try seal(plaintext, recipientEncKey: recipientEncKey, info: Self.shareInfo)
+        try Self.seal(plaintext, recipientEncKey: recipientEncKey, info: Self.shareInfo)
     }
 
     public func sealLabel(_ label: String, recipientEncKey: Data) throws -> Data {
-        try seal(Data(label.utf8), recipientEncKey: recipientEncKey, info: Self.labelInfo)
+        try Self.seal(Data(label.utf8), recipientEncKey: recipientEncKey, info: Self.labelInfo)
     }
 
     /// Malformed UTF-8 decodes to replacement characters rather than failing, as on the other
-    /// platforms. A label is only ever shown, and the box has already proved who sealed it.
-    public func openLabel(_ sealedLabel: Data, senderEncKey: Data) throws -> String {
-        String(decoding: try unseal(sealedLabel, recipientEncKey: senderEncKey, info: Self.labelInfo), as: UTF8.self)
+    /// platforms. A label is only ever shown, and the signature over it has already proved who
+    /// sealed it.
+    public func openLabel(_ sealedLabel: Data) throws -> String {
+        String(decoding: try unseal(sealedLabel, info: Self.labelInfo), as: UTF8.self)
     }
 
-    private func seal(_ plaintext: Data, recipientEncKey: Data, info: Data) throws -> Data {
-        let rawKey = try identityStore.decKey()
-        let myKey = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: rawKey)
-        let theirKey = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: recipientEncKey)
-        let sharedSecret = try myKey.sharedSecretFromKeyAgreement(with: theirKey)
-
-        let nonce = ChaChaPoly.Nonce()
-        let symmetricKey = sharedSecret.hkdfDerivedSymmetricKey(
-            using: SHA256.self,
-            salt: Data(nonce),
-            sharedInfo: info,
-            outputByteCount: 32
-        )
-        let sealedBox = try ChaChaPoly.seal(plaintext, using: symmetricKey, nonce: nonce)
-        return Data([TransportSuite.current.rawValue]) + sealedBox.combined
+    /// Sealing involves no key of this device's own: HPKE draws a fresh ephemeral key for every
+    /// box and discards it once the box is sealed, so not even this device can open what it sealed.
+    private static func seal(_ plaintext: Data, recipientEncKey: Data, info: Data) throws -> Data {
+        let recipientKey = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: recipientEncKey)
+        var sender = try HPKE.Sender(recipientKey: recipientKey, ciphersuite: .Curve25519_SHA256_ChachaPoly, info: info)
+        let ciphertext = try sender.seal(plaintext)
+        return Data([TransportSuite.current.rawValue]) + sender.encapsulatedKey + ciphertext
     }
 
     /// Falls back to the `decKey` displaced by the last rotation when the current one cannot open
@@ -124,49 +117,45 @@ public final class IdentityService: Identity, ShareEncryption {
     /// holder who rotates between a deposit and their pickup would otherwise never be able to
     /// collect it: the row stays pending and every later poll fails identically. One generation is
     /// enough to cover that window without keeping a keyring.
-    ///
-    /// Never used for `encrypt` — this device always seals under its current key.
-    public func decrypt(_ noncePlusCiphertext: Data, recipientEncKey: Data) throws -> Data {
-        try unseal(noncePlusCiphertext, recipientEncKey: recipientEncKey, info: Self.shareInfo)
+    public func decrypt(_ box: Data) throws -> Data {
+        try unseal(box, info: Self.shareInfo)
     }
 
-    private func unseal(_ noncePlusCiphertext: Data, recipientEncKey: Data, info: Data) throws -> Data {
-        guard let tagByte = noncePlusCiphertext.first,
-              let suite = TransportSuite(rawValue: tagByte) else {
-            throw TransportSuiteError.unsupported(tag: noncePlusCiphertext.first ?? 0)
+    private func unseal(_ box: Data, info: Data) throws -> Data {
+        guard let tagByte = box.first, let suite = TransportSuite(rawValue: tagByte) else {
+            throw TransportSuiteError.unsupported(tag: box.first ?? 0)
         }
         switch suite {
-        case .x25519HkdfSha256ChaCha20Poly1305:
+        case .hpkeX25519Sha256ChaCha20Poly1305:
             break
         }
         do {
-            return try Self.open(noncePlusCiphertext, recipientEncKey: recipientEncKey, decKey: try identityStore.decKey(), info: info)
+            return try Self.open(box, decKey: try identityStore.decKey(), info: info)
         } catch {
             // The current key's failure is the one worth reporting — the fallback missing or
             // failing too just means there was no earlier generation this box belongs to.
             guard let previous = identityStore.previousDecKey(),
-                  let plaintext = try? Self.open(noncePlusCiphertext, recipientEncKey: recipientEncKey, decKey: previous, info: info)
+                  let plaintext = try? Self.open(box, decKey: previous, info: info)
             else { throw error }
             return plaintext
         }
     }
 
-    private static func open(_ noncePlusCiphertext: Data, recipientEncKey: Data, decKey: Data, info: Data) throws -> Data {
-        let myKey = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: decKey)
-        let theirKey = try Curve25519.KeyAgreement.PublicKey(rawRepresentation: recipientEncKey)
-        let sharedSecret = try myKey.sharedSecretFromKeyAgreement(with: theirKey)
-
-        let sealedBox = try ChaChaPoly.SealedBox(combined: noncePlusCiphertext.dropFirst())
-        let symmetricKey = sharedSecret.hkdfDerivedSymmetricKey(
-            using: SHA256.self,
-            salt: Data(sealedBox.nonce),
-            sharedInfo: info,
-            outputByteCount: 32
+    private static func open(_ box: Data, decKey: Data, info: Data) throws -> Data {
+        let body = box.dropFirst()
+        guard body.count >= encapsulatedKeyBytes else { throw CryptoKitError.incorrectParameterSize }
+        let encapsulatedKey = Data(body.prefix(encapsulatedKeyBytes))
+        let ciphertext = Data(body.dropFirst(encapsulatedKeyBytes))
+        let privateKey = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: decKey)
+        var recipient = try HPKE.Recipient(
+            privateKey: privateKey, ciphersuite: .Curve25519_SHA256_ChachaPoly, info: info, encapsulatedKey: encapsulatedKey
         )
-        return try ChaChaPoly.open(sealedBox, using: symmetricKey)
+        return try recipient.open(ciphertext)
     }
 
+    /// DHKEM(X25519)'s encapsulated key: the ephemeral public key, 32 bytes.
+    private static let encapsulatedKeyBytes = 32
     private static let shareInfo = Data("deposplit-share".utf8)
-    /// A key derivation of its own, so a sealed label can never be mistaken for a sealed share.
+    /// HPKE info of its own, so a sealed label can never be opened as a sealed share.
     private static let labelInfo = Data("deposplit-label".utf8)
 }

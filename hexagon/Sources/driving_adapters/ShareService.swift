@@ -209,9 +209,8 @@ public final class ShareService: ShareManagement {
             )
             try? shareMetadataRepository.save(ShareMetadata(id: req.id, secretId: secretId, contactId: contact.id))
             // Retained until this holder's pickup is confirmed (relay-observed or
-            // heartbeat-attested), then discarded. The box is static-static X25519, so this
-            // device can recompute its key and open the blob itself until then: retaining all n
-            // keeps the secret recoverable here for that window.
+            // heartbeat-attested), then discarded. Safe to retain: the box was sealed under an
+            // ephemeral key discarded at sealing, so only the holder can open it, not this device.
             try? retainedDepositRepository.save(RetainedDepositBlob(id: req.id, secretId: secretId, contactId: contact.id, label: label, secretCreatedAt: createdAt, ciphertext: ciphertext, k: threshold, n: contacts.count, mimeType: mimeType))
         }
         try? secretRepository.save(Secret(id: secretId, label: label, mimeType: mimeType, k: threshold, n: contacts.count, secretCreatedAt: createdAt, state: .active))
@@ -443,7 +442,7 @@ public final class ShareService: ShareManagement {
             guard let contact = contactRepository.getByVerifyKey(pair.request.recipientKey) else {
                 throw ShareServiceError.contactNotFound
             }
-            let plaintext = try encryption.decrypt(ct, recipientEncKey: contact.encKey)
+            let plaintext = try encryption.decrypt(ct)
             decryptedShares.append(Array(plaintext))
             contactIds.append(contact.id)
         }
@@ -525,8 +524,8 @@ public final class ShareService: ShareManagement {
                 // echoed copy adds nothing.
                 if shareRepository.getPlaintextShare(secretId: req.secretId) == nil {
                     guard let ct = req.ciphertext,
-                          let plaintext = try? encryption.decrypt(ct, recipientEncKey: senderContact.encKey),
-                          let label = try? encryption.openLabel(req.sealedLabel, senderEncKey: senderContact.encKey)
+                          let plaintext = try? encryption.decrypt(ct),
+                          let label = try? encryption.openLabel(req.sealedLabel)
                     else { continue }
                     shareRepository.save(HeldShare(
                         id: req.id,
@@ -763,7 +762,7 @@ public final class ShareService: ShareManagement {
                 if !existingSecrets.contains(where: { $0.id == req.secretId }) {
                     // A label that will not open leaves the row for the next poll, rather than rebuilding a
                     // secret nobody could recognise.
-                    guard let label = try? encryption.openLabel(req.sealedLabel, senderEncKey: holderContact.encKey) else { continue }
+                    guard let label = try? encryption.openLabel(req.sealedLabel) else { continue }
                     try? secretRepository.save(Secret(id: req.secretId, label: label, mimeType: mimeType, k: k, n: n, secretCreatedAt: req.secretCreatedAt, state: .active))
                 }
                 let existingMeta = (try? shareMetadataRepository.getAll()) ?? []
@@ -811,8 +810,9 @@ public final class ShareService: ShareManagement {
     }
 
     public func label(of request: ShareRequest) -> String? {
-        if let sender = contactRepository.getByVerifyKey(request.senderKey),
-           let label = try? encryption.openLabel(request.sealedLabel, senderEncKey: sender.encKey) {
+        // A box proves nothing about who sealed it, so a label is opened only for a request whose
+        // signature verifies.
+        if verifyOpen(request), let label = try? encryption.openLabel(request.sealedLabel) {
             return label
         }
         // A label sealed to a key two rotations back no longer opens. The share held for that secret
