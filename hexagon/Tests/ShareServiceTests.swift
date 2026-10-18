@@ -330,7 +330,7 @@ private func makeService(
         shareMetadataRepository: metaRepo,
         secretRepository: FakeSecretRepository(),
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
+        contactManagement: ContactService(contactRepository: contactRepo, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
         keyConflictRepository: conflictRepo,
         retainedDepositRepository: retainedRepo,
         identity: bobIdentity,
@@ -636,7 +636,7 @@ private final class TwoRelayResolver: ShareRelayResolver {
         shareMetadataRepository: FakeShareMetadataRepository(),
         secretRepository: FakeSecretRepository(),
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
+        contactManagement: ContactService(contactRepository: contactRepo, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
         keyConflictRepository: FakeKeyConflictRepository(),
         retainedDepositRepository: FakeRetainedDepositRepository(),
         identity: bobIdentity,
@@ -737,7 +737,7 @@ private final class AliasingRelayResolver: ShareRelayResolver {
         shareMetadataRepository: FakeShareMetadataRepository(),
         secretRepository: FakeSecretRepository(),
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
+        contactManagement: ContactService(contactRepository: contactRepo, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
         keyConflictRepository: FakeKeyConflictRepository(),
         retainedDepositRepository: FakeRetainedDepositRepository(),
         identity: bobIdentity,
@@ -784,7 +784,7 @@ private final class AliasingRelayResolver: ShareRelayResolver {
         shareMetadataRepository: FakeShareMetadataRepository(),
         secretRepository: FakeSecretRepository(),
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
+        contactManagement: ContactService(contactRepository: contactRepo, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
         keyConflictRepository: FakeKeyConflictRepository(),
         retainedDepositRepository: FakeRetainedDepositRepository(),
         identity: bobIdentity,
@@ -827,7 +827,7 @@ private func makeTwoRelayService(defaultRelay: FakeShareRelay, byorRelay: FakeSh
         shareMetadataRepository: FakeShareMetadataRepository(),
         secretRepository: FakeSecretRepository(),
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
+        contactManagement: ContactService(contactRepository: contactRepo, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
         keyConflictRepository: FakeKeyConflictRepository(),
         retainedDepositRepository: FakeRetainedDepositRepository(),
         identity: bobIdentity,
@@ -915,7 +915,7 @@ private func makeServiceForRecoveryTest(
         shareMetadataRepository: metaRepo,
         secretRepository: secretRepo,
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
+        contactManagement: ContactService(contactRepository: contactRepo, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
         keyConflictRepository: FakeKeyConflictRepository(),
         retainedDepositRepository: FakeRetainedDepositRepository(),
         identity: bobIdentity,
@@ -1394,7 +1394,7 @@ private func makeDestroyingSecret(
 
 @Test func markKeyCompromisedFlagsTheContactsCurrentKeyByDefault() throws {
     let repo = FakeContactRepository([aliceContact])
-    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepository(), identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests())
+    let svc = ContactService(contactRepository: repo, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests())
 
     try svc.markKeyCompromised(contactId: aliceContact.id, verifyKey: nil)
 
@@ -1403,7 +1403,7 @@ private func makeDestroyingSecret(
 
 @Test func markKeyCompromisedIsIdempotentForAnAlreadyFlaggedKey() throws {
     let repo = FakeContactRepository([aliceContact])
-    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepository(), identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests())
+    let svc = ContactService(contactRepository: repo, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests())
     try svc.markKeyCompromised(contactId: aliceContact.id, verifyKey: nil)
 
     try svc.markKeyCompromised(contactId: aliceContact.id, verifyKey: nil)
@@ -1413,7 +1413,7 @@ private func makeDestroyingSecret(
 
 @Test func updateContactSetsKeyChangedAtOnlyWhenKeysActuallyChange() throws {
     let repo = FakeContactRepository([aliceContact])
-    let svc = ContactService(contactRepository: repo, purchases: FakePurchaseRepository(), identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests())
+    let svc = ContactService(contactRepository: repo, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests())
     #expect(aliceContact.keyChangedAt == nil)
 
     try svc.updateContact(contactId: aliceContact.id, verifyKey: Data(repeating: 0x03, count: 32), encKey: nil, newCipherSuite: nil, verificationLevel: .low)
@@ -1970,7 +1970,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
         shareMetadataRepository: FakeShareMetadataRepository(),
         secretRepository: FakeSecretRepository(),
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
+        contactManagement: ContactService(contactRepository: contactRepo, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
         keyConflictRepository: FakeKeyConflictRepository(),
         retainedDepositRepository: FakeRetainedDepositRepository(),
         identity: bobIdentity,
@@ -2040,7 +2040,7 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
         shareMetadataRepository: FakeShareMetadataRepository(),
         secretRepository: FakeSecretRepository(),
         contactRepository: contactRepo,
-        contactManagement: ContactService(contactRepository: contactRepo, purchases: purchases, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
+        contactManagement: ContactService(contactRepository: contactRepo, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests()),
         keyConflictRepository: FakeKeyConflictRepository(),
         retainedDepositRepository: FakeRetainedDepositRepository(),
         identity: bobIdentity,

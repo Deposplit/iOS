@@ -217,7 +217,7 @@ not a development dependency.
 ```bash
 # from hexagon/ — no simulator needed; CI runs this
 swift build
-swift test                                  # 185 tests
+swift test                                  # 184 tests
 swift test --filter ShareServiceTests
 
 # from the repo root — the app target; CI builds it too, for the simulator (see below)

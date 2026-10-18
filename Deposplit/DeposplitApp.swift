@@ -29,7 +29,6 @@ struct DeposplitApp: App {
         let relayResolver = DeposplitRelayResolver(identity: identityService, relaySettings: relaySettings)
         let contactService = ContactService(
             contactRepository: contactRepository,
-            purchases: purchaseRepository,
             identityStore: identityStore,
             relinkRepository: LocalContactRelinkRepository()
         )

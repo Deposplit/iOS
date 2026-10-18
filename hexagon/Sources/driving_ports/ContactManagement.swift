@@ -21,8 +21,8 @@ public protocol ContactManagement {
     /// info, so `ContactService` pins the contact to `CipherSuite.current` (the only suite there
     /// is to assume today). `nickname` lets a nickname be set at add-time rather than
     /// only via a later `renameContact` call; it is purely local and never transmitted anywhere.
-    /// A non-nil `relayBaseUrl` requires the Premium unlock — typing a relay by hand is the paid
-    /// half of BYOR, while `addFromQr`'s is free.
+    /// A non-nil `relayBaseUrl` is free, as it is on `addFromQr`: it says where this contact's
+    /// mailbox is and redirects only their traffic. Premium is this device's own default relay.
     func addManually(pseudonym: String, verifyKey: Data, encKey: Data, verificationLevel: VerificationLevel, relayBaseUrl: String?, nickname: String?) throws
     /// `cipherSuite` is the signing + key-agreement algorithm pairing asserted by the scanned
     /// QR payload — self-describing keys, not assumed. `nickname` is not
