@@ -20,7 +20,7 @@ struct SoftWarningRow: View {
                 .font(.caption)
             Spacer()
         }
-        .foregroundStyle(.secondary)
+        .foregroundStyle(.red)
         .padding(.horizontal)
         .padding(.vertical, 6)
         .background(.bar)
