@@ -2,12 +2,6 @@ import hexagon
 import Foundation
 import CryptoKit
 
-struct ApiError: Error, LocalizedError {
-    let statusCode: Int
-    let body: String
-    var errorDescription: String? { "HTTP \(statusCode): \(body)" }
-}
-
 final class DeposplitApiAdapter: ShareRelay {
 
     private let identity: any Identity
@@ -143,7 +137,7 @@ final class DeposplitApiAdapter: ShareRelay {
         let code = (response as! HTTPURLResponse).statusCode
         if code == 204 { return Data() }
         guard code < 400 else {
-            throw ApiError(statusCode: code, body: String(data: data, encoding: .utf8) ?? "")
+            throw RelayError.refused(statusCode: code, body: String(data: data, encoding: .utf8) ?? "")
         }
         return data
     }

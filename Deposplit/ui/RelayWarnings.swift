@@ -8,6 +8,21 @@ func relayName(_ baseUrl: String) -> String {
     return components.port.map { "\(host):\($0)" } ?? host
 }
 
+/// A relay that answered with an error, and the status it gave: what its warning names.
+struct RefusingRelay: Hashable {
+    let baseUrl: String
+    let statusCode: Int
+
+    /// One per relay, in the order the warnings show them. A relay several reports name keeps the
+    /// status the first of them gave.
+    static func list(_ reports: [String: Int]...) -> [RefusingRelay] {
+        reports
+            .reduce(into: [String: Int]()) { merged, report in merged.merge(report) { first, _ in first } }
+            .map { RefusingRelay(baseUrl: $0.key, statusCode: $0.value) }
+            .sorted { $0.baseUrl < $1.baseUrl }
+    }
+}
+
 /// One soft warning line, the kind that sits over real content rather than replacing it.
 struct SoftWarningRow: View {
     let text: LocalizedStringKey

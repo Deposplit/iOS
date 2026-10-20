@@ -481,7 +481,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aktualisieren fehlgeschlagen. Angezeigt wird der zuletzt bekannte Stand."
+            "value" : "Aktualisieren fehlgeschlagen. Angezeigt wird der letzte bekannte Stand."
           }
         }
       }
@@ -1716,6 +1716,26 @@
         }
       }
     },
+    "Relay %@ answered with an error (HTTP %lld). Its requests cannot be shown right now." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relais %@ hat mit einem Fehler geantwortet (HTTP %lld). Anfragen über dieses Relais können gerade nicht angezeigt werden."
+          }
+        }
+      }
+    },
+    "Relay %@ answered with an error (HTTP %lld). Showing the last known state." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relais %@ hat mit einem Fehler geantwortet (HTTP %lld). Angezeigt wird der letzte bekannte Stand."
+          }
+        }
+      }
+    },
     "Relay %@ not reachable. Its requests cannot be shown right now." : {
       "localizations" : {
         "de" : {
@@ -1731,7 +1751,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Relais %@ nicht erreichbar. Angezeigt wird der zuletzt bekannte Stand."
+            "value" : "Relais %@ nicht erreichbar. Angezeigt wird der letzte bekannte Stand."
           }
         }
       }

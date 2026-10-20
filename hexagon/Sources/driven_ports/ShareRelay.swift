@@ -3,6 +3,9 @@ import Foundation
 /// `AnyObject` because a relay is one stateful client per base URL, memoized by
 /// `ShareRelayResolver` and deduped by identity in `ShareService.allRelays` — a value type could
 /// not be recognised as "the relay I already have".
+///
+/// An answer with an error status is thrown as `RelayError.refused`, carrying the status. Anything
+/// else thrown means the relay did not answer, and the two are reported differently.
 public protocol ShareRelay: AnyObject {
     /// The URL this relay answers at — what a warning names when it does not.
     var baseUrl: String { get }

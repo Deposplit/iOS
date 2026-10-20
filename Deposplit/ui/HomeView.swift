@@ -65,6 +65,9 @@ struct HomeView: View {
                     ForEach(homeViewModel.unreachableRelays, id: \.self) { relay in
                         SoftWarningRow(text: "Relay \(relayName(relay)) not reachable. Showing the last known state.")
                     }
+                    ForEach(homeViewModel.refusingRelays, id: \.self) { relay in
+                        SoftWarningRow(text: "Relay \(relayName(relay.baseUrl)) answered with an error (HTTP \(relay.statusCode)). Showing the last known state.")
+                    }
                     if homeViewModel.syncFailed {
                         SoftWarningRow(text: "Could not refresh. Showing the last known state.")
                     }
@@ -220,8 +223,8 @@ struct HomeView: View {
 
     private var showsWarning: Bool {
         selectedTab == 2
-            ? !requestsViewModel.unreachableRelays.isEmpty
-            : !homeViewModel.unreachableRelays.isEmpty || homeViewModel.syncFailed
+            ? !requestsViewModel.unreachableRelays.isEmpty || !requestsViewModel.refusingRelays.isEmpty
+            : !homeViewModel.unreachableRelays.isEmpty || !homeViewModel.refusingRelays.isEmpty || homeViewModel.syncFailed
     }
 
     private func reload() async {

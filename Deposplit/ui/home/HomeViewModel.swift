@@ -120,6 +120,9 @@ final class HomeViewModel {
     /// Every relay the last refresh could not reach, by base URL. Each one gets a warning of its
     /// own, because with several relays a single one could not say whose data is stale.
     var unreachableRelays: [String] = []
+    /// Every relay that answered the last refresh with an error. Named apart from the unreachable
+    /// ones, with the status, and never in both lists.
+    var refusingRelays: [RefusingRelay] = []
     /// The refresh failed for a reason of this device's own rather than a relay's.
     var syncFailed = false
     /// How many contacts still hold a key this device no longer signs with. A standing advisory
@@ -168,7 +171,9 @@ final class HomeViewModel {
             heldShares = try shareManagement.listHeld()
             // The sync may itself be the evidence that clears someone.
             awaitingRelinkCount = contactManagement.contactsAwaitingRelink().count
-            unreachableRelays = inboxReport.unreachableRelays.union(distributedReport.unreachableRelays).union(sent.unreachableRelays).sorted()
+            refusingRelays = RefusingRelay.list(inboxReport.refusingRelays, distributedReport.refusingRelays, sent.refusingRelays)
+            unreachableRelays = inboxReport.unreachableRelays.union(distributedReport.unreachableRelays).union(sent.unreachableRelays)
+                .subtracting(refusingRelays.map(\.baseUrl)).sorted()
             syncFailed = false
         } catch {
             syncFailed = true

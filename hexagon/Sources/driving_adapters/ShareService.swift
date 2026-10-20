@@ -91,15 +91,45 @@ public final class ShareService: ShareManagement {
         relayResolver.resolve(contact.relayBaseUrl)
     }
 
+    /// The relays one pass or one fan-out could not read, by base URL: those that did not answer,
+    /// and those that answered with an error, with the status they gave. A relay is named once.
+    /// When it refused one listing and went silent on another, the refusal wins, because it proves
+    /// the relay is there and its status says why.
+    private struct RelayFailures {
+        private(set) var unreachable = Set<String>()
+        private(set) var refusing: [String: Int] = [:]
+
+        var count: Int { unreachable.count + refusing.count }
+
+        mutating func noteSilent(_ baseUrl: String) {
+            if refusing[baseUrl] == nil { unreachable.insert(baseUrl) }
+        }
+
+        mutating func noteRefused(_ baseUrl: String, statusCode: Int) {
+            unreachable.remove(baseUrl)
+            if refusing[baseUrl] == nil { refusing[baseUrl] = statusCode }
+        }
+
+        mutating func merge<T>(_ fanOut: RelayFanOut<T>) {
+            fanOut.unreachableRelays.forEach { noteSilent($0) }
+            fanOut.refusingRelays.forEach { noteRefused($0.key, statusCode: $0.value) }
+        }
+
+        var report: SyncReport { SyncReport(unreachableRelays: unreachable, refusingRelays: refusing) }
+    }
+
     /// One listing against one relay. A relay that fails contributes nothing and is noted in
-    /// `unreachable` by its base URL, which is how a sync pass or a fan-out read reports it. Only
+    /// `failures` by its base URL, which is how a sync pass or a fan-out read reports it. Only
     /// listings go through here: whether a relay answers is a question about the relay, whereas a
     /// failure acting on one row is about that row.
-    private func fromRelay<T>(_ relay: any ShareRelay, _ unreachable: inout Set<String>, _ listing: () async throws -> [T]) async -> [T] {
+    private func fromRelay<T>(_ relay: any ShareRelay, _ failures: inout RelayFailures, _ listing: () async throws -> [T]) async -> [T] {
         do {
             return try await listing()
+        } catch RelayError.refused(let statusCode, _) {
+            failures.noteRefused(relay.baseUrl, statusCode: statusCode)
+            return []
         } catch {
-            unreachable.insert(relay.baseUrl)
+            failures.noteSilent(relay.baseUrl)
             return []
         }
     }
@@ -119,17 +149,17 @@ public final class ShareService: ShareManagement {
     private func rowsAcrossRelays(role: Role, transactionType: ShareTransactionType? = nil, state: ShareRequestState? = nil) async -> RelayFanOut<(relay: any ShareRelay, request: ShareRequest)> {
         var rows: [(relay: any ShareRelay, request: ShareRequest)] = []
         var seen = Set<UUID>()
-        var unreachable = Set<String>()
+        var failures = RelayFailures()
         let relays = allRelays()
         for relay in relays {
-            let found = await fromRelay(relay, &unreachable) {
+            let found = await fromRelay(relay, &failures) {
                 try await relay.listShareRequests(role: role, transactionType: transactionType, state: state)
             }
             for request in found where seen.insert(request.id).inserted {
                 rows.append((relay: relay, request: request))
             }
         }
-        return RelayFanOut(items: rows, unreachableRelays: unreachable, anyAnswered: unreachable.count < relays.count)
+        return RelayFanOut(items: rows, unreachableRelays: failures.unreachable, refusingRelays: failures.refusing, anyAnswered: failures.count < relays.count)
     }
 
     /// Finds a row by id across every known relay — the caller (UI) has no relay context for a
@@ -227,9 +257,9 @@ public final class ShareService: ShareManagement {
     @discardableResult
     public func syncDistributed() async throws -> SyncReport {
         let existingMetadata = (try? shareMetadataRepository.getAll()) ?? []
-        var unreachable = Set<String>()
+        var failures = RelayFailures()
         for relay in allRelays() {
-            let reqs = await fromRelay(relay, &unreachable) {
+            let reqs = await fromRelay(relay, &failures) {
                 try await relay.listShareRequests(role: .sender, transactionType: .deposit, state: nil)
             }
             for req in reqs {
@@ -263,7 +293,7 @@ public final class ShareService: ShareManagement {
             // A retrieve approval is also proof-of-custody. Polled here purely for that
             // freshness side effect; the functional read path for these rows is reconstruct()/
             // listSentRequests(), unchanged.
-            let retrievals = await fromRelay(relay, &unreachable) {
+            let retrievals = await fromRelay(relay, &failures) {
                 try await relay.listShareRequests(role: .sender, transactionType: .retrieval, state: .approved)
             }
             for req in retrievals {
@@ -276,9 +306,9 @@ public final class ShareService: ShareManagement {
                 try? shareMetadataRepository.save(ShareMetadata(id: meta.id, secretId: meta.secretId, contactId: meta.contactId, lastConfirmedAt: Date()))
             }
         }
-        await reconcileRemovals(&unreachable)
-        await processHeartbeats(&unreachable)
-        return SyncReport(unreachableRelays: unreachable)
+        await reconcileRemovals(&failures)
+        await processHeartbeats(&failures)
+        return failures.report
     }
 
     private func isRetentionStillPending(_ depositId: UUID) -> Bool {
@@ -298,12 +328,12 @@ public final class ShareService: ShareManagement {
     /// believed in for good, and asked for their piece again on every retrieval.
     /// The signature is checked for the same reason it is checked on a retrieval approval: a relay
     /// that could forge one could make this device forget a share that is still out there.
-    private func reconcileRemovals(_ unreachable: inout Set<String>) async {
+    private func reconcileRemovals(_ failures: inout RelayFailures) async {
         let metas = (try? shareMetadataRepository.getAll()) ?? []
         if !metas.isEmpty {
             let secretIds = Set(metas.map(\.secretId))
             let fanOut = await rowsAcrossRelays(role: .sender, transactionType: .removal)
-            unreachable.formUnion(fanOut.unreachableRelays)
+            failures.merge(fanOut)
             let removalRequests = fanOut.items
                 .filter { secretIds.contains($0.request.secretId) }
 
@@ -503,9 +533,9 @@ public final class ShareService: ShareManagement {
 
     @discardableResult
     public func syncInbox() async throws -> SyncReport {
-        var unreachable = Set<String>()
+        var failures = RelayFailures()
         for relay in allRelays() {
-            let pending = await fromRelay(relay, &unreachable) {
+            let pending = await fromRelay(relay, &failures) {
                 try await relay.listShareRequests(role: .recipient, transactionType: .deposit, state: .pending)
             }
             // Unknown sender or unverified senderSignature: skip silently, do not auto-approve.
@@ -549,10 +579,10 @@ public final class ShareService: ShareManagement {
                 _ = try? await relay.respondToShareRequest(requestId: req.id, approved: true, ciphertext: nil, recipientSignature: recipientSignature)
             }
         }
-        await processRecoveryMetadata(&unreachable)
-        await processRotations(&unreachable)
+        await processRecoveryMetadata(&failures)
+        await processRotations(&failures)
         await emitHeartbeats()
-        return SyncReport(unreachableRelays: unreachable)
+        return failures.report
     }
 
     /// Holder side — opportunistically piggybacks this same inbox poll: for each
@@ -601,13 +631,13 @@ public final class ShareService: ShareManagement {
         contactManagement.markRelinked(contact.id)
     }
 
-    private func processHeartbeats(_ unreachable: inout Set<String>) async {
+    private func processHeartbeats(_ failures: inout RelayFailures) async {
         // Nothing here can be verified without our own key, so a device whose key storage is locked
         // does nothing and picks this up on a later pass rather than failing every notice.
         guard let myKey = identity.verifyKey else { return }
         let existingMetadata = (try? shareMetadataRepository.getAll()) ?? []
         for relay in allRelays() {
-            let notices = await fromRelay(relay, &unreachable) { try await relay.listHeartbeats() }
+            let notices = await fromRelay(relay, &failures) { try await relay.listHeartbeats() }
             for notice in notices {
                 guard let contact = contactRepository.getByVerifyKey(notice.holderKey) else { continue }
                 noteRelinked(contact)
@@ -664,9 +694,9 @@ public final class ShareService: ShareManagement {
     /// so it can never carry a higher level forward), and updates the contact record in place,
     /// preserving `contactId`. Unknown senders and forged/mismatched signatures are silently
     /// skipped — a stranger's notice must never mutate a real contact.
-    private func processRotations(_ unreachable: inout Set<String>) async {
+    private func processRotations(_ failures: inout RelayFailures) async {
         for relay in allRelays() {
-            let notices = await fromRelay(relay, &unreachable) { try await relay.listRotations() }
+            let notices = await fromRelay(relay, &failures) { try await relay.listRotations() }
             for notice in notices {
                 guard let contact = contactRepository.getByVerifyKey(notice.oldVerifyKey) else { continue }
                 noteRelinked(contact)
@@ -724,11 +754,11 @@ public final class ShareService: ShareManagement {
     ///
     /// The drain succeeded only if both passes ran and every relay answered them: it is about to
     /// retire the identity those rows are addressed to, so a relay that went unheard is exactly
-    /// what it must report.
+    /// what it must report. A relay that refused went unheard just as much.
     public func regenerateIdentity() async throws -> RegenerateIdentityResult {
         let inbox = try? await syncInbox()
         let distributed = try? await syncDistributed()
-        let drainSucceeded = inbox?.unreachableRelays.isEmpty == true && distributed?.unreachableRelays.isEmpty == true
+        let drainSucceeded = inbox?.everyRelayAnswered == true && distributed?.everyRelayAnswered == true
         let newKeys = identity.generateNewKeyPair()
         let contacts = contactRepository.getAll()
         var notified = 0
@@ -749,9 +779,9 @@ public final class ShareService: ShareManagement {
     /// reports. A push is trusted only once its `senderSignature` verifies against a *known*
     /// contact — the holder must already have been re-added out-of-band before
     /// their push is honored. Consumed rows are deleted from the relay once processed.
-    private func processRecoveryMetadata(_ unreachable: inout Set<String>) async {
+    private func processRecoveryMetadata(_ failures: inout RelayFailures) async {
         for relay in allRelays() {
-            let pushes = await fromRelay(relay, &unreachable) {
+            let pushes = await fromRelay(relay, &failures) {
                 try await relay.listShareRequests(role: .recipient, transactionType: .inventory, state: .approved)
             }
             for req in pushes where verifyOpen(req) {

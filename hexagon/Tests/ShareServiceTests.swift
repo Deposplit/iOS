@@ -200,6 +200,10 @@ private final class FakeShareRelay: ShareRelay {
     var deletedRequestIds: [UUID] = []
     var openedRequests: [OpenedRequest] = []
     var unreachable = false
+    /// The status this relay answers its share-request listing with, when set. Only that listing
+    /// refuses, so a test can pair it with `unreachable` to have one relay refuse one listing and
+    /// go silent on the others.
+    var refusing: Int?
     let baseUrl: String
 
     init(baseUrl: String = "http://relay.example:9000") {
@@ -231,6 +235,7 @@ private final class FakeShareRelay: ShareRelay {
     struct SimulatedOutage: Error {}
 
     func listShareRequests(role: Role, transactionType: ShareTransactionType?, state: ShareRequestState?) async throws -> [ShareRequest] {
+        if let refusing { throw RelayError.refused(statusCode: refusing, body: "") }
         if unreachable { throw SimulatedOutage() }
         return pending.filter { (transactionType == nil || $0.transactionType == transactionType) && (state == nil || $0.state == state) }
     }
@@ -853,8 +858,38 @@ private func makeTwoRelayService(defaultRelay: FakeShareRelay, byorRelay: FakeSh
         defaultRelay: FakeShareRelay(baseUrl: reportingDefaultUrl), byorRelay: FakeShareRelay(baseUrl: reportingByorUrl)
     )
 
-    #expect(try await svc.syncInbox().unreachableRelays.isEmpty)
-    #expect(try await svc.syncDistributed().unreachableRelays.isEmpty)
+    #expect(try await svc.syncInbox().everyRelayAnswered)
+    #expect(try await svc.syncDistributed().everyRelayAnswered)
+}
+
+/// A relay that answers with an error is there, which is not what "not reachable" says. It is
+/// reported apart, with its status, so the warning can say which of the two happened.
+@Test func bothSyncPassesNameARefusingRelayWithItsStatusAndNotAsUnreachable() async throws {
+    let byorRelay = FakeShareRelay(baseUrl: reportingByorUrl)
+    byorRelay.refusing = 401
+    let (svc, _) = try makeTwoRelayService(defaultRelay: FakeShareRelay(baseUrl: reportingDefaultUrl), byorRelay: byorRelay)
+
+    let inbox = try await svc.syncInbox()
+    let distributed = try await svc.syncDistributed()
+
+    #expect(inbox.refusingRelays == [reportingByorUrl: 401])
+    #expect(inbox.unreachableRelays.isEmpty)
+    #expect(distributed.refusingRelays == [reportingByorUrl: 401])
+    #expect(distributed.unreachableRelays.isEmpty)
+}
+
+/// One warning per relay, and the refusal is the one worth having: it proves the relay is there,
+/// and its status says why the pass came back empty.
+@Test func aRelayThatRefusesOneListingAndGoesSilentOnAnotherIsNamedOnceAsRefusing() async throws {
+    let byorRelay = FakeShareRelay(baseUrl: reportingByorUrl)
+    byorRelay.refusing = 503
+    byorRelay.unreachable = true
+    let (svc, _) = try makeTwoRelayService(defaultRelay: FakeShareRelay(baseUrl: reportingDefaultUrl), byorRelay: byorRelay)
+
+    let report = try await svc.syncInbox()
+
+    #expect(report.refusingRelays == [reportingByorUrl: 503])
+    #expect(report.unreachableRelays.isEmpty)
 }
 
 @Test func listPendingRequestsKeepsTheRowsFromTheRelayThatAnsweredAndNamesTheOneThatDidNot() async throws {
@@ -890,6 +925,43 @@ private func makeTwoRelayService(defaultRelay: FakeShareRelay, byorRelay: FakeSh
 
     #expect(fanOut.items.isEmpty)
     #expect(fanOut.unreachableRelays == [reportingDefaultUrl, reportingByorUrl])
+    #expect(!fanOut.anyAnswered)
+}
+
+@Test func listPendingRequestsKeepsTheRowsFromTheRelayThatAnsweredAndNamesTheOneThatRefused() async throws {
+    let defaultRelay = FakeShareRelay(baseUrl: reportingDefaultUrl)
+    let byorRelay = FakeShareRelay(baseUrl: reportingByorUrl)
+    byorRelay.refusing = 500
+    let (svc, bob) = try makeTwoRelayService(defaultRelay: defaultRelay, byorRelay: byorRelay)
+    let id = UUID()
+    let askedOfBob = try makeSignedRow(
+        id: id, senderKey: aliceKeys.publicKey, recipientKey: bob.verifyKey!, signer: aliceKeys,
+        transactionType: .removal, ciphertext: nil
+    )
+    defaultRelay.pending = [askedOfBob]
+
+    let fanOut = try await svc.listPendingRequests()
+
+    #expect(fanOut.items.map(\.id) == [id])
+    #expect(fanOut.refusingRelays == [reportingByorUrl: 500])
+    #expect(fanOut.unreachableRelays.isEmpty)
+    #expect(fanOut.anyAnswered)
+}
+
+/// A refusing relay returned no rows either, so with the other one silent nobody can say whether
+/// anything is waiting — the Requests tab must not claim there is nothing.
+@Test func listPendingRequestsSaysNoRelayAnsweredWhenOneRefusedAndTheOtherWasSilent() async throws {
+    let defaultRelay = FakeShareRelay(baseUrl: reportingDefaultUrl)
+    let byorRelay = FakeShareRelay(baseUrl: reportingByorUrl)
+    defaultRelay.refusing = 401
+    byorRelay.unreachable = true
+    let (svc, _) = try makeTwoRelayService(defaultRelay: defaultRelay, byorRelay: byorRelay)
+
+    let fanOut = try await svc.listPendingRequests()
+
+    #expect(fanOut.items.isEmpty)
+    #expect(fanOut.refusingRelays == [reportingDefaultUrl: 401])
+    #expect(fanOut.unreachableRelays == [reportingByorUrl])
     #expect(!fanOut.anyAnswered)
 }
 
@@ -2004,6 +2076,18 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
 
     // Reported, not dropped — but the rotation still completes: an unreachable relay must not be
     // able to block someone rotating precisely because they think the old key is compromised.
+    #expect(!result.drainSucceeded)
+    #expect(bob.verifyKey! != oldVerifyKey)
+}
+
+@Test func regenerateIdentityReportsADrainThatARelayRefused() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, _, _, _, _, _) = try makeService(relay: relay)
+    let oldVerifyKey = bob.verifyKey!
+    relay.refusing = 401
+
+    let result = try await svc.regenerateIdentity()
+
     #expect(!result.drainSucceeded)
     #expect(bob.verifyKey! != oldVerifyKey)
 }

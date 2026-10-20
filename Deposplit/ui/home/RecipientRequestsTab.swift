@@ -24,6 +24,9 @@ struct RecipientRequestsTab: View {
             ForEach(viewModel.unreachableRelays, id: \.self) { relay in
                 SoftWarningRow(text: "Relay \(relayName(relay)) not reachable. Its requests cannot be shown right now.")
             }
+            ForEach(viewModel.refusingRelays, id: \.self) { relay in
+                SoftWarningRow(text: "Relay \(relayName(relay.baseUrl)) answered with an error (HTTP \(relay.statusCode)). Its requests cannot be shown right now.")
+            }
             if viewModel.isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

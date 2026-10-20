@@ -11,6 +11,8 @@ final class RequestsViewModel {
     /// returned, and each of these is named rather than turned into an error: `error` is kept for a
     /// failure of this device's own, which no relay line could explain.
     var unreachableRelays: [String] = []
+    /// Every relay that answered with an error, named apart from the unreachable ones, with the status.
+    var refusingRelays: [RefusingRelay] = []
     /// False when no relay answered, so an empty list says nothing about whether any request is
     /// waiting, and the tab must not claim there is none.
     var anyRelayAnswered = true
@@ -41,6 +43,7 @@ final class RequestsViewModel {
                 shareManagement.label(of: request).map { (request.id, $0) }
             })
             unreachableRelays = pending.unreachableRelays.sorted()
+            refusingRelays = RefusingRelay.list(pending.refusingRelays)
             anyRelayAnswered = pending.anyAnswered
             allContacts = (try? contactManagement.listContacts()) ?? []
             keyConflicts = (try? shareManagement.listKeyConflicts()) ?? []
