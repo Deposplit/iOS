@@ -123,7 +123,10 @@ final class DeposplitApiAdapter: ShareRelay {
 
         var request = URLRequest(url: URL(string: "\(baseUrl)\(path)")!)
         request.httpMethod = method
-        request.timeoutInterval = 30
+        // Android's connect timeout. URLSession has no separate one, so this also bounds a silent
+        // read, which is ample for the relay's few hundred bytes. A host that drops packets rather
+        // than refusing them, as a Mac in stealth mode does, costs this much per request.
+        request.timeoutInterval = 10
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue(verifyKey.base64URLEncoded, forHTTPHeaderField: "X-Deposplit-Verify-Key")
         request.setValue(nonce, forHTTPHeaderField: "X-Deposplit-Nonce")

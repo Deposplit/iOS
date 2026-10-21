@@ -133,6 +133,10 @@ final class HomeViewModel {
 
     private let shareManagement: any ShareManagement
     private let contactManagement: any ContactManagement
+    /// The refresh under way, so that a newer one can call it off. Left running, a refresh that
+    /// began while a relay was down ends after the newer one and puts back the warning the newer
+    /// one had just cleared.
+    private var refreshing: Task<Void, Never>?
 
     init(shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
         self.shareManagement = shareManagement
@@ -140,6 +144,13 @@ final class HomeViewModel {
     }
 
     func load() async {
+        refreshing?.cancel()
+        let refresh = Task { await self.refresh() }
+        refreshing = refresh
+        await refresh.value
+    }
+
+    private func refresh() async {
         isLoading = true
         error = nil
 
@@ -163,6 +174,8 @@ final class HomeViewModel {
             let inboxReport = try await shareManagement.syncInbox()
             let distributedReport = try await shareManagement.syncDistributed()
             let sent = try await shareManagement.listSentRequests()
+            // A superseded pass was cut short, so what it saw says nothing about the relays.
+            guard !Task.isCancelled else { return }
             let allRequests = sent.items
             let secrets = try shareManagement.listSecrets()
             let distributed = try shareManagement.listDistributed()
@@ -176,6 +189,7 @@ final class HomeViewModel {
                 .subtracting(refusingRelays.map(\.baseUrl)).sorted()
             syncFailed = false
         } catch {
+            guard !Task.isCancelled else { return }
             syncFailed = true
         }
     }

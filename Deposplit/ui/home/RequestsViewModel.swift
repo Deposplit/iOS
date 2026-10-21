@@ -25,6 +25,8 @@ final class RequestsViewModel {
     private var heldSecretIds: Set<UUID> = []
     /// Opened once per load rather than on every render: opening is a key agreement, not a lookup.
     private var labels: [UUID: String] = [:]
+    /// The refresh under way, so that a newer one can call it off, exactly as on the other two tabs.
+    private var refreshing: Task<Void, Never>?
 
     init(shareManagement: any ShareManagement, contactManagement: any ContactManagement) {
         self.shareManagement = shareManagement
@@ -32,11 +34,20 @@ final class RequestsViewModel {
     }
 
     func load() async {
+        refreshing?.cancel()
+        let refresh = Task { await self.refresh() }
+        refreshing = refresh
+        await refresh.value
+    }
+
+    private func refresh() async {
         isLoading = true
         error = nil
-        defer { isLoading = false }
         do {
             let pending = try await shareManagement.listPendingRequests()
+            // A superseded pass leaves everything, the spinner included, to the one that replaced it.
+            guard !Task.isCancelled else { return }
+            isLoading = false
             heldSecretIds = Set(((try? shareManagement.listHeld()) ?? []).map(\.secretId))
             pendingRequests = pending.items
             labels = Dictionary(uniqueKeysWithValues: pending.items.compactMap { request in
@@ -48,6 +59,8 @@ final class RequestsViewModel {
             allContacts = (try? contactManagement.listContacts()) ?? []
             keyConflicts = (try? shareManagement.listKeyConflicts()) ?? []
         } catch {
+            guard !Task.isCancelled else { return }
+            isLoading = false
             self.error = error.localizedDescription
         }
     }

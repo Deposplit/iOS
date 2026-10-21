@@ -200,6 +200,9 @@ private final class FakeShareRelay: ShareRelay {
     var deletedRequestIds: [UUID] = []
     var openedRequests: [OpenedRequest] = []
     var unreachable = false
+    /// How many times a sync pass has asked this relay for something: every listing and every
+    /// heartbeat push.
+    var asked = 0
     /// The status this relay answers its share-request listing with, when set. Only that listing
     /// refuses, so a test can pair it with `unreachable` to have one relay refuse one listing and
     /// go silent on the others.
@@ -235,6 +238,7 @@ private final class FakeShareRelay: ShareRelay {
     struct SimulatedOutage: Error {}
 
     func listShareRequests(role: Role, transactionType: ShareTransactionType?, state: ShareRequestState?) async throws -> [ShareRequest] {
+        asked += 1
         if let refusing { throw RelayError.refused(statusCode: refusing, body: "") }
         if unreachable { throw SimulatedOutage() }
         return pending.filter { (transactionType == nil || $0.transactionType == transactionType) && (state == nil || $0.state == state) }
@@ -271,6 +275,7 @@ private final class FakeShareRelay: ShareRelay {
     }
 
     func listRotations() async throws -> [KeyRotation] {
+        asked += 1
         if unreachable { throw SimulatedOutage() }
         return rotationsToReturn
     }
@@ -284,11 +289,13 @@ private final class FakeShareRelay: ShareRelay {
     var throwOnPushHeartbeat = false
 
     func pushHeartbeat(ownerKey: Data, secretIds: [UUID], optedOut: Bool, signature: Data) async throws {
+        asked += 1
         if throwOnPushHeartbeat { throw SimulatedOutage() }
         pushedHeartbeats.append(PushedHeartbeat(ownerKey: ownerKey, secretIds: secretIds, optedOut: optedOut, signature: signature))
     }
 
     func listHeartbeats() async throws -> [CustodyHeartbeat] {
+        asked += 1
         if unreachable { throw SimulatedOutage() }
         return heartbeatsToReturn
     }
@@ -812,8 +819,9 @@ private final class AliasingRelayResolver: ShareRelayResolver {
 private let reportingDefaultUrl = "http://default.example:9000"
 private let reportingByorUrl = "http://byor.example:9000"
 
-/// Bob, with alice on this device's default relay and charlie pinned to a second one.
-private func makeTwoRelayService(defaultRelay: FakeShareRelay, byorRelay: FakeShareRelay) throws -> (svc: ShareService, bob: IdentityService) {
+/// Bob, with alice on this device's default relay and charlie pinned to a second one. Keeping a
+/// share for charlie means a sync pass owes charlie a heartbeat.
+private func makeTwoRelayService(defaultRelay: FakeShareRelay, byorRelay: FakeShareRelay, keepingForCharlie: Bool = false) throws -> (svc: ShareService, bob: IdentityService) {
     let charlieKeys = TestKeyPair()
     let charlieContact = Contact(
         id: UUID(), pseudonym: "charlie", verifyKey: charlieKeys.publicKey,
@@ -821,6 +829,10 @@ private func makeTwoRelayService(defaultRelay: FakeShareRelay, byorRelay: FakeSh
         verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date(),
         relayBaseUrl: reportingByorUrl
     )
+    let shareRepo = FakeShareRepository()
+    if keepingForCharlie {
+        shareRepo.save(HeldShare(id: UUID(), secretId: UUID(), label: "x", contactId: charlieContact.id, senderPseudonym: "charlie", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3, mimeType: .default))
+    }
     let bobIdentity = IdentityService(identityStore: InMemoryIdentityStoreForShareServiceTest())
     try bobIdentity.register(pseudonym: "bob")
     let contactRepo = FakeContactRepository([aliceContact, charlieContact])
@@ -828,7 +840,7 @@ private func makeTwoRelayService(defaultRelay: FakeShareRelay, byorRelay: FakeSh
     let svc = ShareService(
         relayResolver: TwoRelayResolver(default: defaultRelay, byorUrl: reportingByorUrl, byor: byorRelay),
         encryption: NoOpShareEncryption(),
-        shareRepository: FakeShareRepository(),
+        shareRepository: shareRepo,
         shareMetadataRepository: FakeShareMetadataRepository(),
         secretRepository: FakeSecretRepository(),
         contactRepository: contactRepo,
@@ -851,6 +863,38 @@ private func makeTwoRelayService(defaultRelay: FakeShareRelay, byorRelay: FakeSh
 
     #expect(try await svc.syncInbox().unreachableRelays == [reportingByorUrl])
     #expect(try await svc.syncDistributed().unreachableRelays == [reportingByorUrl])
+}
+
+/// A relay that has gone silent is asked nothing more in the same pass, not even for the heartbeat
+/// it is owed. Each ask would wait out the same timeout, so a pass that kept asking would hold the
+/// screen up once per listing before it could say the relay is down. The next pass asks again.
+@Test func eachSyncPassAsksASilentRelayOnceAndStillNamesIt() async throws {
+    let byorRelay = FakeShareRelay(baseUrl: reportingByorUrl)
+    byorRelay.unreachable = true
+    let (svc, _) = try makeTwoRelayService(defaultRelay: FakeShareRelay(baseUrl: reportingDefaultUrl), byorRelay: byorRelay, keepingForCharlie: true)
+
+    #expect(try await svc.syncInbox().unreachableRelays == [reportingByorUrl])
+    #expect(byorRelay.asked == 1)
+    #expect(try await svc.syncDistributed().unreachableRelays == [reportingByorUrl])
+    #expect(byorRelay.asked == 2)
+}
+
+/// Only the silent relay is passed over: the one that answers is asked everything it always was.
+@Test func aSilentRelayCostsTheOtherRelayNoneOfItsListings() async throws {
+    func askedOfDefault(whileByorIsUnreachable unreachable: Bool) async throws -> Int {
+        let defaultRelay = FakeShareRelay(baseUrl: reportingDefaultUrl)
+        let byorRelay = FakeShareRelay(baseUrl: reportingByorUrl)
+        byorRelay.unreachable = unreachable
+        let (svc, _) = try makeTwoRelayService(defaultRelay: defaultRelay, byorRelay: byorRelay)
+        try await svc.syncInbox()
+        try await svc.syncDistributed()
+        return defaultRelay.asked
+    }
+
+    let whileSilent = try await askedOfDefault(whileByorIsUnreachable: true)
+    let whileAnswering = try await askedOfDefault(whileByorIsUnreachable: false)
+    #expect(whileSilent > 0)
+    #expect(whileSilent == whileAnswering)
 }
 
 @Test func bothSyncPassesReportNothingWhenEveryRelayAnswers() async throws {

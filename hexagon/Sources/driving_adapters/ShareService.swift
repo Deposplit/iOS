@@ -122,7 +122,13 @@ public final class ShareService: ShareManagement {
     /// `failures` by its base URL, which is how a sync pass or a fan-out read reports it. Only
     /// listings go through here: whether a relay answers is a question about the relay, whereas a
     /// failure acting on one row is about that row.
+    ///
+    /// A relay that has already gone silent in this pass is not asked again. Every further ask would
+    /// wait out the same timeout and learn nothing new, and a pass makes several, so a relay that is
+    /// down would otherwise hold the whole pass up for one timeout per listing. One that refused is
+    /// still asked: it answers at once, and it is there.
     private func fromRelay<T>(_ relay: any ShareRelay, _ failures: inout RelayFailures, _ listing: () async throws -> [T]) async -> [T] {
+        guard !failures.unreachable.contains(relay.baseUrl) else { return [] }
         do {
             return try await listing()
         } catch RelayError.refused(let statusCode, _) {
@@ -146,10 +152,14 @@ public final class ShareService: ShareManagement {
     /// This is not only about a list showing an entry twice. Reconstruct would collect each
     /// approved share twice, decrypt both copies, and hand the combiner duplicate x-coordinates,
     /// which it rightly refuses.
-    private func rowsAcrossRelays(role: Role, transactionType: ShareTransactionType? = nil, state: ShareRequestState? = nil) async -> RelayFanOut<(relay: any ShareRelay, request: ShareRequest)> {
+    ///
+    /// `silent` names the relays a calling sync pass has already heard nothing from. They are not
+    /// asked again, and are reported unreachable all the same.
+    private func rowsAcrossRelays(role: Role, transactionType: ShareTransactionType? = nil, state: ShareRequestState? = nil, silent: Set<String> = []) async -> RelayFanOut<(relay: any ShareRelay, request: ShareRequest)> {
         var rows: [(relay: any ShareRelay, request: ShareRequest)] = []
         var seen = Set<UUID>()
         var failures = RelayFailures()
+        silent.forEach { failures.noteSilent($0) }
         let relays = allRelays()
         for relay in relays {
             let found = await fromRelay(relay, &failures) {
@@ -332,7 +342,7 @@ public final class ShareService: ShareManagement {
         let metas = (try? shareMetadataRepository.getAll()) ?? []
         if !metas.isEmpty {
             let secretIds = Set(metas.map(\.secretId))
-            let fanOut = await rowsAcrossRelays(role: .sender, transactionType: .removal)
+            let fanOut = await rowsAcrossRelays(role: .sender, transactionType: .removal, silent: failures.unreachable)
             failures.merge(fanOut)
             let removalRequests = fanOut.items
                 .filter { secretIds.contains($0.request.secretId) }
@@ -581,7 +591,7 @@ public final class ShareService: ShareManagement {
         }
         await processRecoveryMetadata(&failures)
         await processRotations(&failures)
-        await emitHeartbeats()
+        await emitHeartbeats(failures)
         return failures.report
     }
 
@@ -591,12 +601,15 @@ public final class ShareService: ShareManagement {
     /// is independently best-effort so one unreachable BYOR relay doesn't block heartbeating
     /// other senders. `lastHeartbeatSentAt` only advances on a *successful* push, so a transient
     /// failure retries on the very next poll rather than waiting out the full interval again.
-    private func emitHeartbeats() async {
+    /// A sender whose relay has gone silent in this pass is not pushed to at all, for the reason
+    /// `fromRelay` gives, and is retried on the next poll the same way.
+    private func emitHeartbeats(_ failures: RelayFailures) async {
         let held = shareRepository.getAll()
         let senderIds = Set(held.map(\.contactId))
         let now = Date()
         for contactId in senderIds {
-            guard let contact = contactRepository.getById(contactId) else { continue }
+            guard let contact = contactRepository.getById(contactId),
+                  !failures.unreachable.contains(relay(for: contact).baseUrl) else { continue }
             let dueSince = contact.lastHeartbeatSentAt.map { now.timeIntervalSince($0) } ?? .infinity
             guard dueSince >= CustodyHeartbeatTuning.emissionInterval else { continue }
             let secretIds = contact.heartbeatEmissionOptedOut ? [] : held.filter { $0.contactId == contactId }.map(\.secretId)
