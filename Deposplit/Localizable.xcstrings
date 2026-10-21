@@ -1122,12 +1122,12 @@
         }
       }
     },
-    "Keeping safe" : {
+    "Their secret Shares" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verwahrt"
+            "value" : "Ihre secret Shares"
           }
         }
       }
@@ -2086,12 +2086,32 @@
         }
       }
     },
-    "Split & shared" : {
+    "Split & share a secret" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aufgeteilt & verteilt"
+            "value" : "Geheimnis aufteilen & verteilen"
+          }
+        }
+      }
+    },
+    "My shared Secrets" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meine shared Secrets"
+          }
+        }
+      }
+    },
+    "Tab" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tab"
           }
         }
       }

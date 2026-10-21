@@ -101,8 +101,9 @@ placed under `Deposplit/` is compiled automatically.** Adding an adapter or a vi
   `@MainActor` by default. Async network calls suspend rather than block, and the CPU-bound
   work here (QR generation, secret sharing) is fast enough to stay on the main actor.
 - **The accent colour is the launcher icon's teal**, in `Assets.xcassets/AccentColor.colorset`:
-  `#1F7C86` for Any, `#00929D` for Dark. Both are darker than the icon's `#3EB2BE` on purpose,
-  because SwiftUI puts white labels on tinted buttons and white on `#3EB2BE` is 2.5:1. The dark
+  `#006971` for Any, `#00929D` for Dark. Both are darker than the icon's `#3EB2BE` on purpose,
+  because SwiftUI puts white labels on tinted buttons and white on `#3EB2BE` is 2.5:1. The light
+  value is Android's Material `primary`, so both apps show the same teal, at 6.4:1. The dark
   value is the lightest teal whose white label still matches dark `systemBlue`, and it stays
   above 4.5:1 as tinted text on `#1C1C1E`. Where Android draws in `colorScheme.primary`,
   draw in `Color.accentColor`, never `.blue`. Red, orange, yellow and green stay system colours,

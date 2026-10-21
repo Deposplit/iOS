@@ -113,7 +113,7 @@ final class HomeViewModel {
 
     var groupedSecrets: [SecretGroup] = []
     var heldShares: [HeldShare] = []
-    /// Kept here rather than in the Keeping safe tab, which leaves the hierarchy whenever a reload
+    /// Kept here rather than in the Their secret Shares tab, which leaves the hierarchy whenever a reload
     /// shows its spinner and would forget the choice every time.
     var heldSortOrder: HeldSortOrder = .date
     var isLoading = false

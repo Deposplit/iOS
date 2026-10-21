@@ -59,8 +59,21 @@ struct HomeView: View {
                     .background(.bar)
                     Divider()
                 }
+                // A segmented control rather than a TabView, because the system tab bar is only as
+                // wide as its items and on iPad shares the navigation bar's row with the toolbar.
+                // This one spans the screen, where Android's tab row does.
+                Picker("Tab", selection: $selectedTab) {
+                    Text("My shared Secrets").tag(0)
+                    Text("Their secret Shares").tag(1)
+                    Text("Requests").tag(2)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .padding(.horizontal)
+                .padding(.vertical, 8)
                 // The Requests tab names its own unreachable relays, in words about requests, so these
-                // two views of local data are the ones that say what they are showing instead.
+                // two views of local data are the ones that say what they are showing instead. Both
+                // sit below the selector, so a warning stays where it was when the tab changes.
                 if selectedTab != 2 {
                     ForEach(homeViewModel.unreachableRelays, id: \.self) { relay in
                         SoftWarningRow(text: "Relay \(relayName(relay)) not reachable. Showing the last known state.")
@@ -72,58 +85,50 @@ struct HomeView: View {
                         SoftWarningRow(text: "Could not refresh. Showing the last known state.")
                     }
                 }
-                TabView(selection: $selectedTab) {
-                    Tab("Split & shared", systemImage: "photo.stack.fill", value: 0) {
-                        distributedContent
-                    }
-                    Tab("Keeping safe", systemImage: "puzzlepiece.fill", value: 1) {
-                        heldContent
-                    }
-                    Tab("Requests", systemImage: "checklist", value: 2) {
-                        RecipientRequestsTab(viewModel: requestsViewModel)
+                Group {
+                    switch selectedTab {
+                    case 0: distributedContent
+                    case 1: heldContent
+                    default: RecipientRequestsTab(viewModel: requestsViewModel)
                     }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .navigationTitle(tabTitle)
+            // The grey a List draws behind itself, under everything, so the selector's strip and a tab
+            // with nothing to list yet look the same as one that has a list.
+            .background(Color(.systemGroupedBackground))
+            // No title: the segmented control already names the tab, and the app's name would say
+            // nothing about where somebody is. Everything in the bar sits on the trailing edge, in
+            // Android's order, with Refresh apart because its tint carries the relay warning.
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
                     Button {
                         showContacts = true
                     } label: {
                         Image(systemName: "person.2")
                     }
-                }
-                ToolbarItem(placement: .navigationBarLeading) {
                     Button {
                         showQrDisplay = true
                     } label: {
                         Image(systemName: "qrcode")
                     }
-                }
-                ToolbarItem(placement: .navigationBarLeading) {
                     Button {
                         showSettings = true
                     } label: {
                         Image(systemName: "gearshape")
                     }
                 }
-                ToolbarItem(placement: .primaryAction) {
-                    HStack {
-                        Button {
-                            showDeposit = true
-                        } label: {
-                            Image(systemName: "envelope.and.arrow.3.down")
+                ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task {
+                            await reload()
                         }
-                        Button {
-                            Task {
-                                await reload()
-                            }
-                        } label: {
-                            Image(systemName: "arrow.clockwise")
-                        }
-                        .tint(showsWarning ? .red : .accentColor)
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
                     }
+                    .tint(showsWarning ? .red : nil)
                 }
             }
             .navigationDestination(item: $selectedSecret) { secret in
@@ -237,14 +242,6 @@ struct HomeView: View {
         allContacts = (try? contactManagement.listContacts()) ?? []
     }
 
-    private var tabTitle: LocalizedStringKey {
-        switch selectedTab {
-        case 0: "Split & shared"
-        case 1: "Keeping safe"
-        default: "Requests"
-        }
-    }
-
     private var distributedContent: some View {
         Group {
             if homeViewModel.isLoading {
@@ -258,6 +255,19 @@ struct HomeView: View {
                     onOpenSecret: { selectedSecret = $0 }
                 )
             }
+        }
+        // A new secret starts from the list of secrets, in the same place whether that list is empty,
+        // full or still loading, so the way in never moves.
+        .safeAreaInset(edge: .bottom) {
+            Button {
+                showDeposit = true
+            } label: {
+                Text("Split & share a secret")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .padding()
         }
     }
 
