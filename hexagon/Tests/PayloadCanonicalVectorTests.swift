@@ -93,6 +93,30 @@ private func base64URLEncode(_ data: Data) -> String {
 }
 
 // ---------------------------------------------------------------------------
+// forOpen for a withdrawal — every optional field absent, so four trailing empty lines.
+// ---------------------------------------------------------------------------
+
+private let expectedWithdrawalSignatureBase64Url = "1WwboKOifAfmm5c851r1hX3CGjjPWidRM5yox7K5MgGx1_XKgMV23TXDBTJIud4Ob2fMLziTrqih3hsEMDyKAQ"
+
+private func withdrawalCanonical() -> Data {
+    PayloadCanonical.forOpen(
+        secretId: fixtureSecretId, transactionType: .withdrawal, recipientKey: fixtureRecipientKey,
+        sealedLabel: fixtureSealedLabel, secretCreatedAt: fixtureSecretCreatedAt, ciphertext: nil
+    )
+}
+
+@Test func forOpenForAWithdrawalProducesTheFixedCanonicalBytes() {
+    let expected = "11111111-1111-1111-1111-111111111111\nwithdrawal\nAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI\nBgcICQo=\n1767225600000\n\n\n\n"
+    #expect(String(data: withdrawalCanonical(), encoding: .utf8) == expected)
+}
+
+@Test func theFixedWithdrawalSignatureVerifiesAgainstTheFixedPublicKey() throws {
+    let publicKey = try Curve25519.Signing.PublicKey(rawRepresentation: base64URLDecode(expectedPublicKeyBase64Url))
+    let signature = base64URLDecode(expectedWithdrawalSignatureBase64Url)
+    #expect(publicKey.isValidSignature(signature, for: withdrawalCanonical()))
+}
+
+// ---------------------------------------------------------------------------
 // forRotation — same cross-platform-interop purpose as forOpen above, using the
 // same fixed private key seed. Identical fixture checked into
 // deposplit.com/hexagons/relay/src/test/scala/value_objects/PayloadCanonicalVectorTests.scala
@@ -134,16 +158,18 @@ private let fixtureHeartbeatSecretIds = [
     UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
     UUID(uuidString: "22222222-2222-2222-2222-222222222222")!,
 ]
-private let expectedHeartbeatSignatureBase64Url = "w6fmGn4t7y2RSNakPBzi57H40u5kJI6CZAhEGdzLBOwZd__jabsge2tEmIpczMqEd3ODpNUJ72Ww2KEe8LYQCw"
+// 2026-01-02T03:04:05.678Z — appended as a 4th line, with milliseconds that are not zero.
+private let fixtureHeartbeatEmittedAt = Date(timeIntervalSince1970: 1767323045.678)
+private let expectedHeartbeatSignatureBase64Url = "KP2laDBXpS-Bp_3MzghlBsGjKKxWetsdDnzgbygTNu-A7-g9Dl4vvrsy3hnuOccsGHMTdxJtbGWKwDWuJweXBw"
 
 @Test func forHeartbeatProducesTheFixedCanonicalBytesSortedRegardlessOfInputOrder() {
-    let canon = PayloadCanonical.forHeartbeat(ownerKey: fixtureHeartbeatOwnerKey, secretIds: fixtureHeartbeatSecretIds, optedOut: false)
-    let expected = "BgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgY\n11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222,33333333-3333-3333-3333-333333333333\nfalse"
+    let canon = PayloadCanonical.forHeartbeat(ownerKey: fixtureHeartbeatOwnerKey, secretIds: fixtureHeartbeatSecretIds, optedOut: false, emittedAt: fixtureHeartbeatEmittedAt)
+    let expected = "BgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgY\n11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222,33333333-3333-3333-3333-333333333333\nfalse\n1767323045678"
     #expect(String(data: canon, encoding: .utf8) == expected)
 }
 
 @Test func theFixedHeartbeatSignatureVerifiesAgainstTheFixedPublicKey() throws {
-    let canon = PayloadCanonical.forHeartbeat(ownerKey: fixtureHeartbeatOwnerKey, secretIds: fixtureHeartbeatSecretIds, optedOut: false)
+    let canon = PayloadCanonical.forHeartbeat(ownerKey: fixtureHeartbeatOwnerKey, secretIds: fixtureHeartbeatSecretIds, optedOut: false, emittedAt: fixtureHeartbeatEmittedAt)
     let publicKey = try Curve25519.Signing.PublicKey(rawRepresentation: base64URLDecode(expectedPublicKeyBase64Url))
     let signature = base64URLDecode(expectedHeartbeatSignatureBase64Url)
     #expect(publicKey.isValidSignature(signature, for: canon))

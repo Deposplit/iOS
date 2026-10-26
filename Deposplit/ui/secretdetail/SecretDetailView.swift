@@ -246,7 +246,6 @@ private extension ShareRequestState {
         case .pending: "Pending"
         case .approved: "Approved"
         case .denied: "Denied"
-        case .withdrawn: "Withdrawn"
         }
     }
 }

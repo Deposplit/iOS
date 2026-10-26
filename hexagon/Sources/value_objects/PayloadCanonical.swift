@@ -123,11 +123,16 @@ public enum PayloadCanonical {
     /// before joining so the signed bytes are independent of list-construction order on either
     /// side. The same construction covers the opt-out notice (`optedOut = true`, `secretIds`
     /// typically empty) — mechanically the same signed row, just a different meaning to the reader.
-    public static func forHeartbeat(ownerKey: Data, secretIds: [UUID], optedOut: Bool) -> Data {
+    ///
+    /// `emittedAt` is appended at the end, as epoch milliseconds like `secretCreatedAt` — and
+    /// travels as `wireInstant` for the same reason. Without it the signature said *what* a holder
+    /// guards but not *when*, so a relay could re-serve an old heartbeat as a new one.
+    public static func forHeartbeat(ownerKey: Data, secretIds: [UUID], optedOut: Bool, emittedAt: Date) -> Data {
         let parts = [
             ownerKey.base64URLEncodedForSigning,
             secretIds.map { $0.uuidString.lowercased() }.sorted().joined(separator: ","),
             optedOut ? "true" : "false",
+            String(epochMilliseconds(emittedAt)),
         ]
         return Data(parts.joined(separator: "\n").utf8)
     }

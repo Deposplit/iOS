@@ -185,6 +185,9 @@ private extension ShareTransactionType {
         // Never surfaced here — inventory is a self-approved push, consumed silently by
         // syncInbox's processRecoveryMetadata, not routed through listPendingRequests.
         case .inventory: "Inventory"
+        // Never surfaced here either — a withdrawal is a self-approved push too, consumed silently
+        // by syncDistributed's processWithdrawals.
+        case .withdrawal: "Withdrawal"
         }
     }
 }

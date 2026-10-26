@@ -2442,12 +2442,12 @@
         }
       }
     },
-    "Withdrawn" : {
+    "Withdrawal" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zurückgezogen"
+            "value" : "Rückzug"
           }
         }
       }

@@ -7,19 +7,19 @@ public enum Role: String {
 /// The kind of thing that happened (or is being asked to happen) to a share, phrased as a
 /// neutral transaction noun rather than either party's verb. Naming from a single named actor's
 /// point of view (Alice's, or Bob's) breaks down because the actor genuinely alternates — Alice
-/// always opens deposit/retrieval/removal, but the *holder* opens inventory (holder → owner).
+/// always opens deposit/retrieval/removal, but the *holder* opens inventory and withdrawal
+/// (holder → owner).
 public enum ShareTransactionType: String {
     case deposit, retrieval, removal
     // A holder-initiated metadata-only push during identity recovery — not consent-gated, unlike
     // the other three.
     case inventory
+    // The holder's signed notice that they no longer hold a share — a push like inventory.
+    case withdrawal
 }
 
 public enum ShareRequestState: String {
     case pending, approved, denied
-    /// Deposit-only: the recipient unilaterally stopped holding the share. A best-effort
-    /// tombstone, not authoritative — see `ShareRelay.withdrawShareRequests`.
-    case withdrawn
 }
 
 /// Per-share record on the sender's device — one per holder of a `Secret`. Normalized to
@@ -61,7 +61,7 @@ public struct ShareRequest: Identifiable, Equatable {
     public let respondedAt: Date?
     public let ciphertext: Data?
     // SSS threshold/share-count and the sender's declared media type — all populated for
-    // deposit/inventory, nil for retrieval/removal.
+    // deposit/inventory, nil for retrieval/removal/withdrawal.
     public let k: Int?
     public let n: Int?
     public let mimeType: MimeType?

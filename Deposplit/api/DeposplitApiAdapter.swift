@@ -60,15 +60,6 @@ final class DeposplitApiAdapter: ShareRelay {
         _ = try await execute("DELETE", path: "/share-requests/\(requestId)")
     }
 
-    func withdrawShareRequests(senderKey: Data?, secretId: UUID?) async throws {
-        var query = ""
-        var parts: [String] = []
-        if let key = senderKey { parts.append("senderKey=\(key.base64URLEncoded)") }
-        if let id = secretId { parts.append("secretId=\(id)") }
-        if !parts.isEmpty { query = "?" + parts.joined(separator: "&") }
-        _ = try await execute("POST", path: "/share-requests/withdraw\(query)")
-    }
-
     func pushRotation(recipientKey: Data, newVerifyKey: Data, newEncKey: Data, newCipherSuite: CipherSuite, signature: Data) async throws {
         let body = PushRotationJSON(
             recipientKey: recipientKey.base64URLEncoded,
@@ -89,11 +80,13 @@ final class DeposplitApiAdapter: ShareRelay {
         _ = try await execute("DELETE", path: "/key-rotations/\(id)")
     }
 
-    func pushHeartbeat(ownerKey: Data, secretIds: [UUID], optedOut: Bool, signature: Data) async throws {
+    func pushHeartbeat(ownerKey: Data, secretIds: [UUID], optedOut: Bool, emittedAt: Date, signature: Data) async throws {
         let body = PushHeartbeatJSON(
             ownerKey: ownerKey.base64URLEncoded,
             secretIds: secretIds.map { $0.uuidString },
             optedOut: optedOut,
+            // Exactly the milliseconds forHeartbeat signed — see PayloadCanonical.wireInstant.
+            emittedAt: PayloadCanonical.wireInstant(emittedAt),
             signature: signature.base64URLEncoded
         )
         _ = try await execute("POST", path: "/custody-heartbeats", body: body)
@@ -102,6 +95,10 @@ final class DeposplitApiAdapter: ShareRelay {
     func listHeartbeats() async throws -> [CustodyHeartbeat] {
         let data = try await execute("GET", path: "/custody-heartbeats")
         return try JSONDecoder().decode([CustodyHeartbeatJSON].self, from: data).map { $0.toDomain() }
+    }
+
+    func deleteHeartbeat(id: UUID) async throws {
+        _ = try await execute("DELETE", path: "/custody-heartbeats/\(id)")
     }
 
     // MARK: - HTTP
@@ -251,17 +248,20 @@ final class DeposplitApiAdapter: ShareRelay {
         let ownerKey: String
         let secretIds: [String]
         let optedOut: Bool
+        let emittedAt: String
         let signature: String
     }
 
+    // The relay's own receipt time, createdAt, is left out on purpose: it is unsigned, and
+    // custody is dated by the holder's signed emittedAt alone.
     private struct CustodyHeartbeatJSON: Decodable {
         let id: String
         let holderKey: String
         let ownerKey: String
         let secretIds: [String]
         let optedOut: Bool
+        let emittedAt: String
         let signature: String
-        let createdAt: String
 
         func toDomain() -> CustodyHeartbeat {
             CustodyHeartbeat(
@@ -270,8 +270,8 @@ final class DeposplitApiAdapter: ShareRelay {
                 ownerKey: Data(base64URLEncoded: ownerKey) ?? Data(),
                 secretIds: secretIds.compactMap { UUID(uuidString: $0) },
                 optedOut: optedOut,
-                signature: Data(base64URLEncoded: signature) ?? Data(),
-                createdAt: parseISO8601(createdAt)
+                emittedAt: parseISO8601(emittedAt),
+                signature: Data(base64URLEncoded: signature) ?? Data()
             )
         }
     }

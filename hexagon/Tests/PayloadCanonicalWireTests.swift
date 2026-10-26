@@ -47,3 +47,19 @@ private func relayView(of wire: String) throws -> Date {
         #expect(asSigned.dropFirst(36) == asTheRelayRebuildsIt.dropFirst(36))
     }
 }
+
+// A heartbeat's emittedAt makes the same trip, and back again: the owner rebuilds the signed bytes
+// from the time the relay returns, so the wire form has to carry what was signed both ways.
+@Test func aHeartbeatStampedNowSurvivesTheRoundTripTheRelayPerformsOnIt() throws {
+    let ownerKey = Data(repeating: 0x06, count: 32)
+    let secretIds = [UUID()]
+    for _ in 0..<200 {
+        let emittedAt = Date()
+        let asSigned = PayloadCanonical.forHeartbeat(ownerKey: ownerKey, secretIds: secretIds, optedOut: false, emittedAt: emittedAt)
+        let asRebuilt = PayloadCanonical.forHeartbeat(
+            ownerKey: ownerKey, secretIds: secretIds, optedOut: false,
+            emittedAt: try relayView(of: PayloadCanonical.wireInstant(emittedAt))
+        )
+        #expect(asSigned == asRebuilt)
+    }
+}

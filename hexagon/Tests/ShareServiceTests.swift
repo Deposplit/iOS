@@ -213,20 +213,24 @@ private final class FakeShareRelay: ShareRelay {
         self.baseUrl = baseUrl
     }
 
-    // Rotation push and withdraw tombstone
-    struct WithdrawCall: Equatable { let senderKey: Data?; let secretId: UUID? }
-    var withdrawCalls: [WithdrawCall] = []
+    /// The signature each opened request carried, by position in `openedRequests` — a withdrawal
+    /// is checked by it.
+    var openedSignatures: [Data] = []
+    var throwOnOpen = false
+
+    // Rotation push
     struct PushedRotation: Equatable { let recipientKey: Data; let newVerifyKey: Data; let newEncKey: Data; let newCipherSuite: CipherSuite; let signature: Data }
     var pushedRotations: [PushedRotation] = []
     var rotationsToReturn: [KeyRotation] = []
     var deletedRotationIds: [UUID] = []
-    var throwOnWithdraw = false
     var throwOnPushRotation = false
 
     func openShareRequest(secretId: UUID, recipientKey: Data, sealedLabel: Data, secretCreatedAt: Date, transactionType: ShareTransactionType, ciphertext: Data?, k: Int?, n: Int?, mimeType: MimeType?, senderSignature: Data) async throws -> ShareRequest {
+        if throwOnOpen { throw SimulatedOutage() }
         openedRequests.append(OpenedRequest(secretId: secretId, recipientKey: recipientKey, sealedLabel: sealedLabel, transactionType: transactionType, k: k, n: n, mimeType: mimeType))
+        openedSignatures.append(senderSignature)
         let now = Date()
-        let selfApproved = transactionType == .inventory
+        let selfApproved = transactionType == .inventory || transactionType == .withdrawal
         return ShareRequest(
             id: UUID(), secretId: secretId, senderKey: Data(), recipientKey: recipientKey, sealedLabel: sealedLabel,
             secretCreatedAt: secretCreatedAt, transactionType: transactionType, state: selfApproved ? .approved : .pending,
@@ -264,11 +268,6 @@ private final class FakeShareRelay: ShareRelay {
 
     func deleteShareRequest(requestId: UUID) async throws { deletedRequestIds.append(requestId) }
 
-    func withdrawShareRequests(senderKey: Data?, secretId: UUID?) async throws {
-        withdrawCalls.append(WithdrawCall(senderKey: senderKey, secretId: secretId))
-        if throwOnWithdraw { throw SimulatedOutage() }
-    }
-
     func pushRotation(recipientKey: Data, newVerifyKey: Data, newEncKey: Data, newCipherSuite: CipherSuite, signature: Data) async throws {
         if throwOnPushRotation { throw SimulatedOutage() }
         pushedRotations.append(PushedRotation(recipientKey: recipientKey, newVerifyKey: newVerifyKey, newEncKey: newEncKey, newCipherSuite: newCipherSuite, signature: signature))
@@ -283,15 +282,16 @@ private final class FakeShareRelay: ShareRelay {
     func deleteRotation(id: UUID) async throws { deletedRotationIds.append(id) }
 
     // Custodial heartbeat
-    struct PushedHeartbeat: Equatable { let ownerKey: Data; let secretIds: [UUID]; let optedOut: Bool; let signature: Data }
+    struct PushedHeartbeat: Equatable { let ownerKey: Data; let secretIds: [UUID]; let optedOut: Bool; let emittedAt: Date; let signature: Data }
     var pushedHeartbeats: [PushedHeartbeat] = []
     var heartbeatsToReturn: [CustodyHeartbeat] = []
+    var deletedHeartbeatIds: [UUID] = []
     var throwOnPushHeartbeat = false
 
-    func pushHeartbeat(ownerKey: Data, secretIds: [UUID], optedOut: Bool, signature: Data) async throws {
+    func pushHeartbeat(ownerKey: Data, secretIds: [UUID], optedOut: Bool, emittedAt: Date, signature: Data) async throws {
         asked += 1
         if throwOnPushHeartbeat { throw SimulatedOutage() }
-        pushedHeartbeats.append(PushedHeartbeat(ownerKey: ownerKey, secretIds: secretIds, optedOut: optedOut, signature: signature))
+        pushedHeartbeats.append(PushedHeartbeat(ownerKey: ownerKey, secretIds: secretIds, optedOut: optedOut, emittedAt: emittedAt, signature: signature))
     }
 
     func listHeartbeats() async throws -> [CustodyHeartbeat] {
@@ -299,6 +299,8 @@ private final class FakeShareRelay: ShareRelay {
         if unreachable { throw SimulatedOutage() }
         return heartbeatsToReturn
     }
+
+    func deleteHeartbeat(id: UUID) async throws { deletedHeartbeatIds.append(id) }
 }
 
 /// Resolves to the same relay regardless of the requested URL — these tests exercise signature
@@ -1236,20 +1238,27 @@ private func makeSignedRotation(
     #expect(relay.deletedRotationIds.isEmpty)
 }
 
-@Test func deleteHeldShareWithdrawsFromTheSendersRelayScopedBySecretIdThenDeletesLocally() async throws {
+@Test func deleteHeldSharePushesASignedWithdrawalToTheOwnerThenDeletesLocally() async throws {
     let relay = FakeShareRelay()
-    let (svc, _, shareRepo, _, _, _, _) = try makeService(relay: relay)
+    let (svc, bob, shareRepo, _, _, _, _) = try makeService(relay: relay)
     let secretId = UUID()
     let shareId = UUID()
-    shareRepo.save(HeldShare(id: shareId, secretId: secretId, label: "x", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3, mimeType: .default))
+    let createdAt = Date()
+    shareRepo.save(HeldShare(id: shareId, secretId: secretId, label: "x", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: createdAt, pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3, mimeType: .default))
 
     try await svc.deleteHeldShare(shareId: shareId)
 
-    #expect(relay.withdrawCalls == [FakeShareRelay.WithdrawCall(senderKey: nil, secretId: secretId)])
+    #expect(relay.openedRequests.map(\.transactionType) == [.withdrawal])
+    let opened = try #require(relay.openedRequests.first)
+    #expect(opened.secretId == secretId)
+    #expect(opened.recipientKey == aliceContact.verifyKey)
+    #expect(opened.k == nil && opened.n == nil && opened.mimeType == nil)
+    let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: .withdrawal, recipientKey: aliceContact.verifyKey, sealedLabel: opened.sealedLabel, secretCreatedAt: createdAt, ciphertext: nil)
+    #expect(bob.verify(canon, signature: relay.openedSignatures[0], publicKey: bob.verifyKey!))
     #expect(shareRepo.getAll().isEmpty)
 }
 
-@Test func deleteAllHeldFromSenderWithdrawsBySenderKeyThenDeletesAllLocally() async throws {
+@Test func deleteAllHeldFromSenderPushesOneWithdrawalPerShareThenDeletesAllLocally() async throws {
     let relay = FakeShareRelay()
     let (svc, _, shareRepo, _, _, _, _) = try makeService(relay: relay)
     shareRepo.save(HeldShare(id: UUID(), secretId: UUID(), label: "x", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3, mimeType: .default))
@@ -1257,13 +1266,14 @@ private func makeSignedRotation(
 
     try await svc.deleteAllHeldFromSender(contactId: aliceContact.id)
 
-    #expect(relay.withdrawCalls == [FakeShareRelay.WithdrawCall(senderKey: aliceContact.verifyKey, secretId: nil)])
+    #expect(relay.openedRequests.map(\.transactionType) == [.withdrawal, .withdrawal])
+    #expect(relay.openedRequests.allSatisfy { $0.recipientKey == aliceContact.verifyKey })
     #expect(shareRepo.getAll().isEmpty)
 }
 
-@Test func deleteHeldShareStillDeletesLocallyEvenIfTheWithdrawCallFails() async throws {
+@Test func deleteHeldShareStillDeletesLocallyEvenIfTheWithdrawalCannotBePushed() async throws {
     let relay = FakeShareRelay()
-    relay.throwOnWithdraw = true
+    relay.throwOnOpen = true
     let (svc, _, shareRepo, _, _, _, _) = try makeService(relay: relay)
     let shareId = UUID()
     shareRepo.save(HeldShare(id: shareId, secretId: UUID(), label: "x", contactId: aliceContact.id, senderPseudonym: "alice", createdAt: Date(), pickedUpAt: Date(), plaintextShare: Data([1]), k: 2, n: 3, mimeType: .default))
@@ -1284,13 +1294,38 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
     )
 }
 
-@Test func syncDistributedRemovesTheLocalPointerAndDeletesTheRelayRowForAWithdrawnDeposit() async throws {
+@Test func syncDistributedDeletesAnApprovedDepositOnceItHasSeenIt() async throws {
     let relay = FakeShareRelay()
     let (svc, _, _, _, metaRepo, _, _) = try makeService(relay: relay)
     let depositId = UUID()
     let secretId = UUID()
     try metaRepo.save(ShareMetadata(id: depositId, secretId: secretId, contactId: aliceContact.id))
-    relay.pending = [makeDepositRow(id: depositId, secretId: secretId, recipientKey: aliceContact.verifyKey, state: .withdrawn)]
+    relay.pending = [makeDepositRow(id: depositId, secretId: secretId, recipientKey: aliceContact.verifyKey, state: .approved)]
+
+    try await svc.syncDistributed()
+
+    #expect(try metaRepo.getAll().map(\.id) == [depositId])
+    #expect(relay.deletedRequestIds == [depositId])
+}
+
+@Test func syncDistributedUpsertsAPendingDepositAndLeavesItOnTheRelayStillInTransit() async throws {
+    let relay = FakeShareRelay()
+    let (svc, _, _, _, metaRepo, _, _) = try makeService(relay: relay)
+    let depositId = UUID()
+    let secretId = UUID()
+    relay.pending = [makeDepositRow(id: depositId, secretId: secretId, recipientKey: aliceContact.verifyKey, state: .pending)]
+
+    try await svc.syncDistributed()
+
+    #expect(try metaRepo.getAll().map(\.id) == [depositId])
+    #expect(relay.deletedRequestIds.isEmpty)
+}
+
+@Test func anApprovedDepositStillOnTheRelayDoesNotBringBackAHolderWhoHasGone() async throws {
+    let relay = FakeShareRelay()
+    let (svc, _, _, _, metaRepo, _, _) = try makeService(relay: relay)
+    let depositId = UUID()
+    relay.pending = [makeDepositRow(id: depositId, secretId: UUID(), recipientKey: aliceContact.verifyKey, state: .approved)]
 
     try await svc.syncDistributed()
 
@@ -1298,12 +1333,72 @@ private func makeDepositRow(id: UUID, secretId: UUID, recipientKey: Data, state:
     #expect(relay.deletedRequestIds == [depositId])
 }
 
-@Test func syncDistributedStillUpsertsNormallyForANonWithdrawnRow() async throws {
+// MARK: - Withdrawals, holder → owner
+
+/// The same row with a different type and state — Swift structs have no `copy()`.
+private func rowLike(_ r: ShareRequest, transactionType: ShareTransactionType? = nil, state: ShareRequestState? = nil, senderKey: Data? = nil) -> ShareRequest {
+    ShareRequest(
+        id: r.id, secretId: r.secretId, senderKey: senderKey ?? r.senderKey, recipientKey: r.recipientKey,
+        sealedLabel: r.sealedLabel, secretCreatedAt: r.secretCreatedAt, transactionType: transactionType ?? r.transactionType,
+        state: state ?? r.state, requestedAt: r.requestedAt, respondedAt: r.respondedAt, ciphertext: r.ciphertext,
+        k: r.k, n: r.n, mimeType: r.mimeType, senderSignature: r.senderSignature, recipientSignature: r.recipientSignature
+    )
+}
+
+private func makeSignedWithdrawal(secretId: UUID, signer: TestKeyPair, ownerKey: Data) throws -> ShareRequest {
+    let sealedLabel = Data("test secret".utf8)
+    let createdAt = Date()
+    let canon = PayloadCanonical.forOpen(secretId: secretId, transactionType: .withdrawal, recipientKey: ownerKey, sealedLabel: sealedLabel, secretCreatedAt: createdAt, ciphertext: nil)
+    return ShareRequest(
+        id: UUID(), secretId: secretId, senderKey: signer.publicKey, recipientKey: ownerKey, sealedLabel: sealedLabel,
+        secretCreatedAt: createdAt, transactionType: .withdrawal, state: .approved, requestedAt: Date(), respondedAt: Date(),
+        ciphertext: nil, senderSignature: try signer.sign(canon), recipientSignature: nil
+    )
+}
+
+@Test func syncDistributedDropsAHolderOnASignedWithdrawalWithTheirAsksAndDeletesTheNotice() async throws {
     let relay = FakeShareRelay()
-    let (svc, _, _, _, metaRepo, _, _) = try makeService(relay: relay)
+    let (svc, bob, _, _, metaRepo, _, retainedRepo) = try makeService(relay: relay)
     let depositId = UUID()
     let secretId = UUID()
-    relay.pending = [makeDepositRow(id: depositId, secretId: secretId, recipientKey: aliceContact.verifyKey, state: .approved)]
+    try metaRepo.save(ShareMetadata(id: depositId, secretId: secretId, contactId: aliceContact.id))
+    try retainedRepo.save(RetainedDepositBlob(id: depositId, secretId: secretId, contactId: aliceContact.id, label: "x", secretCreatedAt: Date(), ciphertext: Data([9]), k: 2, n: 3, mimeType: .default))
+    let withdrawal = try makeSignedWithdrawal(secretId: secretId, signer: aliceKeys, ownerKey: bob.verifyKey!)
+    let pendingAsk = makePendingRetrievalRow(secretId: secretId, recipientKey: aliceContact.verifyKey)
+    let deniedRemoval = rowLike(makePendingRetrievalRow(secretId: secretId, recipientKey: aliceContact.verifyKey), transactionType: .removal, state: .denied)
+    let handedBack = rowLike(makePendingRetrievalRow(secretId: secretId, recipientKey: aliceContact.verifyKey), state: .approved)
+    relay.pending = [withdrawal, pendingAsk, deniedRemoval, handedBack]
+
+    try await svc.syncDistributed()
+
+    #expect(try metaRepo.getAll().isEmpty)
+    #expect(try retainedRepo.getAll().isEmpty)
+    #expect(Set(relay.deletedRequestIds) == Set([withdrawal.id, pendingAsk.id, deniedRemoval.id]))
+}
+
+@Test func syncDistributedIgnoresAWithdrawalWhoseSignatureDoesNotVerifyAndLeavesIt() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, _, _, metaRepo, _, _) = try makeService(relay: relay)
+    let depositId = UUID()
+    let secretId = UUID()
+    try metaRepo.save(ShareMetadata(id: depositId, secretId: secretId, contactId: aliceContact.id))
+    // Claims to come from alice, signed by somebody else — what a relay inventing one would have to do.
+    let forged = rowLike(try makeSignedWithdrawal(secretId: secretId, signer: strangerKeys, ownerKey: bob.verifyKey!), senderKey: aliceKeys.publicKey)
+    relay.pending = [forged]
+
+    try await svc.syncDistributed()
+
+    #expect(try metaRepo.getAll().map(\.id) == [depositId])
+    #expect(relay.deletedRequestIds.isEmpty)
+}
+
+@Test func syncDistributedIgnoresAWithdrawalFromAKeyItDoesNotKnow() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, _, _, metaRepo, _, _) = try makeService(relay: relay)
+    let depositId = UUID()
+    let secretId = UUID()
+    try metaRepo.save(ShareMetadata(id: depositId, secretId: secretId, contactId: aliceContact.id))
+    relay.pending = [try makeSignedWithdrawal(secretId: secretId, signer: strangerKeys, ownerKey: bob.verifyKey!)]
 
     try await svc.syncDistributed()
 
@@ -1560,6 +1655,7 @@ private func makeDestroyingSecret(
     let (svc, _, _, _, metaRepo, _, retainedRepo) = try makeService(relay: relay)
     let depositId = UUID()
     let secretId = UUID()
+    try metaRepo.save(ShareMetadata(id: depositId, secretId: secretId, contactId: aliceContact.id))
     try retainedRepo.save(RetainedDepositBlob(id: depositId, secretId: secretId, contactId: aliceContact.id, label: "s", secretCreatedAt: Date(), ciphertext: Data([1]), k: 2, n: 3, mimeType: .default))
     relay.pending = [makeDepositRow(id: depositId, secretId: secretId, recipientKey: aliceContact.verifyKey, state: .approved)]
 
@@ -1575,13 +1671,14 @@ private func makeDestroyingSecret(
     let (svc, _, _, _, metaRepo, _, retainedRepo) = try makeService(relay: relay)
     let depositId = UUID()
     let secretId = UUID()
+    try metaRepo.save(ShareMetadata(id: depositId, secretId: secretId, contactId: aliceContact.id))
     try retainedRepo.save(RetainedDepositBlob(id: depositId, secretId: secretId, contactId: aliceContact.id, label: "s", secretCreatedAt: Date(), ciphertext: Data([1]), k: 2, n: 3, mimeType: .default))
     relay.pending = [makeDepositRow(id: depositId, secretId: secretId, recipientKey: aliceContact.verifyKey, state: .approved)]
     try await svc.syncDistributed()
     let firstConfirmedAt = try metaRepo.getAll().first { $0.id == depositId }?.lastConfirmedAt
 
-    // The row is still (unchangingly) approved on this second poll — an already-discarded
-    // retention marker means this must not be treated as a fresh confirmation.
+    // The row's deletion failed, so it is still approved on this second poll — an
+    // already-discarded retention marker means this must not be treated as a fresh confirmation.
     try await svc.syncDistributed()
 
     let secondConfirmedAt = try metaRepo.getAll().first { $0.id == depositId }?.lastConfirmedAt
@@ -1620,7 +1717,7 @@ private func makeDestroyingSecret(
     #expect(pushed?.ownerKey == aliceContact.verifyKey)
     #expect(pushed?.secretIds == [secretId])
     #expect(pushed?.optedOut == false)
-    let canon = PayloadCanonical.forHeartbeat(ownerKey: aliceContact.verifyKey, secretIds: [secretId], optedOut: false)
+    let canon = PayloadCanonical.forHeartbeat(ownerKey: aliceContact.verifyKey, secretIds: [secretId], optedOut: false, emittedAt: pushed!.emittedAt)
     #expect(bob.verify(canon, signature: pushed!.signature, publicKey: bob.verifyKey!))
 }
 
@@ -1669,10 +1766,10 @@ private func makeDestroyingSecret(
 /// Builds a signed CustodyHeartbeat notice — the signing counterpart of `relay.pushHeartbeat`.
 /// `signer` is the party whose signature is attached; pass something other than the keypair
 /// backing `holderKey` to build a forged notice.
-private func makeSignedHeartbeat(holderKey: Data, ownerKey: Data, signer: TestKeyPair, secretIds: [UUID] = [], optedOut: Bool = false) throws -> CustodyHeartbeat {
-    let canon = PayloadCanonical.forHeartbeat(ownerKey: ownerKey, secretIds: secretIds, optedOut: optedOut)
+private func makeSignedHeartbeat(holderKey: Data, ownerKey: Data, signer: TestKeyPair, secretIds: [UUID] = [], optedOut: Bool = false, emittedAt: Date = Date()) throws -> CustodyHeartbeat {
+    let canon = PayloadCanonical.forHeartbeat(ownerKey: ownerKey, secretIds: secretIds, optedOut: optedOut, emittedAt: emittedAt)
     let sig = try signer.sign(canon)
-    return CustodyHeartbeat(id: UUID(), holderKey: holderKey, ownerKey: ownerKey, secretIds: secretIds, optedOut: optedOut, signature: sig, createdAt: Date())
+    return CustodyHeartbeat(id: UUID(), holderKey: holderKey, ownerKey: ownerKey, secretIds: secretIds, optedOut: optedOut, emittedAt: emittedAt, signature: sig)
 }
 
 @Test func syncDistributedProcessesAValidHeartbeatAndStampsFreshnessOnMatchingShares() async throws {
@@ -1703,12 +1800,72 @@ private func makeSignedHeartbeat(holderKey: Data, ownerKey: Data, signer: TestKe
     try await svc.syncDistributed()
 
     #expect(try metaRepo.getAll().first { $0.id == depositId }?.lastConfirmedAt == nil)
+    #expect(relay.deletedHeartbeatIds.isEmpty)
+}
+
+@Test func syncDistributedDatesCustodyFromTheSignedEmittedAtAndDeletesTheHeartbeat() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, _, _, metaRepo, _, _) = try makeService(relay: relay)
+    let depositId = UUID()
+    let secretId = UUID()
+    try metaRepo.save(ShareMetadata(id: depositId, secretId: secretId, contactId: aliceContact.id))
+    let notice = try makeSignedHeartbeat(holderKey: aliceKeys.publicKey, ownerKey: bob.verifyKey!, signer: aliceKeys, secretIds: [secretId], emittedAt: Date().addingTimeInterval(-60))
+    relay.heartbeatsToReturn = [notice]
+
+    try await svc.syncDistributed()
+
+    #expect(try metaRepo.getAll().first { $0.id == depositId }?.lastConfirmedAt == notice.emittedAt)
+    #expect(relay.deletedHeartbeatIds == [notice.id])
+}
+
+@Test func syncDistributedLetsAReplayedOlderHeartbeatMoveNothing() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, _, _, metaRepo, _, _) = try makeService(relay: relay)
+    let depositId = UUID()
+    let secretId = UUID()
+    let lastSeen = Date().addingTimeInterval(-3600)
+    try metaRepo.save(ShareMetadata(id: depositId, secretId: secretId, contactId: aliceContact.id, lastConfirmedAt: lastSeen))
+    relay.heartbeatsToReturn = [try makeSignedHeartbeat(holderKey: aliceKeys.publicKey, ownerKey: bob.verifyKey!, signer: aliceKeys, secretIds: [secretId], emittedAt: lastSeen.addingTimeInterval(-30 * 24 * 3600))]
+
+    try await svc.syncDistributed()
+
+    #expect(try metaRepo.getAll().first { $0.id == depositId }?.lastConfirmedAt == lastSeen)
+}
+
+@Test func syncDistributedNeverDatesCustodyLaterThanItsOwnClock() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, _, _, metaRepo, _, _) = try makeService(relay: relay)
+    let depositId = UUID()
+    let secretId = UUID()
+    try metaRepo.save(ShareMetadata(id: depositId, secretId: secretId, contactId: aliceContact.id))
+    relay.heartbeatsToReturn = [try makeSignedHeartbeat(holderKey: aliceKeys.publicKey, ownerKey: bob.verifyKey!, signer: aliceKeys, secretIds: [secretId], emittedAt: Date().addingTimeInterval(30 * 24 * 3600))]
+
+    try await svc.syncDistributed()
+
+    let stamped = try #require(try metaRepo.getAll().first { $0.id == depositId }?.lastConfirmedAt)
+    #expect(stamped <= Date())
+}
+
+@Test func syncDistributedDoesNotLetAnOlderHeartbeatClearANewerOptOut() async throws {
+    let relay = FakeShareRelay()
+    let optedOutAt = Date().addingTimeInterval(-60)
+    let optedOutAlice = Contact(
+        id: aliceContact.id, pseudonym: aliceContact.pseudonym, verifyKey: aliceContact.verifyKey,
+        encKey: aliceContact.encKey, verificationLevel: .veryHigh, verifiedAt: nil, addedAt: Date(),
+        heartbeatOptedOutAt: optedOutAt
+    )
+    let (svc, bob, _, contactRepo, _, _, _) = try makeService(relay: relay, contacts: [optedOutAlice])
+    relay.heartbeatsToReturn = [try makeSignedHeartbeat(holderKey: aliceKeys.publicKey, ownerKey: bob.verifyKey!, signer: aliceKeys, emittedAt: optedOutAt.addingTimeInterval(-3600))]
+
+    try await svc.syncDistributed()
+
+    #expect(contactRepo.getById(aliceContact.id)?.heartbeatOptedOutAt == optedOutAt)
 }
 
 @Test func syncDistributedSetsAndClearsHeartbeatOptedOutAt() async throws {
     let relay = FakeShareRelay()
     let (svc, bob, _, contactRepo, _, _, _) = try makeService(relay: relay)
-    relay.heartbeatsToReturn = [try makeSignedHeartbeat(holderKey: aliceKeys.publicKey, ownerKey: bob.verifyKey!, signer: aliceKeys, optedOut: true)]
+    relay.heartbeatsToReturn = [try makeSignedHeartbeat(holderKey: aliceKeys.publicKey, ownerKey: bob.verifyKey!, signer: aliceKeys, optedOut: true, emittedAt: Date().addingTimeInterval(-60))]
 
     try await svc.syncDistributed()
 
@@ -2209,6 +2366,40 @@ private func makePendingRetrievalRow(secretId: UUID, recipientKey: Data) -> Shar
     // Only 1 of 2 holders is genuinely confirmed (< k=2), so targeting widens to everyone.
     let targeted = Set(relay.openedRequests.map(\.recipientKey))
     #expect(targeted == Set([optedOutContact.verifyKey, other.contact.verifyKey]))
+}
+
+@Test func requestAllAsksAHolderWhoDeniedAgainAndDropsTheDenialOnceTheNewAskIsOpen() async throws {
+    let relay = FakeShareRelay()
+    let holder = makeHolderFixture(pseudonym: "holder")
+    let (svc, _, _, secretRepo, metaRepo, _) = try makeServiceForRecoveryTest(relay: relay, contacts: [holder.contact])
+    let secretId = UUID()
+    try secretRepo.save(Secret(id: secretId, label: "s", mimeType: .default, k: 2, n: 2, secretCreatedAt: Date(), state: .active))
+    try metaRepo.save(ShareMetadata(id: UUID(), secretId: secretId, contactId: holder.contact.id))
+    let denied = rowLike(makePendingRetrievalRow(secretId: secretId, recipientKey: holder.contact.verifyKey), state: .denied)
+    relay.pending = [denied]
+
+    try await svc.requestAll(secretId: secretId)
+
+    #expect(relay.openedRequests.map(\.recipientKey) == [holder.contact.verifyKey])
+    #expect(relay.deletedRequestIds == [denied.id])
+}
+
+@Test func retryReplacesADeniedAnswerOfTheSameKindAndLeavesOneOfAnotherKind() async throws {
+    let relay = FakeShareRelay()
+    let holder = makeHolderFixture(pseudonym: "holder")
+    let (svc, _, _, secretRepo, metaRepo, _) = try makeServiceForRecoveryTest(relay: relay, contacts: [holder.contact])
+    let secretId = UUID()
+    try secretRepo.save(Secret(id: secretId, label: "s", mimeType: .default, k: 2, n: 2, secretCreatedAt: Date(), state: .active))
+    let shareId = UUID()
+    try metaRepo.save(ShareMetadata(id: shareId, secretId: secretId, contactId: holder.contact.id))
+    let deniedRemoval = rowLike(makePendingRetrievalRow(secretId: secretId, recipientKey: holder.contact.verifyKey), transactionType: .removal, state: .denied)
+    let deniedRetrieval = rowLike(makePendingRetrievalRow(secretId: secretId, recipientKey: holder.contact.verifyKey), state: .denied)
+    relay.pending = [deniedRemoval, deniedRetrieval]
+
+    _ = try await svc.openRequest(shareId: shareId, type: .removal)
+
+    #expect(relay.openedRequests.map(\.transactionType) == [.removal])
+    #expect(relay.deletedRequestIds == [deniedRemoval.id])
 }
 
 // MARK: - secret size and format

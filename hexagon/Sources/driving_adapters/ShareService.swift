@@ -273,13 +273,22 @@ public final class ShareService: ShareManagement {
                 try await relay.listShareRequests(role: .sender, transactionType: .deposit, state: nil)
             }
             for req in reqs {
-                if req.state == .withdrawn {
-                    // Best-effort tombstone: the holder unilaterally stopped holding
-                    // this share. Drop the local pointer so the health count reflects it, then
-                    // clean up the relay row — it has served its purpose and needn't linger. Row
-                    // *absence* is never itself a signal; only an *observed* withdrawn state
-                    // counts, and we've just observed it.
-                    try? shareMetadataRepository.delete(shareId: req.id)
+                if req.state == .approved {
+                    // The pickup, seen (relay-observed channel). Stamped once, while the retained
+                    // blob still marks it unconfirmed by any channel. Only a record that exists is
+                    // touched: a withdrawal may have dropped this holder since, and a row whose
+                    // deletion failed on an earlier pass must not bring them back. Matched by id,
+                    // which is the request id, so a holder who has rotated keys since is found all
+                    // the same.
+                    if isRetentionStillPending(req.id) {
+                        if let meta = existingMetadata.first(where: { $0.id == req.id }) {
+                            try? shareMetadataRepository.save(ShareMetadata(id: meta.id, secretId: meta.secretId, contactId: meta.contactId, lastConfirmedAt: Date()))
+                        }
+                        try? retainedDepositRepository.delete(id: req.id)
+                    }
+                    // Then the row goes. It was a message, and it has been read: keeping it would
+                    // leave the relay holding a record of who keeps what for whom for as long as
+                    // the share is held.
                     try? await relay.deleteShareRequest(requestId: req.id)
                     continue
                 }
@@ -287,18 +296,7 @@ public final class ShareService: ShareManagement {
                 // to a contactId — skip rather than drop the holder's identity on the floor.
                 guard let contact = contactRepository.getByVerifyKey(req.recipientKey) else { continue }
                 let priorConfirmedAt = existingMetadata.first(where: { $0.id == req.id })?.lastConfirmedAt
-                if req.state == .approved, isRetentionStillPending(req.id) {
-                    // First-observed pickup confirmation (relay-observed channel): a
-                    // one-time transition, not "still approved therefore still fresh" — an
-                    // unchanging Approved row on a later poll must not keep bumping freshness, or
-                    // a long-dead holder would look perpetually confirmed. The retained blob's
-                    // continued existence is exactly the "not yet confirmed by any channel"
-                    // marker, so its presence is what gates the stamp.
-                    try? shareMetadataRepository.save(ShareMetadata(id: req.id, secretId: req.secretId, contactId: contact.id, lastConfirmedAt: Date()))
-                    try? retainedDepositRepository.delete(id: req.id)
-                } else {
-                    try? shareMetadataRepository.save(ShareMetadata(id: req.id, secretId: req.secretId, contactId: contact.id, lastConfirmedAt: priorConfirmedAt))
-                }
+                try? shareMetadataRepository.save(ShareMetadata(id: req.id, secretId: req.secretId, contactId: contact.id, lastConfirmedAt: priorConfirmedAt))
             }
             // A retrieve approval is also proof-of-custody. Polled here purely for that
             // freshness side effect; the functional read path for these rows is reconstruct()/
@@ -316,6 +314,7 @@ public final class ShareService: ShareManagement {
                 try? shareMetadataRepository.save(ShareMetadata(id: meta.id, secretId: meta.secretId, contactId: meta.contactId, lastConfirmedAt: Date()))
             }
         }
+        await processWithdrawals(&failures)
         await reconcileRemovals(&failures)
         await processHeartbeats(&failures)
         return failures.report
@@ -323,6 +322,51 @@ public final class ShareService: ShareManagement {
 
     private func isRetentionStillPending(_ depositId: UUID) -> Bool {
         ((try? retainedDepositRepository.getAll()) ?? []).contains(where: { $0.id == depositId })
+    }
+
+    /// Drops each holder who has told this device, signed, that they stopped holding a share. Runs
+    /// before `reconcileRemovals`, whose trailing clean-up then ends a `.destroying` secret this
+    /// has emptied.
+    ///
+    /// Only a withdrawal that verifies against a known contact counts. The relay cannot sign one,
+    /// so it cannot make this device forget a holder who still has the share — the same reason an
+    /// approved removal is checked. The notice is explicit rather than read off a heartbeat that
+    /// stopped naming the secret: a missing entry is no act, an opted-out holder names nothing,
+    /// and a holder who drops their last share from this owner sends no heartbeat at all.
+    ///
+    /// Along with the record go this device's own asks to that holder about that share, answered
+    /// or not, since none of them can come to anything now. An approved retrieval stays: that copy
+    /// was handed back before the share was dropped, and is as good as it was.
+    private func processWithdrawals(_ failures: inout RelayFailures) async {
+        var outstanding: [(relay: any ShareRelay, request: ShareRequest)]?
+        for relay in allRelays() {
+            let withdrawals = await fromRelay(relay, &failures) {
+                try await relay.listShareRequests(role: .recipient, transactionType: .withdrawal, state: nil)
+            }
+            for req in withdrawals where verifyOpen(req) {
+                guard let holder = contactRepository.getByVerifyKey(req.senderKey) else { continue }
+                noteRelinked(holder)
+                let dropped = ((try? shareMetadataRepository.getAll()) ?? []).filter {
+                    $0.secretId == req.secretId && $0.contactId == holder.id
+                }
+                for meta in dropped {
+                    try? shareMetadataRepository.delete(shareId: meta.id)
+                    if isRetentionStillPending(meta.id) { try? retainedDepositRepository.delete(id: meta.id) }
+                }
+                if outstanding == nil {
+                    outstanding = await rowsAcrossRelays(role: .sender, silent: failures.unreachable).items
+                }
+                let moot = (outstanding ?? []).filter {
+                    $0.request.secretId == req.secretId && $0.request.recipientKey == holder.verifyKey
+                        && ($0.request.transactionType == .removal
+                            || ($0.request.transactionType == .retrieval && $0.request.state != .approved))
+                }
+                for row in moot {
+                    try? await row.relay.deleteShareRequest(requestId: row.request.id)
+                }
+                try? await relay.deleteShareRequest(requestId: req.id)
+            }
+        }
     }
 
     /// Drops every holder whose `removal` request has come back approved, whatever state the secret
@@ -391,7 +435,8 @@ public final class ShareService: ShareManagement {
         guard let secret = (try? secretRepository.getAll())?.first(where: { $0.id == secretId }) else { return }
         let deposited = (try? shareMetadataRepository.getAll()) ?? []
         let forSecret = deposited.filter { $0.secretId == secretId }
-        let existing = await rowsAcrossRelays(role: .sender, transactionType: .retrieval).items.map(\.request)
+        let existingRows = await rowsAcrossRelays(role: .sender, transactionType: .retrieval).items
+        let existing = existingRows.map(\.request)
         // Fan out to the health-informed fresh set first; widen to everyone only when
         // there aren't enough confirmed holders to reach k. A retrieval request exists solely to
         // feed an eventual reconstruct(), so this targeting applies here rather than as a
@@ -410,21 +455,38 @@ public final class ShareService: ShareManagement {
             }
             if !hasActive, let sealedLabel = try? encryption.sealLabel(secret.label, recipientEncKey: contact.encKey) {
                 let canon = PayloadCanonical.forOpen(secretId: meta.secretId, transactionType: .retrieval, recipientKey: contact.verifyKey, sealedLabel: sealedLabel, secretCreatedAt: secret.secretCreatedAt, ciphertext: nil)
-                if let senderSignature = try? identity.sign(canon) {
-                    _ = try? await relay(for: contact).openShareRequest(
-                        secretId: meta.secretId,
-                        recipientKey: contact.verifyKey,
-                        sealedLabel: sealedLabel,
-                        secretCreatedAt: secret.secretCreatedAt,
-                        transactionType: .retrieval,
-                        ciphertext: nil,
-                        k: nil,
-                        n: nil,
-                        mimeType: nil,
-                        senderSignature: senderSignature
-                    )
+                if let senderSignature = try? identity.sign(canon),
+                   (try? await relay(for: contact).openShareRequest(
+                       secretId: meta.secretId,
+                       recipientKey: contact.verifyKey,
+                       sealedLabel: sealedLabel,
+                       secretCreatedAt: secret.secretCreatedAt,
+                       transactionType: .retrieval,
+                       ciphertext: nil,
+                       k: nil,
+                       n: nil,
+                       mimeType: nil,
+                       senderSignature: senderSignature
+                   )) != nil {
+                    let denied = existingRows.filter {
+                        $0.request.secretId == meta.secretId && $0.request.recipientKey == contact.verifyKey
+                            && $0.request.state == .denied
+                    }
+                    for row in denied {
+                        try? await row.relay.deleteShareRequest(requestId: row.request.id)
+                    }
                 }
             }
+        }
+    }
+
+    /// A denied answer has been acted on once the ask is made again: the new request replaces it,
+    /// so it goes, after the new one is open. Looked for on the relay the new one went to, which is
+    /// where earlier asks to this holder went.
+    private func dropDeniedAnswers(on relay: any ShareRelay, secretId: UUID, holder: Contact, type: ShareTransactionType) async {
+        let denied = (try? await relay.listShareRequests(role: .sender, transactionType: type, state: .denied)) ?? []
+        for row in denied where row.secretId == secretId && row.recipientKey == holder.verifyKey {
+            try? await relay.deleteShareRequest(requestId: row.id)
         }
     }
 
@@ -442,7 +504,8 @@ public final class ShareService: ShareManagement {
         let sealedLabel = try encryption.sealLabel(secret.label, recipientEncKey: contact.encKey)
         let canon = PayloadCanonical.forOpen(secretId: meta.secretId, transactionType: type, recipientKey: contact.verifyKey, sealedLabel: sealedLabel, secretCreatedAt: secret.secretCreatedAt, ciphertext: nil)
         let senderSignature = try identity.sign(canon)
-        return try await relay(for: contact).openShareRequest(
+        let target = relay(for: contact)
+        let opened = try await target.openShareRequest(
             secretId: meta.secretId,
             recipientKey: contact.verifyKey,
             sealedLabel: sealedLabel,
@@ -454,6 +517,8 @@ public final class ShareService: ShareManagement {
             mimeType: nil,
             senderSignature: senderSignature
         )
+        await dropDeniedAnswers(on: target, secretId: meta.secretId, holder: contact, type: type)
+        return opened
     }
 
     /// Pure read: collects and decrypts `k` approved retrieval shares, but never tears
@@ -613,10 +678,11 @@ public final class ShareService: ShareManagement {
             let dueSince = contact.lastHeartbeatSentAt.map { now.timeIntervalSince($0) } ?? .infinity
             guard dueSince >= CustodyHeartbeatTuning.emissionInterval else { continue }
             let secretIds = contact.heartbeatEmissionOptedOut ? [] : held.filter { $0.contactId == contactId }.map(\.secretId)
-            let canon = PayloadCanonical.forHeartbeat(ownerKey: contact.verifyKey, secretIds: secretIds, optedOut: contact.heartbeatEmissionOptedOut)
+            // Signed as whole milliseconds and sent as `wireInstant`, which carries exactly those.
+            let canon = PayloadCanonical.forHeartbeat(ownerKey: contact.verifyKey, secretIds: secretIds, optedOut: contact.heartbeatEmissionOptedOut, emittedAt: now)
             guard let signature = try? identity.sign(canon) else { continue }
             do {
-                try await relay(for: contact).pushHeartbeat(ownerKey: contact.verifyKey, secretIds: secretIds, optedOut: contact.heartbeatEmissionOptedOut, signature: signature)
+                try await relay(for: contact).pushHeartbeat(ownerKey: contact.verifyKey, secretIds: secretIds, optedOut: contact.heartbeatEmissionOptedOut, emittedAt: now, signature: signature)
             } catch {
                 continue
             }
@@ -630,11 +696,6 @@ public final class ShareService: ShareManagement {
         }
     }
 
-    /// Owner side — auto-verifies each holder's latest heartbeat (or opt-out notice)
-    /// against a known contact's trusted key, then updates local freshness/opt-out state. Never
-    /// deletes a heartbeat row — see `CustodyHeartbeat` for why it's a standing status, not a
-    /// one-shot delivery. Unknown senders and forged signatures are silently skipped, same
-    /// posture as `processRotations()`.
     // Anything arriving from a contact proves they hold this device's current key, because the
     // relay only ever returns rows addressed to the caller — so every inbound path notes it, and a
     // contact who has relinked drops off the awaiting-relink list without anyone tapping anything.
@@ -644,44 +705,63 @@ public final class ShareService: ShareManagement {
         contactManagement.markRelinked(contact.id)
     }
 
+    /// Owner side — auto-verifies each holder's unread heartbeat (or opt-out notice)
+    /// against a known contact's trusted key, updates local freshness/opt-out state, then deletes
+    /// the heartbeat: what it said is kept here, and the holder re-emits every interval. Unknown
+    /// senders and forged signatures are silently skipped and left, same posture as
+    /// `processRotations()`.
+    ///
+    /// Dated by the holder's signed `emittedAt`, and never backwards: a heartbeat older than what
+    /// this device already knows refreshes nothing, so a relay re-serving an old one gains
+    /// nothing. Never later than this device's own clock either, so a holder whose clock runs ahead
+    /// cannot date proof of custody into the owner's future. The opt-out follows the same rule,
+    /// with one gap left open on purpose: a replayed old opt-out still marks a holder unmonitored,
+    /// which takes them out of n_live — it can raise an alarm, never silence one.
     private func processHeartbeats(_ failures: inout RelayFailures) async {
         // Nothing here can be verified without our own key, so a device whose key storage is locked
         // does nothing and picks this up on a later pass rather than failing every notice.
         guard let myKey = identity.verifyKey else { return }
         let existingMetadata = (try? shareMetadataRepository.getAll()) ?? []
+        let now = Date()
         for relay in allRelays() {
             let notices = await fromRelay(relay, &failures) { try await relay.listHeartbeats() }
             for notice in notices {
                 guard let contact = contactRepository.getByVerifyKey(notice.holderKey) else { continue }
                 noteRelinked(contact)
-                let canon = PayloadCanonical.forHeartbeat(ownerKey: myKey, secretIds: notice.secretIds, optedOut: notice.optedOut)
+                let canon = PayloadCanonical.forHeartbeat(ownerKey: myKey, secretIds: notice.secretIds, optedOut: notice.optedOut, emittedAt: notice.emittedAt)
                 guard identity.verify(canon, signature: notice.signature, publicKey: notice.holderKey) else { continue }
+                let emittedAt = min(notice.emittedAt, now)
                 if notice.optedOut {
-                    contactRepository.save(Contact(
-                        id: contact.id, pseudonym: contact.pseudonym, verifyKey: contact.verifyKey, encKey: contact.encKey,
-                        verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
-                        relayBaseUrl: contact.relayBaseUrl, revokedVerifyKeys: contact.revokedVerifyKeys, keyChangedAt: contact.keyChangedAt,
-                        heartbeatOptedOutAt: notice.createdAt, lastHeartbeatSentAt: contact.lastHeartbeatSentAt, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut,
-                        cipherSuite: contact.cipherSuite, nickname: contact.nickname
-                    ))
-                    continue
-                }
-                if contact.heartbeatOptedOutAt != nil {
-                    contactRepository.save(Contact(
-                        id: contact.id, pseudonym: contact.pseudonym, verifyKey: contact.verifyKey, encKey: contact.encKey,
-                        verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
-                        relayBaseUrl: contact.relayBaseUrl, revokedVerifyKeys: contact.revokedVerifyKeys, keyChangedAt: contact.keyChangedAt,
-                        heartbeatOptedOutAt: nil, lastHeartbeatSentAt: contact.lastHeartbeatSentAt, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut,
-                        cipherSuite: contact.cipherSuite, nickname: contact.nickname
-                    ))
-                }
-                for secretId in notice.secretIds {
-                    guard let meta = existingMetadata.first(where: { $0.secretId == secretId && $0.contactId == contact.id }) else { continue }
-                    try? shareMetadataRepository.save(ShareMetadata(id: meta.id, secretId: meta.secretId, contactId: meta.contactId, lastConfirmedAt: notice.createdAt))
-                    if isRetentionStillPending(meta.id) {
-                        try? retainedDepositRepository.delete(id: meta.id)
+                    if contact.heartbeatOptedOutAt.map({ $0 < emittedAt }) ?? true {
+                        contactRepository.save(Contact(
+                            id: contact.id, pseudonym: contact.pseudonym, verifyKey: contact.verifyKey, encKey: contact.encKey,
+                            verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
+                            relayBaseUrl: contact.relayBaseUrl, revokedVerifyKeys: contact.revokedVerifyKeys, keyChangedAt: contact.keyChangedAt,
+                            heartbeatOptedOutAt: emittedAt, lastHeartbeatSentAt: contact.lastHeartbeatSentAt, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut,
+                            cipherSuite: contact.cipherSuite, nickname: contact.nickname
+                        ))
+                    }
+                } else {
+                    if let optedOutAt = contact.heartbeatOptedOutAt, optedOutAt < emittedAt {
+                        contactRepository.save(Contact(
+                            id: contact.id, pseudonym: contact.pseudonym, verifyKey: contact.verifyKey, encKey: contact.encKey,
+                            verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
+                            relayBaseUrl: contact.relayBaseUrl, revokedVerifyKeys: contact.revokedVerifyKeys, keyChangedAt: contact.keyChangedAt,
+                            heartbeatOptedOutAt: nil, lastHeartbeatSentAt: contact.lastHeartbeatSentAt, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut,
+                            cipherSuite: contact.cipherSuite, nickname: contact.nickname
+                        ))
+                    }
+                    for secretId in notice.secretIds {
+                        guard let meta = existingMetadata.first(where: { $0.secretId == secretId && $0.contactId == contact.id }) else { continue }
+                        if meta.lastConfirmedAt.map({ $0 < emittedAt }) ?? true {
+                            try? shareMetadataRepository.save(ShareMetadata(id: meta.id, secretId: meta.secretId, contactId: meta.contactId, lastConfirmedAt: emittedAt))
+                        }
+                        if isRetentionStillPending(meta.id) {
+                            try? retainedDepositRepository.delete(id: meta.id)
+                        }
                     }
                 }
+                try? await relay.deleteHeartbeat(id: notice.id)
             }
         }
     }
@@ -895,26 +975,49 @@ public final class ShareService: ShareManagement {
         }
     }
 
-    /// Unilateral, no approval needed — but not purely silent: best-effort notifies
-    /// the sender via a withdraw tombstone before the local record is dropped, so a courtesy
-    /// notice is attempted even if this method throws or the network call fails. The relay call
-    /// is fire-and-forget; local deletion always proceeds regardless of its outcome.
+    /// Unilateral, no approval needed — but not purely silent: best-effort tells the sender with
+    /// a signed withdrawal before the local record is dropped. The push is fire-and-forget; local
+    /// deletion always proceeds regardless of its outcome.
     public func deleteHeldShare(shareId: UUID) async throws {
         if let share = shareRepository.getAll().first(where: { $0.id == shareId }),
            let senderContact = contactRepository.getById(share.contactId) {
-            try? await relay(for: senderContact).withdrawShareRequests(senderKey: nil, secretId: share.secretId)
+            try? await pushWithdrawal(share, to: senderContact)
         }
         shareRepository.delete(shareId: shareId)
     }
 
-    /// Same best-effort withdraw-tombstone courtesy as `deleteHeldShare`, but scoped to every
-    /// share from `contactId` in one relay call (`senderKey`) rather than one per secretId.
+    /// Same best-effort withdrawal as `deleteHeldShare`, one per share from `contactId`.
     public func deleteAllHeldFromSender(contactId: UUID) async throws {
+        let shares = shareRepository.getAll().filter { $0.contactId == contactId }
         if let senderContact = contactRepository.getById(contactId) {
-            try? await relay(for: senderContact).withdrawShareRequests(senderKey: senderContact.verifyKey, secretId: nil)
+            for share in shares {
+                try? await pushWithdrawal(share, to: senderContact)
+            }
         }
-        for share in shareRepository.getAll() where share.contactId == contactId {
+        for share in shares {
             shareRepository.delete(shareId: share.id)
         }
+    }
+
+    /// The holder's signed "I no longer hold this", addressed to the share's owner — the label
+    /// sealed to her like any other row, the share itself never included. Signed, so a relay
+    /// cannot invent one, and addressed to her current key, so it reaches her across any rotation
+    /// either side has made since the deposit.
+    private func pushWithdrawal(_ share: HeldShare, to owner: Contact) async throws {
+        let sealedLabel = try encryption.sealLabel(share.label, recipientEncKey: owner.encKey)
+        let canon = PayloadCanonical.forOpen(secretId: share.secretId, transactionType: .withdrawal, recipientKey: owner.verifyKey, sealedLabel: sealedLabel, secretCreatedAt: share.createdAt, ciphertext: nil)
+        let senderSignature = try identity.sign(canon)
+        _ = try await relay(for: owner).openShareRequest(
+            secretId: share.secretId,
+            recipientKey: owner.verifyKey,
+            sealedLabel: sealedLabel,
+            secretCreatedAt: share.createdAt,
+            transactionType: .withdrawal,
+            ciphertext: nil,
+            k: nil,
+            n: nil,
+            mimeType: nil,
+            senderSignature: senderSignature
+        )
     }
 }

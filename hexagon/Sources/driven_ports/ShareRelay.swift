@@ -14,12 +14,8 @@ public protocol ShareRelay: AnyObject {
     func listShareRequests(role: Role, transactionType: ShareTransactionType?, state: ShareRequestState?) async throws -> [ShareRequest]
     func getShareRequest(requestId: UUID) async throws -> ShareRequest
     func respondToShareRequest(requestId: UUID, approved: Bool, ciphertext: Data?, recipientSignature: Data) async throws -> ShareRequest
+    /// Deletes a single request by id, and nothing else with it.
     func deleteShareRequest(requestId: UUID) async throws
-
-    /// Recipient-initiated unilateral withdrawal — flips matching approved Deposit rows
-    /// to `.withdrawn` on the relay instead of deleting them, so the sender's next poll can
-    /// observe the tombstone. Best-effort and fire-and-forget.
-    func withdrawShareRequests(senderKey: Data?, secretId: UUID?) async throws
 
     // The signed rotate(K_old -> K_new) push. Grouped onto this protocol rather than a
     // separate port: it's the same physical relay endpoint and the same BYOR per-contact routing
@@ -40,10 +36,13 @@ public protocol ShareRelay: AnyObject {
     // The signed custodial-heartbeat push — same "grouped onto this protocol" reasoning as
     // the rotation push above: one physical relay, one BYOR routing scheme.
 
-    /// Pushes (upserts) a signed heartbeat for one owner, replacing any previous heartbeat this
+    /// Pushes (upserts) a signed heartbeat for one owner, replacing any unread heartbeat this
     /// device sent to that owner. `signature` must verify against the caller's own current
-    /// Ed25519 key (the relay's `holderKey`) over `PayloadCanonical.forHeartbeat`.
-    func pushHeartbeat(ownerKey: Data, secretIds: [UUID], optedOut: Bool, signature: Data) async throws
-    /// The latest heartbeat (or opt-out) from each holder addressed to this device.
+    /// Ed25519 key (the relay's `holderKey`) over `PayloadCanonical.forHeartbeat`, `emittedAt`
+    /// included.
+    func pushHeartbeat(ownerKey: Data, secretIds: [UUID], optedOut: Bool, emittedAt: Date, signature: Data) async throws
+    /// The unread heartbeat (or opt-out) from each holder addressed to this device.
     func listHeartbeats() async throws -> [CustodyHeartbeat]
+    /// Deletes a heartbeat once read — see `CustodyHeartbeat`.
+    func deleteHeartbeat(id: UUID) async throws
 }
