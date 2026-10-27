@@ -1788,19 +1788,37 @@ private func makeSignedHeartbeat(holderKey: Data, ownerKey: Data, signer: TestKe
     #expect(try retainedRepo.getAll().isEmpty)
 }
 
-@Test func syncDistributedIgnoresAHeartbeatWithAForgedSignature() async throws {
+@Test func syncDistributedIgnoresAHeartbeatWithAForgedSignatureAndDeletesIt() async throws {
     let relay = FakeShareRelay()
     let (svc, bob, _, _, metaRepo, _, _) = try makeService(relay: relay)
     let depositId = UUID()
     let secretId = UUID()
     try metaRepo.save(ShareMetadata(id: depositId, secretId: secretId, contactId: aliceContact.id))
     // Claims to be from alice but signed by a stranger.
-    relay.heartbeatsToReturn = [try makeSignedHeartbeat(holderKey: aliceKeys.publicKey, ownerKey: bob.verifyKey!, signer: strangerKeys, secretIds: [secretId])]
+    let notice = try makeSignedHeartbeat(holderKey: aliceKeys.publicKey, ownerKey: bob.verifyKey!, signer: strangerKeys, secretIds: [secretId])
+    relay.heartbeatsToReturn = [notice]
 
     try await svc.syncDistributed()
 
     #expect(try metaRepo.getAll().first { $0.id == depositId }?.lastConfirmedAt == nil)
-    #expect(relay.deletedHeartbeatIds.isEmpty)
+    #expect(relay.deletedHeartbeatIds == [notice.id])
+}
+
+@Test func syncDistributedIgnoresAHeartbeatFromAnUnknownKeyAndDeletesIt() async throws {
+    let relay = FakeShareRelay()
+    let (svc, bob, _, contactRepo, metaRepo, _, _) = try makeService(relay: relay)
+    let depositId = UUID()
+    let secretId = UUID()
+    try metaRepo.save(ShareMetadata(id: depositId, secretId: secretId, contactId: aliceContact.id))
+    // Validly signed, but by a key this device knows no contact by — say one it has deleted.
+    let notice = try makeSignedHeartbeat(holderKey: strangerKeys.publicKey, ownerKey: bob.verifyKey!, signer: strangerKeys, secretIds: [secretId])
+    relay.heartbeatsToReturn = [notice]
+
+    try await svc.syncDistributed()
+
+    #expect(contactRepo.getAll() == [aliceContact])
+    #expect(try metaRepo.getAll().first { $0.id == depositId }?.lastConfirmedAt == nil)
+    #expect(relay.deletedHeartbeatIds == [notice.id])
 }
 
 @Test func syncDistributedDatesCustodyFromTheSignedEmittedAtAndDeletesTheHeartbeat() async throws {

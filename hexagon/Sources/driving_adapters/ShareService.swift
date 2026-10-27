@@ -707,9 +707,12 @@ public final class ShareService: ShareManagement {
 
     /// Owner side — auto-verifies each holder's unread heartbeat (or opt-out notice)
     /// against a known contact's trusted key, updates local freshness/opt-out state, then deletes
-    /// the heartbeat: what it said is kept here, and the holder re-emits every interval. Unknown
-    /// senders and forged signatures are silently skipped and left, same posture as
-    /// `processRotations()`.
+    /// the heartbeat: what it said is kept here, and the holder re-emits every interval. One from an
+    /// unknown key, or with a signature that fails, changes nothing and is deleted all the same.
+    /// That is where heartbeats part from `processRotations()`, which leaves such a notice alone: a
+    /// rotation is sent once, while a heartbeat has a newer one behind it. Left on the relay, one
+    /// from a contact this device has since deleted would be refreshed by every push its holder
+    /// still makes, and so never expire.
     ///
     /// Dated by the holder's signed `emittedAt`, and never backwards: a heartbeat older than what
     /// this device already knows refreshes nothing, so a relay re-serving an old one gains
@@ -726,42 +729,48 @@ public final class ShareService: ShareManagement {
         for relay in allRelays() {
             let notices = await fromRelay(relay, &failures) { try await relay.listHeartbeats() }
             for notice in notices {
-                guard let contact = contactRepository.getByVerifyKey(notice.holderKey) else { continue }
-                noteRelinked(contact)
-                let canon = PayloadCanonical.forHeartbeat(ownerKey: myKey, secretIds: notice.secretIds, optedOut: notice.optedOut, emittedAt: notice.emittedAt)
-                guard identity.verify(canon, signature: notice.signature, publicKey: notice.holderKey) else { continue }
-                let emittedAt = min(notice.emittedAt, now)
-                if notice.optedOut {
-                    if contact.heartbeatOptedOutAt.map({ $0 < emittedAt }) ?? true {
-                        contactRepository.save(Contact(
-                            id: contact.id, pseudonym: contact.pseudonym, verifyKey: contact.verifyKey, encKey: contact.encKey,
-                            verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
-                            relayBaseUrl: contact.relayBaseUrl, revokedVerifyKeys: contact.revokedVerifyKeys, keyChangedAt: contact.keyChangedAt,
-                            heartbeatOptedOutAt: emittedAt, lastHeartbeatSentAt: contact.lastHeartbeatSentAt, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut,
-                            cipherSuite: contact.cipherSuite, nickname: contact.nickname
-                        ))
-                    }
-                } else {
-                    if let optedOutAt = contact.heartbeatOptedOutAt, optedOutAt < emittedAt {
-                        contactRepository.save(Contact(
-                            id: contact.id, pseudonym: contact.pseudonym, verifyKey: contact.verifyKey, encKey: contact.encKey,
-                            verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
-                            relayBaseUrl: contact.relayBaseUrl, revokedVerifyKeys: contact.revokedVerifyKeys, keyChangedAt: contact.keyChangedAt,
-                            heartbeatOptedOutAt: nil, lastHeartbeatSentAt: contact.lastHeartbeatSentAt, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut,
-                            cipherSuite: contact.cipherSuite, nickname: contact.nickname
-                        ))
-                    }
-                    for secretId in notice.secretIds {
-                        guard let meta = existingMetadata.first(where: { $0.secretId == secretId && $0.contactId == contact.id }) else { continue }
-                        if meta.lastConfirmedAt.map({ $0 < emittedAt }) ?? true {
-                            try? shareMetadataRepository.save(ShareMetadata(id: meta.id, secretId: meta.secretId, contactId: meta.contactId, lastConfirmedAt: emittedAt))
-                        }
-                        if isRetentionStillPending(meta.id) {
-                            try? retainedDepositRepository.delete(id: meta.id)
-                        }
+                if let contact = contactRepository.getByVerifyKey(notice.holderKey) {
+                    noteRelinked(contact)
+                    let canon = PayloadCanonical.forHeartbeat(ownerKey: myKey, secretIds: notice.secretIds, optedOut: notice.optedOut, emittedAt: notice.emittedAt)
+                    if identity.verify(canon, signature: notice.signature, publicKey: notice.holderKey) {
+                        applyHeartbeat(notice, from: contact, existingMetadata: existingMetadata, now: now)
                     }
                 }
                 try? await relay.deleteHeartbeat(id: notice.id)
+            }
+        }
+    }
+
+    private func applyHeartbeat(_ notice: CustodyHeartbeat, from contact: Contact, existingMetadata: [ShareMetadata], now: Date) {
+        let emittedAt = min(notice.emittedAt, now)
+        if notice.optedOut {
+            if contact.heartbeatOptedOutAt.map({ $0 < emittedAt }) ?? true {
+                contactRepository.save(Contact(
+                    id: contact.id, pseudonym: contact.pseudonym, verifyKey: contact.verifyKey, encKey: contact.encKey,
+                    verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
+                    relayBaseUrl: contact.relayBaseUrl, revokedVerifyKeys: contact.revokedVerifyKeys, keyChangedAt: contact.keyChangedAt,
+                    heartbeatOptedOutAt: emittedAt, lastHeartbeatSentAt: contact.lastHeartbeatSentAt, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut,
+                    cipherSuite: contact.cipherSuite, nickname: contact.nickname
+                ))
+            }
+            return
+        }
+        if let optedOutAt = contact.heartbeatOptedOutAt, optedOutAt < emittedAt {
+            contactRepository.save(Contact(
+                id: contact.id, pseudonym: contact.pseudonym, verifyKey: contact.verifyKey, encKey: contact.encKey,
+                verificationLevel: contact.verificationLevel, verifiedAt: contact.verifiedAt, addedAt: contact.addedAt,
+                relayBaseUrl: contact.relayBaseUrl, revokedVerifyKeys: contact.revokedVerifyKeys, keyChangedAt: contact.keyChangedAt,
+                heartbeatOptedOutAt: nil, lastHeartbeatSentAt: contact.lastHeartbeatSentAt, heartbeatEmissionOptedOut: contact.heartbeatEmissionOptedOut,
+                cipherSuite: contact.cipherSuite, nickname: contact.nickname
+            ))
+        }
+        for secretId in notice.secretIds {
+            guard let meta = existingMetadata.first(where: { $0.secretId == secretId && $0.contactId == contact.id }) else { continue }
+            if meta.lastConfirmedAt.map({ $0 < emittedAt }) ?? true {
+                try? shareMetadataRepository.save(ShareMetadata(id: meta.id, secretId: meta.secretId, contactId: meta.contactId, lastConfirmedAt: emittedAt))
+            }
+            if isRetentionStillPending(meta.id) {
+                try? retainedDepositRepository.delete(id: meta.id)
             }
         }
     }
