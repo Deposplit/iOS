@@ -1497,6 +1497,37 @@ private func makeDestroyingSecret(
     #expect(relay.deletedRequestIds.contains(removals[0].id))
 }
 
+// A holder who never picked up still has a retained blob, and it has nothing left to mark once
+// their record is gone — the relay expires an uncollected deposit rather than waiting on it.
+@Test func anApprovedRemovalDiscardsTheRetainedBlobOfAHolderWhoNeverPickedUp() async throws {
+    let relay = FakeShareRelay()
+    let holders = [aliceContact, charlieContact]
+    let (svc, _, _, _, _, _, retainedRepo) = try makeService(relay: relay, contacts: holders)
+    try await svc.deposit(secret: Data([1, 2, 3]), label: "destroy test", contacts: holders, threshold: 2, mimeType: .default, replacing: nil)
+    let secretId = try svc.listSecrets()[0].id
+    try await svc.destroySecret(secretId: secretId)
+    let removals = holders.map { makeRemovalRow(secretId: secretId, recipientKey: $0.verifyKey) }
+    relay.pending = removals
+
+    try relay.answerRemoval(removals[0], signer: aliceKeys)
+    try await svc.syncDistributed()
+
+    #expect(try retainedRepo.getAll().map(\.contactId) == [charlieContact.id])
+}
+
+@Test func forceForgetDiscardsTheRetainedBlobsAlongWithTheRecords() async throws {
+    let relay = FakeShareRelay()
+    let holders = [aliceContact, charlieContact]
+    let (svc, _, _, _, _, _, retainedRepo) = try makeService(relay: relay, contacts: holders)
+    try await svc.deposit(secret: Data([1, 2, 3]), label: "destroy test", contacts: holders, threshold: 2, mimeType: .default, replacing: nil)
+    let secretId = try svc.listSecrets()[0].id
+    try await svc.destroySecret(secretId: secretId)
+
+    try svc.forceForgetSecret(secretId: secretId)
+
+    #expect(try retainedRepo.getAll().isEmpty)
+}
+
 @Test func aDeniedRemovalLeavesTheHolderAndTheSecretExactlyWhereTheyWere() async throws {
     let relay = FakeShareRelay()
     let (svc, metaRepo, removals) = try await makeDestroyingSecret(relay: relay)

@@ -249,8 +249,9 @@ public final class ShareService: ShareManagement {
             )
             try? shareMetadataRepository.save(ShareMetadata(id: req.id, secretId: secretId, contactId: contact.id))
             // Retained until this holder's pickup is confirmed (relay-observed or
-            // heartbeat-attested), then discarded. Safe to retain: the box was sealed under an
-            // ephemeral key discarded at sealing, so only the holder can open it, not this device.
+            // heartbeat-attested), or until this holder's record goes, then discarded. Safe to
+            // retain: the box was sealed under an ephemeral key discarded at sealing, so only the
+            // holder can open it, not this device.
             try? retainedDepositRepository.save(RetainedDepositBlob(id: req.id, secretId: secretId, contactId: contact.id, label: label, secretCreatedAt: createdAt, ciphertext: ciphertext, k: threshold, n: contacts.count, mimeType: mimeType))
         }
         try? secretRepository.save(Secret(id: secretId, label: label, mimeType: mimeType, k: threshold, n: contacts.count, secretCreatedAt: createdAt, state: .active))
@@ -402,6 +403,7 @@ public final class ShareService: ShareManagement {
                 // acting on it would leave a holder that can never be reconciled if this device dies
                 // in between, which is the one failure this whole flow exists to avoid.
                 try? shareMetadataRepository.delete(shareId: meta.id)
+                if isRetentionStillPending(meta.id) { try? retainedDepositRepository.delete(id: meta.id) }
                 try? await approvedRemoval.relay.deleteShareRequest(requestId: approvedRemoval.request.id)
             }
         }
@@ -595,11 +597,13 @@ public final class ShareService: ShareManagement {
 
     /// Local-only teardown for a `.destroying` secret whose holders won't all respond (e.g. a
     /// permanently dark holder) — removes the `Secret` and its remaining `ShareMetadata` rows
-    /// without waiting for relay confirmation.
+    /// without waiting for relay confirmation, and the retained blob of any holder who never
+    /// picked up.
     public func forceForgetSecret(secretId: UUID) throws {
         let shares = ((try? shareMetadataRepository.getAll()) ?? []).filter { $0.secretId == secretId }
         for share in shares {
             try? shareMetadataRepository.delete(shareId: share.id)
+            if isRetentionStillPending(share.id) { try? retainedDepositRepository.delete(id: share.id) }
         }
         try secretRepository.delete(secretId: secretId)
     }
