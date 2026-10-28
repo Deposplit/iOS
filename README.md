@@ -42,7 +42,7 @@ build rather than quietly eroding the architecture.
 `ShareManagement`, `CatalogManagement`), `driving_adapters/` (the services implementing them,
 plus `ShareEncryption`), `driven_ports/` (ten interfaces: `IdentityStore`,
 `ContactRepository`, `ShareRepository`, `ShareMetadataRepository`, `SecretRepository`,
-`RetainedDepositRepository`, `KeyConflictRepository`, `ShareRelay`, `ShareRelayResolver`,
+`KeyConflictRepository`, `ShareRelay`, `ShareRelayResolver`,
 `RelaySettings`), `value_objects/`, and `shamir/ShamirSecretSharing.swift`.
 
 **`Deposplit/`** — `api/` (relay client, resolver, defaults), `auth/`
