@@ -52,7 +52,7 @@ final class LocalKeyConflictRepository: KeyConflictRepository {
                   let oldEd = Data(base64URLEncoded: json.oldVerifyKey),
                   let newEd = Data(base64URLEncoded: json.newVerifyKey),
                   let newX = Data(base64URLEncoded: json.newEncKey),
-                  let detectedAt = AppFiles.Dates.date(from: json.detectedAt) else { return nil }
+                  let detectedAt = PayloadCanonical.parseWireInstant(json.detectedAt) else { return nil }
             return KeyConflict(id: id, contactId: contactId, oldVerifyKey: oldEd, newVerifyKey: newEd, newEncKey: newX, detectedAt: detectedAt)
         }
     }
@@ -65,7 +65,7 @@ final class LocalKeyConflictRepository: KeyConflictRepository {
                 oldVerifyKey: c.oldVerifyKey.base64URLEncoded,
                 newVerifyKey: c.newVerifyKey.base64URLEncoded,
                 newEncKey: c.newEncKey.base64URLEncoded,
-                detectedAt: AppFiles.Dates.string(from: c.detectedAt)
+                detectedAt: PayloadCanonical.wireInstant(c.detectedAt)
             )
         }
         let data = try JSONEncoder().encode(items)

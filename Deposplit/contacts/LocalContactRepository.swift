@@ -72,20 +72,20 @@ final class LocalContactRepository: ContactRepository {
             guard let id = UUID(uuidString: json.id),
                   let ed = Data(base64URLEncoded: json.verifyKey),
                   let x = Data(base64URLEncoded: json.encKey),
-                  let addedAt = json.addedAt.parseISO8601() else { return nil }
+                  let addedAt = PayloadCanonical.parseWireInstant(json.addedAt) else { return nil }
             return Contact(
                 id: id,
                 pseudonym: json.pseudonym,
                 verifyKey: ed,
                 encKey: x,
                 verificationLevel: json.verificationLevel,
-                verifiedAt: json.verifiedAt?.parseISO8601(),
+                verifiedAt: json.verifiedAt.flatMap(PayloadCanonical.parseWireInstant),
                 addedAt: addedAt,
                 relayBaseUrl: json.relayBaseUrl,
                 revokedVerifyKeys: json.revokedVerifyKeys.compactMap { Data(base64URLEncoded: $0) },
-                keyChangedAt: json.keyChangedAt?.parseISO8601(),
-                heartbeatOptedOutAt: json.heartbeatOptedOutAt?.parseISO8601(),
-                lastHeartbeatSentAt: json.lastHeartbeatSentAt?.parseISO8601(),
+                keyChangedAt: json.keyChangedAt.flatMap(PayloadCanonical.parseWireInstant),
+                heartbeatOptedOutAt: json.heartbeatOptedOutAt.flatMap(PayloadCanonical.parseWireInstant),
+                lastHeartbeatSentAt: json.lastHeartbeatSentAt.flatMap(PayloadCanonical.parseWireInstant),
                 heartbeatEmissionOptedOut: json.heartbeatEmissionOptedOut,
                 cipherSuite: json.cipherSuite,
                 nickname: json.nickname
@@ -101,13 +101,13 @@ final class LocalContactRepository: ContactRepository {
                 verifyKey: c.verifyKey.base64URLEncoded,
                 encKey: c.encKey.base64URLEncoded,
                 verificationLevel: c.verificationLevel,
-                verifiedAt: c.verifiedAt.map { AppFiles.Dates.string(from: $0) },
-                addedAt: AppFiles.Dates.string(from: c.addedAt),
+                verifiedAt: c.verifiedAt.map(PayloadCanonical.wireInstant),
+                addedAt: PayloadCanonical.wireInstant(c.addedAt),
                 relayBaseUrl: c.relayBaseUrl,
                 revokedVerifyKeys: c.revokedVerifyKeys.map { $0.base64URLEncoded },
-                keyChangedAt: c.keyChangedAt.map { AppFiles.Dates.string(from: $0) },
-                heartbeatOptedOutAt: c.heartbeatOptedOutAt.map { AppFiles.Dates.string(from: $0) },
-                lastHeartbeatSentAt: c.lastHeartbeatSentAt.map { AppFiles.Dates.string(from: $0) },
+                keyChangedAt: c.keyChangedAt.map(PayloadCanonical.wireInstant),
+                heartbeatOptedOutAt: c.heartbeatOptedOutAt.map(PayloadCanonical.wireInstant),
+                lastHeartbeatSentAt: c.lastHeartbeatSentAt.map(PayloadCanonical.wireInstant),
                 heartbeatEmissionOptedOut: c.heartbeatEmissionOptedOut,
                 cipherSuite: c.cipherSuite,
                 nickname: c.nickname
@@ -116,8 +116,4 @@ final class LocalContactRepository: ContactRepository {
         let data = try JSONEncoder().encode(items)
         try data.write(to: fileURL, options: .atomic)
     }
-}
-
-private extension String {
-    func parseISO8601() -> Date? { AppFiles.Dates.date(from: self) }
 }

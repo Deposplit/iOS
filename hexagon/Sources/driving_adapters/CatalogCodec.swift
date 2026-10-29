@@ -30,11 +30,10 @@ enum CatalogCodec {
     static func decode(_ data: Data) throws -> Catalog {
         let wire = try JSONDecoder().decode(CatalogWire.self, from: data)
         guard wire.version == version else { throw CatalogCodecError.unsupportedVersion(wire.version) }
-        let times = TimeReader()
         return Catalog(
-            contacts: try wire.contacts.map { try $0.toDomain(times) },
-            secrets: try wire.secrets.map { try $0.toDomain(times) },
-            shareMetadata: try wire.shareMetadata.map { try $0.toDomain(times) }
+            contacts: try wire.contacts.map { try $0.toDomain() },
+            secrets: try wire.secrets.map { try $0.toDomain() },
+            shareMetadata: try wire.shareMetadata.map { try $0.toDomain() }
         )
     }
 }
@@ -88,20 +87,20 @@ private struct ContactWire: Codable {
         heartbeatEmissionOptedOut = contact.heartbeatEmissionOptedOut
     }
 
-    func toDomain(_ times: TimeReader) throws -> Contact {
+    func toDomain() throws -> Contact {
         Contact(
             id: try uuid(id, "contacts.id"),
             pseudonym: pseudonym,
             verifyKey: try key(verifyKey, "contacts.verifyKey"),
             encKey: try key(encKey, "contacts.encKey"),
             verificationLevel: try value(verificationLevel, "contacts.verificationLevel"),
-            verifiedAt: try verifiedAt.map { try times.date($0, "contacts.verifiedAt") },
-            addedAt: try times.date(addedAt, "contacts.addedAt"),
+            verifiedAt: try verifiedAt.map { try date($0, "contacts.verifiedAt") },
+            addedAt: try date(addedAt, "contacts.addedAt"),
             relayBaseUrl: relayBaseUrl,
             revokedVerifyKeys: try (revokedVerifyKeys ?? []).map { try key($0, "contacts.revokedVerifyKeys") },
-            keyChangedAt: try keyChangedAt.map { try times.date($0, "contacts.keyChangedAt") },
-            heartbeatOptedOutAt: try heartbeatOptedOutAt.map { try times.date($0, "contacts.heartbeatOptedOutAt") },
-            lastHeartbeatSentAt: try lastHeartbeatSentAt.map { try times.date($0, "contacts.lastHeartbeatSentAt") },
+            keyChangedAt: try keyChangedAt.map { try date($0, "contacts.keyChangedAt") },
+            heartbeatOptedOutAt: try heartbeatOptedOutAt.map { try date($0, "contacts.heartbeatOptedOutAt") },
+            lastHeartbeatSentAt: try lastHeartbeatSentAt.map { try date($0, "contacts.lastHeartbeatSentAt") },
             heartbeatEmissionOptedOut: heartbeatEmissionOptedOut ?? false,
             cipherSuite: try value(cipherSuite, "contacts.cipherSuite"),
             nickname: nickname
@@ -128,14 +127,14 @@ private struct SecretWire: Codable {
         state = secret.state.rawValue
     }
 
-    func toDomain(_ times: TimeReader) throws -> Secret {
+    func toDomain() throws -> Secret {
         Secret(
             id: try uuid(id, "secrets.id"),
             label: label,
             mimeType: MimeType(mimeType),
             k: k,
             n: n,
-            secretCreatedAt: try times.date(secretCreatedAt, "secrets.secretCreatedAt"),
+            secretCreatedAt: try date(secretCreatedAt, "secrets.secretCreatedAt"),
             state: try value(state, "secrets.state")
         )
     }
@@ -154,33 +153,20 @@ private struct ShareMetadataWire: Codable {
         lastConfirmedAt = meta.lastConfirmedAt.map(PayloadCanonical.wireInstant)
     }
 
-    func toDomain(_ times: TimeReader) throws -> ShareMetadata {
+    func toDomain() throws -> ShareMetadata {
         ShareMetadata(
             id: try uuid(id, "shareMetadata.id"),
             secretId: try uuid(secretId, "shareMetadata.secretId"),
             contactId: try uuid(contactId, "shareMetadata.contactId"),
-            lastConfirmedAt: try lastConfirmedAt.map { try times.date($0, "shareMetadata.lastConfirmedAt") }
+            lastConfirmedAt: try lastConfirmedAt.map { try date($0, "shareMetadata.lastConfirmedAt") }
         )
     }
 }
 
-/// Times are written with exactly the milliseconds a signature covers, but read with any number of
-/// fractional digits, or none. Made once per decode rather than kept as a static, because
-/// `ISO8601DateFormatter` is not `Sendable`.
-private struct TimeReader {
-    private let fractional: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter
-    }()
-    private let whole = ISO8601DateFormatter()
-
-    func date(_ string: String, _ field: String) throws -> Date {
-        guard let date = fractional.date(from: string) ?? whole.date(from: string) else {
-            throw CatalogCodecError.malformed(field: field, value: string)
-        }
-        return date
-    }
+/// Written with `PayloadCanonical.wireInstant`, read here with any number of fractional digits.
+private func date(_ string: String, _ field: String) throws -> Date {
+    guard let date = PayloadCanonical.parseWireInstant(string) else { throw CatalogCodecError.malformed(field: field, value: string) }
+    return date
 }
 
 private func uuid(_ string: String, _ field: String) throws -> UUID {

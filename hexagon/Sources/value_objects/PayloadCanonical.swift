@@ -69,25 +69,51 @@ public enum PayloadCanonical {
         Int64(date.timeIntervalSince1970 * 1000)
     }
 
-    /// A `secretCreatedAt` in the form the relay parses, carrying exactly the milliseconds
-    /// `epochMilliseconds` signs.
+    /// A timestamp as text, wherever one travels or rests as text — the wire, every local store,
+    /// the catalogue: in UTC with exactly three fractional digits, the milliseconds
+    /// `epochMilliseconds` signs. The one format every platform writes, specified in
+    /// deposplit.com/docs/protocol.md.
     ///
     /// Built from that integer rather than by formatting the `Date` again, so no rounding of its
     /// own can put a different millisecond on the wire than in the signature. Foundation's
     /// default `ISO8601DateFormatter` omits fractional seconds altogether, which is the trap this
     /// exists to close: `Date()` is never on a whole second, so every share request iOS opened
     /// was signed at one millisecond and transmitted at another, and the relay rejected all of
-    /// them. Kotlin and Scala reach the same place for free — `Instant.toString` keeps the
-    /// fraction and `Instant.parse` gives it back.
+    /// them. `.withFractionalSeconds` is no cure either: it rounds to the nearest millisecond
+    /// where the signature truncates, so half the time it writes the next one.
     public static func wireInstant(_ date: Date) -> String {
         let epochMs = epochMilliseconds(date)
         // Floored, not truncated toward zero, so a pre-1970 instant still lands on a whole second
         // with a millisecond remainder in 0..<1000 rather than a negative one.
         let seconds = epochMs >= 0 ? epochMs / 1000 : (epochMs - 999) / 1000
         let milliseconds = String(epochMs - seconds * 1000)
-        let whole = ISO8601DateFormatter().string(from: Date(timeIntervalSince1970: TimeInterval(seconds)))
+        let whole = wholeSeconds.format(Date(timeIntervalSince1970: TimeInterval(seconds)))
         return whole.dropLast() + "." + String(repeating: "0", count: 3 - milliseconds.count) + milliseconds + "Z"
     }
+
+    /// A timestamp read from text with any number of fractional digits, none to nine, and cut to
+    /// the millisecond — the reading half of `wireInstant`, and lenient where that is exact.
+    ///
+    /// Cut and not rounded, because cutting is what `epochMilliseconds` does when signing: a time
+    /// read as `.457999999` was signed as 457, and rounded it would sign as 458 and fail to
+    /// verify. The milliseconds are taken from the digits here rather than left to a formatter, so
+    /// the cut is this function's own and not a detail of how Foundation treats a fourth digit.
+    public static func parseWireInstant(_ text: String) -> Date? {
+        guard text.hasSuffix("Z") else { return nil }
+        let parts = text.dropLast().split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false)
+        let fraction = parts.count == 2 ? parts[1] : ""
+        guard parts.count == 1 || (1...9).contains(fraction.count),
+              fraction.allSatisfy({ $0.isASCII && $0.isNumber }),
+              let milliseconds = Int64((fraction + "000").prefix(3)),
+              let whole = try? wholeSeconds.parse(parts[0] + "Z") else { return nil }
+        let epochMs = Int64(whole.timeIntervalSince1970) * 1000 + milliseconds
+        return Date(timeIntervalSince1970: TimeInterval(epochMs) / 1000)
+    }
+
+    /// Whole seconds in ISO-8601 UTC, either side of the milliseconds the two functions above
+    /// handle themselves. A format style rather than an `ISO8601DateFormatter`, because it is
+    /// `Sendable` and so can be shared, where a formatter would have to be made afresh every call.
+    private static let wholeSeconds = Date.ISO8601FormatStyle()
 
     /// Signed by the recipient when responding to a share request (`recipientSignature`).
     public static func forRespond(requestId: UUID, approved: Bool, ciphertext: Data?) -> Data {

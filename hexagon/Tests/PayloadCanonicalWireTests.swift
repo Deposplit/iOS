@@ -63,3 +63,37 @@ private func relayView(of wire: String) throws -> Date {
         #expect(asSigned == asRebuilt)
     }
 }
+
+// The same table is checked into the relay's, phon's and Android's suites, so all four read any
+// timestamp's text to the same millisecond and write that millisecond back the same way.
+private let wireInstants: [(text: String, epochMs: Int64, written: String)] = [
+    ("2026-10-29T07:27:35Z", 1793258855000, "2026-10-29T07:27:35.000Z"),
+    ("2026-10-29T07:27:35.457Z", 1793258855457, "2026-10-29T07:27:35.457Z"),
+    ("2026-10-29T07:27:35.457123Z", 1793258855457, "2026-10-29T07:27:35.457Z"),
+    ("2026-10-29T07:27:35.457999999Z", 1793258855457, "2026-10-29T07:27:35.457Z"),
+    ("2026-10-29T07:27:35.999999999Z", 1793258855999, "2026-10-29T07:27:35.999Z"),
+]
+
+@Test func aWireTimestampIsReadToTheMillisecondCutAndNeverRounded() throws {
+    for row in wireInstants {
+        let date = try #require(PayloadCanonical.parseWireInstant(row.text), "\(row.text)")
+        #expect(PayloadCanonical.epochMilliseconds(date) == row.epochMs, "\(row.text)")
+        #expect(PayloadCanonical.wireInstant(date) == row.written, "\(row.text)")
+    }
+}
+
+@Test func aWireTimestampThatIsNotISO8601InUTCIsNotRead() {
+    for text in ["", "2026-10-29 07:27:35.457Z", "2026-10-29T07:27:35.Z", "2026-10-29T07:27:35.4570000000Z",
+                 "2026-10-29T07:27:35.45xZ", "2026-10-29T07:27:35.457+01:00", "2026-13-29T07:27:35.457Z"] {
+        #expect(PayloadCanonical.parseWireInstant(text) == nil, "\(text)")
+    }
+}
+
+// What a store writes it reads back to the very millisecond, for any time the clock gives.
+@Test func aTimeStampedNowReadsBackAsTheMillisecondItWasWrittenAt() throws {
+    for _ in 0..<2000 {
+        let now = Date()
+        let readBack = try #require(PayloadCanonical.parseWireInstant(PayloadCanonical.wireInstant(now)))
+        #expect(PayloadCanonical.epochMilliseconds(readBack) == PayloadCanonical.epochMilliseconds(now))
+    }
+}
