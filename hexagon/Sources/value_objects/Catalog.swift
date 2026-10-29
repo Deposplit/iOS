@@ -4,7 +4,10 @@ import Foundation
 /// verification levels, and sender-side `ShareMetadata`/`Secret` records. Eases "who are my
 /// holders" during identity recovery without weakening anything: none of this is a share or a
 /// private key.
-public struct Catalog: Codable, Equatable {
+///
+/// Not `Codable`: it is written and read only through `CatalogCodec`, whose format is shared with
+/// Android.
+public struct Catalog: Equatable {
     public let contacts: [Contact]
     public let secrets: [Secret]
     public let shareMetadata: [ShareMetadata]

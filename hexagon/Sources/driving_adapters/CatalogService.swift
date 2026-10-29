@@ -21,16 +21,11 @@ public final class CatalogService: CatalogManagement {
             secrets: try secretRepository.getAll(),
             shareMetadata: try shareMetadataRepository.getAll()
         )
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = .prettyPrinted
-        return try encoder.encode(catalog)
+        return try CatalogCodec.encode(catalog)
     }
 
     public func importCatalog(_ data: Data) throws -> Int {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        let catalog = try decoder.decode(Catalog.self, from: data)
+        let catalog = try CatalogCodec.decode(data)
 
         let existingContactIds = Set(contactRepository.getAll().map(\.id))
         var added = 0

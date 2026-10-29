@@ -85,9 +85,7 @@ private func makeContact(_ name: String) -> Contact {
         verificationLevel: .veryLow, verifiedAt: nil, addedAt: localContact.addedAt
     )
     let catalog = Catalog(contacts: [staleImportedVersion], secrets: [], shareMetadata: [])
-    let encoder = JSONEncoder()
-    encoder.dateEncodingStrategy = .iso8601
-    let data = try encoder.encode(catalog)
+    let data = try CatalogCodec.encode(catalog)
 
     let added = try svc.importCatalog(data)
 
