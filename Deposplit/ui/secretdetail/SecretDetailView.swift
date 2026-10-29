@@ -127,18 +127,18 @@ struct SecretDetailView: View {
         // Two texts, neither claiming anything about what the reader remembers: all that is known
         // is whether the secret is on this screen right now.
         .confirmationDialog(
-            "Clear collected copies?",
+            "Clear fetched copies?",
             isPresented: $confirmingClear,
             titleVisibility: .visible
         ) {
-            Button("Clear collected copies", role: .destructive) {
+            Button("Clear fetched copies", role: .destructive) {
                 Task { await viewModel.clearCollected() }
             }
         } message: {
             if viewModel.hasBeenShown {
                 Text("The holders keep their pieces — copies can be asked for again at any time.")
             } else {
-                Text("The secret has not been shown here. Clearing the collected copies means asking the holders again before it can be put back together.")
+                Text("The secret has not been shown here. Clearing the fetched copies means asking the holders again before it can be put back together.")
             }
         }
         .confirmationDialog(
@@ -158,7 +158,7 @@ struct SecretDetailView: View {
     @ViewBuilder
     private func actionsSection(_ group: SecretGroup) -> some View {
         Section {
-            Button("Request Retrieval (all)") { Task { await viewModel.requestAll() } }
+            Button("Fetch share copies") { Task { await viewModel.requestAll() } }
                 .disabled(!group.canRequestRetrieval || viewModel.busy)
             BiometricGatedButton(
                 label: "Reconstruct secret…",
@@ -167,7 +167,7 @@ struct SecretDetailView: View {
             ) {
                 await viewModel.reconstruct()
             }
-            Button("Clear collected copies") { confirmingClear = true }
+            Button("Clear fetched copies") { confirmingClear = true }
                 .disabled(!group.canClearCollected || viewModel.busy)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -185,7 +185,7 @@ struct SecretDetailView: View {
                 // screen is the worst possible moment to cover it with something that asks for
                 // nothing.
                 if viewModel.hasBeenShown && group.canClearCollected {
-                    Text("Clear the collected copies once you are done with the secret — the holders keep their pieces either way.")
+                    Text("Clear the fetched copies once you are done with the secret — the holders keep their pieces either way.")
                 }
             }
             .font(.caption)

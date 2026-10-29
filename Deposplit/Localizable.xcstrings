@@ -69,7 +69,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der Schlüssel von %1$@ hat sich geändert, aber der vorherige Schlüssel ist als kompromittiert markiert. Das könnte ein Angreifer mit dem gestohlenen Schlüssel sein oder ein Fehlalarm. Um die Verbindung wiederherzustellen, verifiziere %2$@ frisch — persönlich oder über einen vertrauenswürdigen Kanal — und nutze dann „Neu verknüpfen“ auf dem Kontakte-Bildschirm. Akzeptiere dies nicht automatisch."
+            "value" : "Der Schlüssel von %1$@ hat sich geändert, aber der vorherige Schlüssel ist als kompromittiert markiert. Dies könnte ein Angreifer mit dem gestohlenen Schlüssel sein oder ein Fehlalarm. Um die Verbindung wiederherzustellen, verifizieren Sie %2$@ erneut — persönlich oder über einen vertrauenswürdigen Kanal — und nutzen Sie dann „Neu verknüpfen“ auf dem Kontakte-Bildschirm. Akzeptieren Sie dies nicht automatisch."
           }
         },
         "en" : {
@@ -406,32 +406,32 @@
         }
       }
     },
-    "Clear collected copies" : {
+    "Clear fetched copies" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gesammelte Kopien freigeben"
+            "value" : "Eingeholte Kopien freigeben"
           }
         }
       }
     },
-    "Clear collected copies?" : {
+    "Clear fetched copies?" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gesammelte Kopien freigeben?"
+            "value" : "Eingeholte Kopien freigeben?"
           }
         }
       }
     },
-    "Clear the collected copies once you are done with the secret — the holders keep their pieces either way." : {
+    "Clear the fetched copies once you are done with the secret — the holders keep their pieces either way." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die gesammelten Kopien nach Gebrauch freigeben — die Verwahrer behalten ihre Teile in jedem Fall."
+            "value" : "Die eingeholten Kopien nach Gebrauch freigeben — die Verwahrer behalten ihre Teile in jedem Fall."
           }
         }
       }
@@ -1072,7 +1072,7 @@
         }
       }
     },
-    "Integrity confirmed — every collected share agrees." : {
+    "Integrity confirmed — every fetched share agrees." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1670,18 +1670,18 @@
         }
       }
     },
-    "Reconstruction integrity check failed: no trustworthy majority found among %lld collected shares (largest consistent group was only %lld)." : {
+    "Reconstruction integrity check failed: no trustworthy majority found among %lld fetched shares (largest consistent group was only %lld)." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Integritätsprüfung der Rekonstruktion fehlgeschlagen: Unter %1$lld gesammelten Anteilen wurde keine vertrauenswürdige Mehrheit gefunden (die grösste konsistente Gruppe umfasste nur %2$lld)."
+            "value" : "Integritätsprüfung der Rekonstruktion fehlgeschlagen: Unter %1$lld eingeholten Anteilen wurde keine vertrauenswürdige Mehrheit gefunden (die grösste konsistente Gruppe umfasste nur %2$lld)."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Reconstruction integrity check failed: no trustworthy majority found among %1$lld collected shares (largest consistent group was only %2$lld)."
+            "value" : "Reconstruction integrity check failed: no trustworthy majority found among %1$lld fetched shares (largest consistent group was only %2$lld)."
           }
         }
       }
@@ -1876,12 +1876,12 @@
         }
       }
     },
-    "Request Retrieval (all)" : {
+    "Fetch share copies" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abruf anfragen (alle)"
+            "value" : "Anteil-Kopien einholen"
           }
         }
       }
@@ -2056,12 +2056,12 @@
         }
       }
     },
-    "Some relays could not be reached, so transfers still in progress were not collected first — they will arrive on a later sync." : {
+    "Some shares on their way to you could not be collected before the switch to the new keys. They will still arrive later, on their own." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Einige Relais waren nicht erreichbar, daher wurden noch offene Übertragungen nicht vorab eingesammelt — sie kommen bei einer späteren Synchronisierung an."
+            "value" : "Einige bereits an Sie unterwegs befindliche Anteile konnten vor dem Wechsel zu den neuen Schlüsseln nicht eingesammelt werden. Diese kommen später von selbst an."
           }
         }
       }
@@ -2162,12 +2162,12 @@
         }
       }
     },
-    "The secret has not been shown here. Clearing the collected copies means asking the holders again before it can be put back together." : {
+    "The secret has not been shown here. Clearing the fetched copies means asking the holders again before it can be put back together." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Geheimnis wurde hier noch nicht angezeigt. Werden die gesammelten Kopien freigegeben, müssen die Verwahrer erneut gefragt werden, bevor es wieder zusammengesetzt werden kann."
+            "value" : "Das Geheimnis wurde hier noch nicht angezeigt. Werden die eingeholten Kopien freigegeben, müssen die Verwahrer erneut gefragt werden, bevor es wieder zusammengesetzt werden kann."
           }
         }
       }
@@ -2177,7 +2177,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dies erzeugt ein neues Schlüsselpaar und benachrichtigt %lld Kontakt(e). Ein bereits an Sie unterwegs befindlicher Anteil kann danach weiterhin abgeholt werden; ein jetzt nicht erreichbarer Kontakt erfährt nichts vom neuen Schlüssel."
+            "value" : "Dies erzeugt ein neues Schlüsselpaar und benachrichtigt %lld Kontakt(e). Ein bereits an Sie unterwegs befindlicher Anteil kann danach weiterhin eingesammelt werden; ein jetzt nicht erreichbarer Kontakt erfährt nichts vom neuen Schlüssel."
           }
         }
       }

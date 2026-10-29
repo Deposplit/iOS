@@ -97,7 +97,7 @@ final class SecretDetailViewModel {
             )
         } catch let ShamirError.reconstructionIntegrityFailed(largestConsistentGroup, totalShares) {
             actionError = String(
-                localized: "Reconstruction integrity check failed: no trustworthy majority found among \(totalShares) collected shares (largest consistent group was only \(largestConsistentGroup))."
+                localized: "Reconstruction integrity check failed: no trustworthy majority found among \(totalShares) fetched shares (largest consistent group was only \(largestConsistentGroup))."
             )
         } catch {
             actionError = error.localizedDescription

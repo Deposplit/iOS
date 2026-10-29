@@ -128,7 +128,7 @@ final class RepairViewModel {
             phase = .redeposit
         } catch let ShamirError.reconstructionIntegrityFailed(largestConsistentGroup, totalShares) {
             self.error = String(
-                localized: "Reconstruction integrity check failed: no trustworthy majority found among \(totalShares) collected shares (largest consistent group was only \(largestConsistentGroup))."
+                localized: "Reconstruction integrity check failed: no trustworthy majority found among \(totalShares) fetched shares (largest consistent group was only \(largestConsistentGroup))."
             )
             phase = .gathering
         } catch {

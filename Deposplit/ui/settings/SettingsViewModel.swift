@@ -69,7 +69,7 @@ final class SettingsViewModel {
             let result = try await shareManagement.regenerateIdentity()
             var message = String(localized: "Notified \(result.notifiedContacts) of \(result.totalContacts) contact(s).")
             if !result.drainSucceeded {
-                message += " " + String(localized: "Some relays could not be reached, so transfers still in progress were not collected first — they will arrive on a later sync.")
+                message += " " + String(localized: "Some shares on their way to you could not be collected before the switch to the new keys. They will still arrive later, on their own.")
             }
             regenerateIdentityMessage = message
         } catch {
