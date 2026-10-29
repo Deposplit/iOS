@@ -101,13 +101,13 @@ final class LocalContactRepository: ContactRepository {
                 verifyKey: c.verifyKey.base64URLEncoded,
                 encKey: c.encKey.base64URLEncoded,
                 verificationLevel: c.verificationLevel,
-                verifiedAt: c.verifiedAt.map { _localISO8601.string(from: $0) },
-                addedAt: _localISO8601.string(from: c.addedAt),
+                verifiedAt: c.verifiedAt.map { AppFiles.Dates.string(from: $0) },
+                addedAt: AppFiles.Dates.string(from: c.addedAt),
                 relayBaseUrl: c.relayBaseUrl,
                 revokedVerifyKeys: c.revokedVerifyKeys.map { $0.base64URLEncoded },
-                keyChangedAt: c.keyChangedAt.map { _localISO8601.string(from: $0) },
-                heartbeatOptedOutAt: c.heartbeatOptedOutAt.map { _localISO8601.string(from: $0) },
-                lastHeartbeatSentAt: c.lastHeartbeatSentAt.map { _localISO8601.string(from: $0) },
+                keyChangedAt: c.keyChangedAt.map { AppFiles.Dates.string(from: $0) },
+                heartbeatOptedOutAt: c.heartbeatOptedOutAt.map { AppFiles.Dates.string(from: $0) },
+                lastHeartbeatSentAt: c.lastHeartbeatSentAt.map { AppFiles.Dates.string(from: $0) },
                 heartbeatEmissionOptedOut: c.heartbeatEmissionOptedOut,
                 cipherSuite: c.cipherSuite,
                 nickname: c.nickname
@@ -118,8 +118,6 @@ final class LocalContactRepository: ContactRepository {
     }
 }
 
-private let _localISO8601 = ISO8601DateFormatter()
-
 private extension String {
-    func parseISO8601() -> Date? { _localISO8601.date(from: self) }
+    func parseISO8601() -> Date? { AppFiles.Dates.date(from: self) }
 }

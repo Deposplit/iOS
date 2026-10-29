@@ -52,7 +52,7 @@ final class LocalKeyConflictRepository: KeyConflictRepository {
                   let oldEd = Data(base64URLEncoded: json.oldVerifyKey),
                   let newEd = Data(base64URLEncoded: json.newVerifyKey),
                   let newX = Data(base64URLEncoded: json.newEncKey),
-                  let detectedAt = _keyConflictISO8601.date(from: json.detectedAt) else { return nil }
+                  let detectedAt = AppFiles.Dates.date(from: json.detectedAt) else { return nil }
             return KeyConflict(id: id, contactId: contactId, oldVerifyKey: oldEd, newVerifyKey: newEd, newEncKey: newX, detectedAt: detectedAt)
         }
     }
@@ -65,12 +65,10 @@ final class LocalKeyConflictRepository: KeyConflictRepository {
                 oldVerifyKey: c.oldVerifyKey.base64URLEncoded,
                 newVerifyKey: c.newVerifyKey.base64URLEncoded,
                 newEncKey: c.newEncKey.base64URLEncoded,
-                detectedAt: _keyConflictISO8601.string(from: c.detectedAt)
+                detectedAt: AppFiles.Dates.string(from: c.detectedAt)
             )
         }
         let data = try JSONEncoder().encode(items)
         try data.write(to: fileURL, options: .atomic)
     }
 }
-
-private let _keyConflictISO8601 = ISO8601DateFormatter()

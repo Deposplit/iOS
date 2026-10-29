@@ -1,3 +1,4 @@
+import hexagon
 import Foundation
 
 /// Where this app's local stores live, and the one place the backup decision is written on iOS.
@@ -20,5 +21,33 @@ enum AppFiles {
     static func url(_ name: String) -> URL {
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         return documents.appendingPathComponent(name)
+    }
+
+    /// How every store here writes a date and reads it back: ISO-8601 carrying exactly the
+    /// millisecond `PayloadCanonical.epochMilliseconds` signs, which is what `wireInstant` builds.
+    ///
+    /// Not a default `ISO8601DateFormatter`, which drops the fraction: a date came back earlier
+    /// than it went in, so an approval answered at .809 looked newer than the .000 saved for it, and
+    /// was saved again on every launch. Nor `.withFractionalSeconds` alone, which rounds to the
+    /// nearest millisecond where the signature truncates: half the time, a `secretCreatedAt` read
+    /// back would sign one millisecond later than its deposit did.
+    ///
+    /// A date written without milliseconds does not parse. Deposplit is pre-launch, so stores are
+    /// wiped rather than migrated.
+    enum Dates {
+
+        static func string(from date: Date) -> String {
+            PayloadCanonical.wireInstant(date)
+        }
+
+        static func date(from string: String) -> Date? {
+            parser.date(from: string)
+        }
+
+        private static let parser: ISO8601DateFormatter = {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            return formatter
+        }()
     }
 }

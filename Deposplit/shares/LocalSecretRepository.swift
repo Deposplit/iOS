@@ -49,7 +49,7 @@ final class LocalSecretRepository: SecretRepository {
         let items = try JSONDecoder().decode([SecretJSON].self, from: data)
         return items.compactMap { json in
             guard let id = UUID(uuidString: json.id),
-                  let secretCreatedAt = _secretISO8601.date(from: json.secretCreatedAt),
+                  let secretCreatedAt = AppFiles.Dates.date(from: json.secretCreatedAt),
                   let state = SecretState(rawValue: json.state) else { return nil }
             return Secret(id: id, label: json.label, mimeType: MimeType(json.mimeType), k: json.k, n: json.n, secretCreatedAt: secretCreatedAt, state: state)
         }
@@ -63,7 +63,7 @@ final class LocalSecretRepository: SecretRepository {
                 k: s.k,
                 n: s.n,
                 mimeType: s.mimeType.value,
-                secretCreatedAt: _secretISO8601.string(from: s.secretCreatedAt),
+                secretCreatedAt: AppFiles.Dates.string(from: s.secretCreatedAt),
                 state: s.state.rawValue
             )
         }
@@ -71,5 +71,3 @@ final class LocalSecretRepository: SecretRepository {
         try data.write(to: fileURL, options: .atomic)
     }
 }
-
-private let _secretISO8601 = ISO8601DateFormatter()

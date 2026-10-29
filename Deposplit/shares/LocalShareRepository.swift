@@ -62,8 +62,8 @@ final class LocalShareRepository: ShareRepository {
                 label: json.label,
                 contactId: UUID(uuidString: json.contactId)!,
                 senderPseudonym: json.senderPseudonym,
-                createdAt: _localISO8601.date(from: json.createdAt)!,
-                pickedUpAt: _localISO8601.date(from: json.pickedUpAt)!,
+                createdAt: AppFiles.Dates.date(from: json.createdAt)!,
+                pickedUpAt: AppFiles.Dates.date(from: json.pickedUpAt)!,
                 plaintextShare: Data(base64Encoded: json.plaintextShare)!,
                 k: json.k,
                 n: json.n,
@@ -80,8 +80,8 @@ final class LocalShareRepository: ShareRepository {
                 label: s.label,
                 contactId: s.contactId.uuidString,
                 senderPseudonym: s.senderPseudonym,
-                createdAt: _localISO8601.string(from: s.createdAt),
-                pickedUpAt: _localISO8601.string(from: s.pickedUpAt),
+                createdAt: AppFiles.Dates.string(from: s.createdAt),
+                pickedUpAt: AppFiles.Dates.string(from: s.pickedUpAt),
                 plaintextShare: s.plaintextShare.base64EncodedString(),
                 k: s.k,
                 n: s.n,
@@ -92,5 +92,3 @@ final class LocalShareRepository: ShareRepository {
         try data.write(to: fileURL, options: .atomic)
     }
 }
-
-private let _localISO8601 = ISO8601DateFormatter()
