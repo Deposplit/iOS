@@ -199,11 +199,13 @@ final class DeposplitApiAdapter: ShareRelay {
                 senderKey: Data(base64URLEncoded: senderKey) ?? Data(),
                 recipientKey: Data(base64URLEncoded: recipientKey) ?? Data(),
                 sealedLabel: Data(base64Encoded: sealedLabel) ?? Data(),
-                secretCreatedAt: parseISO8601(secretCreatedAt),
+                secretCreatedAt: parseISO8601(secretCreatedAt) ?? Date(),
                 transactionType: ShareTransactionType(rawValue: transactionType) ?? .retrieval,
                 state: ShareRequestState(rawValue: state) ?? .pending,
-                requestedAt: parseISO8601(requestedAt),
-                respondedAt: respondedAt.map { parseISO8601($0) },
+                requestedAt: parseISO8601(requestedAt) ?? Date(),
+                // Nil, not now, when it does not parse: an approval dates its holder's custody by
+                // this, and one dated now would confirm them afresh on every pass that reads it.
+                respondedAt: respondedAt.flatMap(parseISO8601),
                 ciphertext: ciphertext.flatMap { Data(base64Encoded: $0) },
                 k: k, n: n, mimeType: mimeType.map(MimeType.init),
                 senderSignature: Data(base64URLEncoded: senderSignature) ?? Data(),
@@ -239,7 +241,7 @@ final class DeposplitApiAdapter: ShareRelay {
                 newEncKey: Data(base64URLEncoded: newEncKey) ?? Data(),
                 newCipherSuite: CipherSuite(rawValue: newCipherSuite) ?? .current,
                 signature: Data(base64URLEncoded: signature) ?? Data(),
-                createdAt: parseISO8601(createdAt)
+                createdAt: parseISO8601(createdAt) ?? Date()
             )
         }
     }
@@ -270,7 +272,7 @@ final class DeposplitApiAdapter: ShareRelay {
                 ownerKey: Data(base64URLEncoded: ownerKey) ?? Data(),
                 secretIds: secretIds.compactMap { UUID(uuidString: $0) },
                 optedOut: optedOut,
-                emittedAt: parseISO8601(emittedAt),
+                emittedAt: parseISO8601(emittedAt) ?? Date(),
                 signature: Data(base64URLEncoded: signature) ?? Data()
             )
         }
@@ -299,7 +301,8 @@ extension Data {
 
 // MARK: - ISO 8601 date parsing
 
-// Two formatters: the server may or may not include fractional seconds.
+// Two formatters: the server may or may not include fractional seconds. Instant.toString writes
+// none, or three, six or nine digits; the fractional one takes all three and keeps the milliseconds.
 private let _iso8601Fractional: ISO8601DateFormatter = {
     let f = ISO8601DateFormatter()
     f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -307,6 +310,6 @@ private let _iso8601Fractional: ISO8601DateFormatter = {
 }()
 private let _iso8601: ISO8601DateFormatter = ISO8601DateFormatter()
 
-private func parseISO8601(_ string: String) -> Date {
-    _iso8601Fractional.date(from: string) ?? _iso8601.date(from: string) ?? Date()
+private func parseISO8601(_ string: String) -> Date? {
+    _iso8601Fractional.date(from: string) ?? _iso8601.date(from: string)
 }

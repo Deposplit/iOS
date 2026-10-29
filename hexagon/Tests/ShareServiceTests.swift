@@ -1583,7 +1583,7 @@ private func makeDestroyingSecret(
 // MARK: - Custodial-heartbeat push, freshness
 
 /// `row` approved by `signer`, signed the way a holder signs an approval, and answered at `answeredAt`.
-private func approvedBy(_ row: ShareRequest, signer: TestKeyPair, answeredAt: Date) throws -> ShareRequest {
+private func approvedBy(_ row: ShareRequest, signer: TestKeyPair, answeredAt: Date?) throws -> ShareRequest {
     let signedCiphertext = row.transactionType == .retrieval ? row.ciphertext : nil
     let signature = try signer.sign(PayloadCanonical.forRespond(requestId: row.id, approved: true, ciphertext: signedCiphertext))
     return ShareRequest(
@@ -1674,6 +1674,21 @@ private func makeRetrievalRow(secretId: UUID) -> ShareRequest {
     let secretId = UUID()
     try metaRepo.save(ShareMetadata(id: depositId, secretId: secretId, contactId: aliceContact.id))
     relay.pending = [try approvedBy(makeRetrievalRow(secretId: secretId), signer: strangerKeys, answeredAt: Date())]
+
+    try await svc.syncDistributed()
+
+    #expect(try metaRepo.getAll().first { $0.id == depositId }?.lastConfirmedAt == nil)
+}
+
+// What the adapter hands over when the relay's answer time does not parse. The signature still
+// verifies, but there is no moment to date the custody by, and now is not one.
+@Test func syncDistributedConfirmsNothingFromAVerifiedRetrievalApprovalWithNoAnswerTime() async throws {
+    let relay = FakeShareRelay()
+    let (svc, _, _, _, metaRepo, _) = try makeService(relay: relay)
+    let depositId = UUID()
+    let secretId = UUID()
+    try metaRepo.save(ShareMetadata(id: depositId, secretId: secretId, contactId: aliceContact.id))
+    relay.pending = [try approvedBy(makeRetrievalRow(secretId: secretId), signer: aliceKeys, answeredAt: nil)]
 
     try await svc.syncDistributed()
 
