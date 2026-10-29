@@ -187,6 +187,12 @@ struct HomeView: View {
                 break
             }
         }
+        // The other half of Android's ON_RESUME, which also fires on coming back from a screen pushed
+        // over Home: whatever was done to a secret there — destroyed, forgotten, its copies cleared —
+        // shows in the list the reader returns to, rather than a card for a secret that has gone.
+        .onChange(of: selectedSecret) { _, secret in
+            if secret == nil { Task { await reload() } }
+        }
         // Each tab reads from the relay as it comes into view, as a phon tab does by being a page of
         // its own, so what it shows is as fresh as the moment it was looked at. Only a switch counts:
         // the launch has its own reload above. Requests has a view model of its own; the other two
