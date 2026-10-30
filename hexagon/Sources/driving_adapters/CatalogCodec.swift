@@ -96,7 +96,7 @@ private struct ContactWire: Codable {
             verificationLevel: try value(verificationLevel, "contacts.verificationLevel"),
             verifiedAt: try verifiedAt.map { try date($0, "contacts.verifiedAt") },
             addedAt: try date(addedAt, "contacts.addedAt"),
-            relayBaseUrl: relayBaseUrl,
+            relayBaseUrl: try relayBaseUrl.map { try relay($0, "contacts.relayBaseUrl") },
             revokedVerifyKeys: try (revokedVerifyKeys ?? []).map { try key($0, "contacts.revokedVerifyKeys") },
             keyChangedAt: try keyChangedAt.map { try date($0, "contacts.keyChangedAt") },
             heartbeatOptedOutAt: try heartbeatOptedOutAt.map { try date($0, "contacts.heartbeatOptedOutAt") },
@@ -177,6 +177,11 @@ private func uuid(_ string: String, _ field: String) throws -> UUID {
 private func key(_ string: String, _ field: String) throws -> Data {
     guard let key = Data(catalogBase64URL: string) else { throw CatalogCodecError.malformed(field: field, value: string) }
     return key
+}
+
+private func relay(_ string: String, _ field: String) throws -> String {
+    guard let relay = RelayBaseUrl.parse(string) else { throw CatalogCodecError.malformed(field: field, value: string) }
+    return relay
 }
 
 private func value<T: RawRepresentable>(_ string: String, _ field: String) throws -> T where T.RawValue == String {

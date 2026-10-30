@@ -118,7 +118,13 @@ final class DeposplitApiAdapter: ShareRelay {
         let canonical = buildCanonical(nonce: nonce, method: method, path: path, body: bodyData ?? Data())
         let sig = try identity.sign(Data(canonical.utf8))
 
-        var request = URLRequest(url: URL(string: "\(baseUrl)\(path)")!)
+        // A relay is checked where it is entered (see RelayBaseUrl), so this is only the backstop.
+        // Thrown, a bad one reads as a relay that does not answer, as it does on Android, instead
+        // of taking the app down on every launch.
+        guard let url = URL(string: "\(baseUrl)\(path)"), ["http", "https"].contains(url.scheme?.lowercased() ?? "") else {
+            throw URLError(.badURL)
+        }
+        var request = URLRequest(url: url)
         request.httpMethod = method
         // Android's connect timeout. URLSession has no separate one, so this also bounds a silent
         // read, which is ample for the relay's few hundred bytes. A host that drops packets rather

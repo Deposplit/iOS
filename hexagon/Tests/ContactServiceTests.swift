@@ -261,6 +261,31 @@ private func makeContact() -> Contact {
     #expect(repo.getAll().first?.relayBaseUrl == "https://relay.example")
 }
 
+/// Stored, a relay that is not one fails on every sync for as long as the contact exists, so it is
+/// refused on the way in, by either door.
+@Test func addManuallyAndAddFromQrRefuseARelayThatIsNotAnHttpUrl() throws {
+    let repo = InMemoryContactRepositoryForContactServiceTest()
+    let svc = ContactService(contactRepository: repo, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests())
+
+    #expect(throws: ContactError.invalidRelayBaseUrl) {
+        try svc.addManually(pseudonym: "bob", verifyKey: Data(repeating: 0x01, count: 32), encKey: Data(repeating: 0x02, count: 32), verificationLevel: .low, relayBaseUrl: "172.22.114.13:9000", nickname: nil)
+    }
+    #expect(throws: ContactError.invalidRelayBaseUrl) {
+        try svc.addFromQr(pseudonym: "carol", verifyKey: Data(repeating: 0x03, count: 32), encKey: Data(repeating: 0x04, count: 32), cipherSuite: .current, verificationLevel: .veryHigh, relayBaseUrl: "file:///etc/hosts", nickname: nil)
+    }
+    #expect(repo.getAll().isEmpty)
+}
+
+@Test func addManuallyAndAddFromQrStoreTheRelayTrimmedAndWithoutATrailingSlash() throws {
+    let repo = InMemoryContactRepositoryForContactServiceTest()
+    let svc = ContactService(contactRepository: repo, identityStore: identityStoreForContacts, relinkRepository: InMemoryContactRelinkRepositoryForTests())
+
+    try svc.addManually(pseudonym: "bob", verifyKey: Data(repeating: 0x01, count: 32), encKey: Data(repeating: 0x02, count: 32), verificationLevel: .low, relayBaseUrl: " https://relay.example/ ", nickname: nil)
+    try svc.addFromQr(pseudonym: "carol", verifyKey: Data(repeating: 0x03, count: 32), encKey: Data(repeating: 0x04, count: 32), cipherSuite: .current, verificationLevel: .veryHigh, relayBaseUrl: "http://172.22.114.13:9000/", nickname: nil)
+
+    #expect(repo.getAll().map(\.relayBaseUrl) == ["https://relay.example", "http://172.22.114.13:9000"])
+}
+
 
 // ---------------------------------------------------------------------------
 // contactsAwaitingRelink() — who still holds a key this device no longer signs with

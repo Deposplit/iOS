@@ -5,6 +5,7 @@ import Foundation
 final class SettingsViewModel {
 
     var relayBaseUrl: String
+    var relayBaseUrlError: String?
     var catalogExportURL: URL?
     var catalogImportMessage: String?
 
@@ -31,13 +32,26 @@ final class SettingsViewModel {
     }
 
     /// No-op without Premium: the field is not editable then, and Done calls this unconditionally.
-    func save() {
-        guard purchases.isPremium() else { return }
+    /// False when the field names no relay, so that Done can stay open and say so: this default is
+    /// what every contact without an override is reached through, and what this device's QR
+    /// code hands out.
+    func save() -> Bool {
+        guard purchases.isPremium() else { return true }
         let trimmed = relayBaseUrl.trimmingCharacters(in: .whitespaces)
-        relaySettings.setDefaultRelayBaseURL(trimmed.isEmpty ? nil : trimmed)
+        guard !trimmed.isEmpty else {
+            relaySettings.setDefaultRelayBaseURL(nil)
+            return true
+        }
+        guard let base = RelayBaseUrl.parse(trimmed) else {
+            relayBaseUrlError = String(localized: "The relay must be an address starting with http:// or https://.")
+            return false
+        }
+        relaySettings.setDefaultRelayBaseURL(base)
+        return true
     }
 
     func resetToDefault() {
+        relayBaseUrlError = nil
         relaySettings.setDefaultRelayBaseURL(nil)
         relayBaseUrl = relaySettings.defaultRelayBaseURL()
     }

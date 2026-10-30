@@ -6,6 +6,7 @@ public enum ContactError: Error, LocalizedError {
     case veryHighRequiresInPersonScan
     case contactNotFound
     case levelRequiredOnKeyChange
+    case invalidRelayBaseUrl
     public var errorDescription: String? {
         switch self {
         case .blankPseudonym: "Name must not be blank."
@@ -13,6 +14,7 @@ public enum ContactError: Error, LocalizedError {
         case .veryHighRequiresInPersonScan: "Very High verification requires an in-person QR scan."
         case .contactNotFound: "Contact not found."
         case .levelRequiredOnKeyChange: "A verification level must be chosen fresh whenever a contact's keys change."
+        case .invalidRelayBaseUrl: "A relay must be an http:// or https:// address."
         }
     }
 }
@@ -68,6 +70,7 @@ public final class ContactService: ContactManagement {
         // Physical co-presence can't be asserted by typing a key in by hand — that's what the
         // in-person QR scan flow is for.
         guard verificationLevel != .veryHigh else { throw ContactError.veryHighRequiresInPersonScan }
+        let relay = try Self.normalizeRelayBaseUrl(relayBaseUrl)
         let now = Date()
         contactRepository.save(Contact(
             id: UUID(),
@@ -77,7 +80,7 @@ public final class ContactService: ContactManagement {
             verificationLevel: verificationLevel,
             verifiedAt: now,
             addedAt: now,
-            relayBaseUrl: relayBaseUrl,
+            relayBaseUrl: relay,
             cipherSuite: cipherSuite,
             nickname: Self.normalizeNickname(nickname)
         ))
@@ -88,6 +91,7 @@ public final class ContactService: ContactManagement {
         guard !name.isEmpty else { throw ContactError.blankPseudonym }
         guard verifyKey.count == cipherSuite.verifyKeyLength else { throw ContactError.invalidKeySize }
         guard encKey.count == cipherSuite.encKeyLength else { throw ContactError.invalidKeySize }
+        let relay = try Self.normalizeRelayBaseUrl(relayBaseUrl)
         let now = Date()
         contactRepository.save(Contact(
             id: UUID(),
@@ -97,7 +101,7 @@ public final class ContactService: ContactManagement {
             verificationLevel: verificationLevel,
             verifiedAt: now,
             addedAt: now,
-            relayBaseUrl: relayBaseUrl,
+            relayBaseUrl: relay,
             cipherSuite: cipherSuite,
             nickname: Self.normalizeNickname(nickname)
         ))
@@ -187,5 +191,13 @@ public final class ContactService: ContactManagement {
     private static func normalizeNickname(_ nickname: String?) -> String? {
         guard let trimmed = nickname?.trimmingCharacters(in: .whitespaces), !trimmed.isEmpty else { return nil }
         return trimmed
+    }
+
+    // nil stays nil, meaning this device's own default relay; anything else has to name one. The
+    // screens check first so they can say so in the user's language — this is the backstop.
+    private static func normalizeRelayBaseUrl(_ relayBaseUrl: String?) throws -> String? {
+        guard let relayBaseUrl else { return nil }
+        guard let base = RelayBaseUrl.parse(relayBaseUrl) else { throw ContactError.invalidRelayBaseUrl }
+        return base
     }
 }

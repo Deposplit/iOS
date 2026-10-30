@@ -32,6 +32,8 @@ final class AddContactViewModel {
               encKey.count == 32
             else { error = String(localized: "Invalid encryption key (expected 32 bytes, base64url)."); return false }
         let trimmedRelay = relayBaseUrlInput.trimmingCharacters(in: .whitespaces)
+        guard trimmedRelay.isEmpty || RelayBaseUrl.parse(trimmedRelay) != nil
+            else { error = String(localized: "The relay must be an address starting with http:// or https://."); return false }
         let trimmedNickname = nicknameInput.trimmingCharacters(in: .whitespaces)
         do {
             try contactManagement.addManually(

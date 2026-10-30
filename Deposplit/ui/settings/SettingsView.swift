@@ -33,6 +33,9 @@ struct SettingsView: View {
                             .autocapitalization(.none)
                             .keyboardType(.URL)
                             .font(.system(.body, design: .monospaced))
+                        if let error = viewModel.relayBaseUrlError {
+                            Text(error).foregroundStyle(.red)
+                        }
                     } else {
                         // Read-only rather than hidden: which relay this device uses is worth
                         // knowing even when changing it is not on offer.
@@ -190,8 +193,7 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        viewModel.save()
-                        dismiss()
+                        if viewModel.save() { dismiss() }
                     }
                 }
             }

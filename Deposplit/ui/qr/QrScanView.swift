@@ -82,6 +82,11 @@ final class QrScanViewModel {
             error = String(localized: "This QR code uses an encryption scheme this app version doesn't support.")
             return
         }
+        // The relay is the other device's default, so a bad one is fixed in its Settings, not here.
+        guard payload.relay.map({ RelayBaseUrl.parse($0) != nil }) ?? true else {
+            error = String(localized: "This QR code names a relay whose address is not valid.")
+            return
+        }
         do {
             // A QR scan defaults to in-person co-presence, the strongest assurance the current
             // scan flow can claim. A remote/video-call scan is a weaker claim, but there's no UI

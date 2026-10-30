@@ -2242,6 +2242,16 @@
         }
       }
     },
+    "The relay must be an address starting with http:// or https://." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Adresse des Relais muss mit http:// oder https:// beginnen."
+          }
+        }
+      }
+    },
     "The secret has not been shown here. Clearing the fetched copies means asking the holders again before it can be put back together." : {
       "localizations" : {
         "de" : {
@@ -2278,6 +2288,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dieses Pseudonym wird auf Ihrem Gerät gespeichert und mit Kontakten geteilt, wenn sie Ihren QR-Code scannen."
+          }
+        }
+      }
+    },
+    "This QR code names a relay whose address is not valid." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser QR-Code nennt ein Relais mit ungültiger Adresse."
           }
         }
       }

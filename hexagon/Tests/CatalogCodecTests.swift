@@ -138,6 +138,22 @@ private func jsonObject(_ data: Data) throws -> NSDictionary {
     #expect(catalog.secrets.first?.id == UUID(uuidString: "0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"))
 }
 
+// The catalogue is one more way a relay reaches a contact, so it is held to the same rule as a
+// scan or a typed one, and one that is not a relay refuses the import like any other bad field.
+@Test func aContactWhoseRelayIsNotAnHttpUrlIsRefused() {
+    #expect(throws: CatalogCodecError.malformed(field: "contacts.relayBaseUrl", value: "172.22.114.13:9000")) {
+        try CatalogCodec.decode(Data("""
+        {"version": 1, "secrets": [], "shareMetadata": [], "contacts": [{
+          "id": "6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b", "pseudonym": "Bob",
+          "verifyKey": "-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_v7-_s",
+          "encKey": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+          "verificationLevel": "low", "verifiedAt": null, "relayBaseUrl": "172.22.114.13:9000",
+          "addedAt": "2026-10-28T19:32:50.123Z", "cipherSuite": "ed25519+x25519-v1"
+        }]}
+        """.utf8))
+    }
+}
+
 @Test func aCatalogOfAnotherVersionIsRefused() {
     #expect(throws: CatalogCodecError.unsupportedVersion(2)) {
         try CatalogCodec.decode(Data(#"{"version": 2, "contacts": [], "secrets": [], "shareMetadata": []}"#.utf8))
