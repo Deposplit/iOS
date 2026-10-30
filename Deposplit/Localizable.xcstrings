@@ -4,6 +4,86 @@
     "" : {
 
     },
+    "Both assurances — e.g. a verified-safety-number video call where they show their QR." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beide Bestätigungen — z. B. ein Videoanruf mit verifizierter Sicherheitsnummer, bei dem der QR-Code gezeigt wird."
+          }
+        }
+      }
+    },
+    "High" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hoch"
+          }
+        }
+      }
+    },
+    "Low" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Niedrig"
+          }
+        }
+      }
+    },
+    "One assurance, not both — e.g. a Signal message from a known contact, or a video call where they show their QR." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine Bestätigung, nicht beide — z. B. eine Signal-Nachricht von einem bekannten Kontakt oder ein Videoanruf, bei dem der QR-Code gezeigt wird."
+          }
+        }
+      }
+    },
+    "Physical co-presence — you scanned their QR code in person." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Physische Anwesenheit — Sie haben den QR-Code persönlich gescannt."
+          }
+        }
+      }
+    },
+    "Untrusted channel, no live proof — e.g. e-mail, LinkedIn, a business card." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht vertrauenswürdiger Kanal, kein Live-Nachweis — z. B. E-Mail, LinkedIn, eine Visitenkarte."
+          }
+        }
+      }
+    },
+    "Very High" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sehr hoch"
+          }
+        }
+      }
+    },
+    "Very Low" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sehr niedrig"
+          }
+        }
+      }
+    },
     "… choose secret photo" : {
       "localizations" : {
         "de" : {

@@ -1,17 +1,6 @@
 import hexagon
 import SwiftUI
 
-private extension VerificationLevel {
-    var badgeColor: Color {
-        switch self {
-        case .veryLow: .gray
-        case .low: .yellow
-        case .high: .accentColor
-        case .veryHigh: .green
-        }
-    }
-}
-
 struct ContactsView: View {
     @State private var viewModel: ContactsViewModel
     @State private var showAddContact = false

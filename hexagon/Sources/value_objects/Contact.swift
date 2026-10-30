@@ -6,25 +6,6 @@ import Foundation
 public enum VerificationLevel: String, Codable, Sendable, CaseIterable, Hashable, Comparable {
     case veryLow, low, high, veryHigh
 
-    public var displayName: String {
-        switch self {
-        case .veryLow: "Very Low"
-        case .low: "Low"
-        case .high: "High"
-        case .veryHigh: "Very High"
-        }
-    }
-
-    /// What this level asserts.
-    public var guidance: String {
-        switch self {
-        case .veryLow: "Untrusted channel, no live proof — e.g. e-mail, LinkedIn, a business card."
-        case .low: "One assurance, not both — e.g. a Signal message from a known contact, or a video call where they show their QR."
-        case .high: "Both assurances — e.g. a verified-safety-number video call where they show their QR."
-        case .veryHigh: "Physical co-presence — you scanned their QR code in person."
-        }
-    }
-
     private var rank: Int {
         switch self {
         case .veryLow: 0
