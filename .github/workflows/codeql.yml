@@ -1,0 +1,61 @@
+name: CodeQL
+
+# Advanced setup rather than CodeQL's default setup, whose autobuild scanned the hexagon package
+# alone (47 of 113 Swift files: its 46 sources and Package.swift) and none of the app under
+# Deposplit/, where the Keychain store, the API adapter and the views live. This builds the app
+# scheme the way test.yml does, which compiles the hexagon too. Default setup and this workflow
+# cannot both upload, so default setup stays off in the repository settings.
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  # Weekly as well, so a new CodeQL query reaches code that has not changed.
+  schedule:
+    - cron: '41 5 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      security-events: write # to upload the results to code scanning
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - language: swift
+          build-mode: manual
+          runner: macos-26 # the image test.yml is pinned to; CodeQL analyses Swift only on macOS
+        - language: actions
+          build-mode: none
+          runner: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+    - name: Build the app target
+      # CodeQL sees only the Swift that is compiled while it watches this step. The command is
+      # test.yml's, for the same reason: a simulator build needs no signing team. ARCHS=arm64
+      # compiles each file once instead of once per simulator architecture.
+      if: matrix.build-mode == 'manual'
+      run: |
+        xcodebuild -version
+        xcodebuild build -project Deposplit.xcodeproj -scheme Deposplit \
+          -destination 'generic/platform=iOS Simulator' ARCHS=arm64
+    - name: Perform CodeQL analysis
+      uses: github/codeql-action/analyze@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
+      with:
+        category: '/language:${{ matrix.language }}'

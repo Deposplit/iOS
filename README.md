@@ -123,6 +123,12 @@ target uses automatic signing with no `DEVELOPMENT_TEAM`, so a device build woul
 CI cannot supply. It compiles the app without running it, since there is no app-target test
 suite. Dependabot updates pinned action SHAs weekly.
 
+`.github/workflows/codeql.yml` runs CodeQL code scanning on the Swift and on the workflows, on
+pushes and pull requests to `main` and weekly. It is CodeQL's *advanced setup*, because the
+*default setup* built the `hexagon` package alone and scanned none of the app under
+`Deposplit/`. This workflow builds the app scheme the way `test.yml` does, which compiles both.
+The two setups cannot run side by side, so default setup stays off in the repository settings.
+
 ## Licence
 
 MIT. Copyright © 2026 [Squeng AG](https://www.squeng.com).
