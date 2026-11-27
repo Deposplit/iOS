@@ -116,9 +116,12 @@ and their German from `Deposplit/InfoPlist.xcstrings`.
 
 ## Continuous integration
 
-`.github/workflows/test.yml` runs `swift test` against the `hexagon` package on macOS, on
-every push and on pull requests targeting `main`. The app target is not built in CI, because
-that needs a simulator. Dependabot updates pinned action SHAs weekly.
+`.github/workflows/test.yml` runs on GitHub's macOS 26 image on every push, on pull requests
+targeting `main`, and weekly. It runs `swift test` against the `hexagon` package, then builds the
+app target for `generic/platform=iOS Simulator`. The build targets the Simulator because the
+target uses automatic signing with no `DEVELOPMENT_TEAM`, so a device build would ask for a team
+CI cannot supply. It compiles the app without running it, since there is no app-target test
+suite. Dependabot updates pinned action SHAs weekly.
 
 ## Licence
 
